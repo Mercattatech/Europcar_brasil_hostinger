@@ -9,6 +9,10 @@ out/
 build/
 dist/
 
+# TypeScript build cache
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
 # Environment variables — NUNCA commitar!
 .env
 .env.local
