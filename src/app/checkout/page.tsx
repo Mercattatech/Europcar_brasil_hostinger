@@ -637,12 +637,12 @@ export default function CheckoutPage() {
                   <>
                     <div className="flex justify-between text-xs">
                       <span className="text-gray-400 line-through">Preço sem contrato ({currency})</span>
-                      <span className="text-gray-400 line-through">{currency} {originalTotalXRS.toFixed(2).replace(".", ",")}</span>
+                      <span className="text-gray-400 line-through">{currency} {standardTotalXRS.toFixed(2).replace(".", ",")}</span>
                     </div>
-                    {originalTotalBRL > 0 && (
+                    {standardTotalBRL > 0 && (
                       <div className="flex justify-between text-xs">
                         <span className="text-gray-400 line-through">Preço sem contrato (BRL)</span>
-                        <span className="text-gray-400 line-through">R$ {originalTotalBRL.toFixed(2).replace(".", ",")}</span>
+                        <span className="text-gray-400 line-through">R$ {standardTotalBRL.toFixed(2).replace(".", ",")}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-xs font-bold text-green-700 bg-green-50 rounded px-2 py-1">
