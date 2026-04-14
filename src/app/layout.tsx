@@ -10,6 +10,7 @@ export const metadata: Metadata = {
 };
 
 import AuthProvider from "@/components/auth/AuthProvider";
+import Footer from "@/components/Footer";
 
 export default function RootLayout({
   children,
@@ -19,7 +20,10 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className={inter.className}>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          {children}
+          <Footer />
+        </AuthProvider>
       </body>
     </html>
   );
