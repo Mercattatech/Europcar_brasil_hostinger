@@ -183,6 +183,20 @@ export default function CheckoutPage() {
   };
   const days = calcDays();
 
+  // Build car image URL
+  const carImgUrl = car.imageUrl
+    || (carCode ? `https://static.europcar.com/carvisuals/partners/835x557/${carCode}_IT.png` : "")
+    || `https://placehold.co/400x200/f5f5f5/008d36?text=${carCode || "CAR"}`;
+
+  const handleCheckout = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!booking) return;
+    setLoading(true);
+    const extrasTotalBRL = extrasDetails.reduce((sum: number, ex: any) => sum + ex.pricePerDay * ex.qty, 0) * days;
+    const baseAmountBRL = totalBRL > 0 ? totalBRL : totalRateXRS;
+    const grandTotalBRL = baseAmountBRL + extrasTotalBRL;
+    const amountInCents = Math.round(grandTotalBRL * 100);
+
     try {
       const res = await fetch("/api/reservas", {
         method: "POST",
