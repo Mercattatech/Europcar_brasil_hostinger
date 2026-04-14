@@ -27,8 +27,11 @@ export default function CheckoutPage() {
   const [timeLeft, setTimeLeft] = useState(180);
 
   const [imgSrcIdx, setImgSrcIdx] = useState(0);
-
   const [extrasDetails, setExtrasDetails] = useState<any[]>([]);
+
+  // ✅ Tarifa Contratada: preço negociado via getQuote com contractID
+  const [contractedQuote, setContractedQuote] = useState<any>(null);
+  const [loadingQuote, setLoadingQuote] = useState(false);
 
   useEffect(() => {
     const data = sessionStorage.getItem("europcar_booking");
@@ -49,7 +52,7 @@ export default function CheckoutPage() {
       if (!ins) return null;
       return {
         id: code,
-        name: code,  // display name mapped in the summary
+        name: code,
         pricePerDay: parseFloat(ins.priceInBookingCurrency || ins.price || "0"),
         pricePerDayEUR: parseFloat(ins.price || "0"),
         qty: extrasMap[code],
@@ -57,6 +60,47 @@ export default function CheckoutPage() {
       };
     }).filter(Boolean);
     setExtrasDetails(resolved);
+  }, [booking]);
+
+  // ✅ Buscar preço com tarifa contratada via getQuote (XRS PTN)
+  useEffect(() => {
+    if (!booking) return;
+    const contractID = booking.contractID;
+    if (!contractID) return; // sem tarifa contratada, usa preço padrão
+
+    const fetchContractedQuote = async () => {
+      setLoadingQuote(true);
+      try {
+        const res = await fetch("/api/europcar/getQuote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            carCategory: booking.car?.carCategoryCode,
+            pickupStation: booking.pickupStation,
+            returnStation: booking.returnStation || booking.pickupStation,
+            pickupDate: booking.pickupDate,
+            returnDate: booking.returnDate,
+            pickupTime: booking.pickupTime || "1000",
+            returnTime: booking.returnTime || "1000",
+            contractID,
+          }),
+        });
+        const data = await res.json();
+        // Extrair preço da resposta XRS getQuote
+        const quote =
+          data?.message?.serviceResponse?.reservation?.$  ||
+          data?.serviceResponse?.reservation?.$ ||
+          data?.message?.serviceResponse?.reservation ||
+          null;
+        if (quote) setContractedQuote(quote);
+      } catch (e) {
+        console.error("[checkout] Falha ao buscar tarifa contratada:", e);
+      } finally {
+        setLoadingQuote(false);
+      }
+    };
+
+    fetchContractedQuote();
   }, [booking]);
 
   useEffect(() => {
@@ -91,9 +135,7 @@ export default function CheckoutPage() {
   const carCode = car.carCategoryCode || "";
   const carSample = car.carCategorySample || "";
   const currency = car.currency || "EUR";
-  const totalRateXRS = parseFloat(car.totalRateEstimate || car.total || 0);
-  const totalBRL = parseFloat(car.totalRateEstimateInBookingCurrency || 0);
-  const bookingCurrency = car.bookingCurrencyOfTotalRateEstimate || "";
+
 
   // Pickup/return info
   const pickupStation = booking.pickupStation || car.pickupLoc || "";
@@ -103,6 +145,31 @@ export default function CheckoutPage() {
   const driverCountry = booking.driverCountry || "BR";
   const driverCountryName = booking.driverCountryName || "Brasil";
   const formatDate = (d: string) => d?.length === 8 ? `${d.slice(6, 8)}/${d.slice(4, 6)}/${d.slice(0, 4)}` : d;
+
+  // --- Calculate prices ---
+  // Se houver tarifa contratada, usa o preço do getQuote; senão usa o preço da listagem
+  const contractID = booking?.contractID || "";
+  const originalTotalXRS = parseFloat(car.totalRateEstimate || car.total || 0);
+  const originalTotalBRL = parseFloat(car.totalRateEstimateInBookingCurrency || 0);
+
+  // Preço com contrato (se disponível)
+  const contractedTotalXRS = contractedQuote
+    ? parseFloat(contractedQuote.totalRateEstimate || contractedQuote.totalRate || 0)
+    : originalTotalXRS;
+  const contractedTotalBRL = contractedQuote
+    ? parseFloat(contractedQuote.totalRateEstimateInBookingCurrency || contractedQuote.totalRateInBookingCurrency || 0)
+    : originalTotalBRL;
+
+  // Usar preço contratado se disponível, senão preço padrão
+  const totalRateXRS = contractedTotalXRS > 0 ? contractedTotalXRS : originalTotalXRS;
+  const totalBRL = contractedTotalBRL > 0 ? contractedTotalBRL : originalTotalBRL;
+
+  // Desconto calculado
+  const discountXRS = originalTotalXRS > 0 && contractedTotalXRS > 0 ? originalTotalXRS - contractedTotalXRS : 0;
+  const discountBRL = originalTotalBRL > 0 && contractedTotalBRL > 0 ? originalTotalBRL - contractedTotalBRL : 0;
+  const hasDiscount = discountXRS > 0.01;
+
+  const bookingCurrency = car.bookingCurrencyOfTotalRateEstimate || "";
 
   // Calculate days
   const calcDays = () => {
@@ -115,21 +182,6 @@ export default function CheckoutPage() {
     return 1;
   };
   const days = calcDays();
-
-  // Build car image URL — use official XRS carvisual first, then fallback
-  const carImgUrl = car.imageUrl
-    || (carCode ? `https://static.europcar.com/carvisuals/partners/835x557/${carCode}_IT.png` : "")
-    || (carSample ? `https://www.europcar.com/vehicles/images/223/cars/${carSample.split(" ")[0].toLowerCase()}/${carSample.split(" ").slice(1,3).join("-").toLowerCase().replace(/[^a-z0-9-]/g,"")}.png` : "")
-    || `https://placehold.co/400x200/f5f5f5/008d36?text=${carCode || "CAR"}`;
-
-  const handleCheckout = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!booking) return;
-    setLoading(true);
-    const extrasTotalBRL = extrasDetails.reduce((sum: number, e: any) => sum + e.pricePerDay * e.qty, 0) * days;
-    const baseAmountBRL = totalBRL > 0 ? totalBRL : totalRateXRS;
-    const grandTotalBRL = baseAmountBRL + extrasTotalBRL;
-    const amountInCents = Math.round(grandTotalBRL * 100);
 
     try {
       const res = await fetch("/api/reservas", {
@@ -521,15 +573,62 @@ export default function CheckoutPage() {
 
               {/* Price breakdown */}
               <div className="space-y-2 mb-4 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-500 font-medium">Total período ({currency})</span>
-                  <span className="font-bold text-gray-900">{currency} {totalRateXRS.toFixed(2).replace(".", ",")}</span>
-                </div>
-                {totalBRL > 0 && bookingCurrency && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 font-medium">Em {bookingCurrency}</span>
-                    <span className="font-bold text-gray-900">{bookingCurrency} {totalBRL.toFixed(2).replace(".", ",")}</span>
+
+                {/* Banner de tarifa contratada */}
+                {contractID && (
+                  <div className="flex items-center gap-1.5 bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-3">
+                    <svg className="w-4 h-4 text-green-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <span className="text-[10px] font-bold text-green-800">Tarifa contratada: </span>
+                      <span className="text-[10px] font-mono font-black text-green-900">{contractID}</span>
+                    </div>
+                    {loadingQuote && <div className="w-3 h-3 border-2 border-green-500 border-t-transparent rounded-full animate-spin ml-auto" />}
                   </div>
+                )}
+
+                {/* Preço original riscado se houver desconto */}
+                {hasDiscount ? (
+                  <>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-400 line-through">Preço sem contrato ({currency})</span>
+                      <span className="text-gray-400 line-through">{currency} {originalTotalXRS.toFixed(2).replace(".", ",")}</span>
+                    </div>
+                    {originalTotalBRL > 0 && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-gray-400 line-through">Preço sem contrato (BRL)</span>
+                        <span className="text-gray-400 line-through">R$ {originalTotalBRL.toFixed(2).replace(".", ",")}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-xs font-bold text-green-700 bg-green-50 rounded px-2 py-1">
+                      <span>💰 Economia com contrato</span>
+                      <span>- {currency} {discountXRS.toFixed(2).replace(".", ",")}{discountBRL > 0 ? ` / -R$ ${discountBRL.toFixed(2).replace(".", ",")}` : ""}</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-green-800">
+                      <span>Total com tarifa ({currency})</span>
+                      <span>{currency} {totalRateXRS.toFixed(2).replace(".", ",")}</span>
+                    </div>
+                    {totalBRL > 0 && bookingCurrency && (
+                      <div className="flex justify-between font-bold text-green-800">
+                        <span>Total com tarifa ({bookingCurrency})</span>
+                        <span>{bookingCurrency} {totalBRL.toFixed(2).replace(".", ",")}</span>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 font-medium">Total período ({currency})</span>
+                      <span className="font-bold text-gray-900">{currency} {totalRateXRS.toFixed(2).replace(".", ",")}</span>
+                    </div>
+                    {totalBRL > 0 && bookingCurrency && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500 font-medium">Em {bookingCurrency}</span>
+                        <span className="font-bold text-gray-900">{bookingCurrency} {totalBRL.toFixed(2).replace(".", ",")}</span>
+                      </div>
+                    )}
+                  </>
                 )}
                 {car.exchangeRate && (
                   <div className="flex justify-between text-xs text-gray-400">
