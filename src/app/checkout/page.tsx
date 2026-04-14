@@ -29,8 +29,9 @@ export default function CheckoutPage() {
   const [imgSrcIdx, setImgSrcIdx] = useState(0);
   const [extrasDetails, setExtrasDetails] = useState<any[]>([]);
 
-  // ✅ Tarifa Contratada: preço negociado via getQuote com contractID
-  const [contractedQuote, setContractedQuote] = useState<any>(null);
+  // ✅ Tarifa Contratada: comparação entre preço cheio e preço com contrato via 2x getQuote
+  const [standardQuote, setStandardQuote] = useState<any>(null);   // sem contractID
+  const [contractedQuote, setContractedQuote] = useState<any>(null); // com contractID
   const [loadingQuote, setLoadingQuote] = useState(false);
 
   useEffect(() => {
@@ -62,45 +63,62 @@ export default function CheckoutPage() {
     setExtrasDetails(resolved);
   }, [booking]);
 
-  // ✅ Buscar preço com tarifa contratada via getQuote (XRS PTN)
+  // ✅ Buscar preço padrão E preço contratado via 2x getQuote para calcular economia real
   useEffect(() => {
     if (!booking) return;
     const contractID = booking.contractID;
-    if (!contractID) return; // sem tarifa contratada, usa preço padrão
+    if (!contractID) return; // sem tarifa contratada, nada a comparar
 
-    const fetchContractedQuote = async () => {
+    const baseParams = {
+      carCategory: booking.car?.carCategoryCode,
+      pickupStation: booking.pickupStation,
+      returnStation: booking.returnStation || booking.pickupStation,
+      pickupDate: booking.pickupDate,
+      returnDate: booking.returnDate,
+      pickupTime: booking.pickupTime || "1000",
+      returnTime: booking.returnTime || "1000",
+    };
+
+    const extractQuote = (data: any) =>
+      data?.message?.serviceResponse?.reservation?.$ ||
+      data?.serviceResponse?.reservation?.$ ||
+      data?.message?.serviceResponse?.reservation ||
+      null;
+
+    const fetchBoth = async () => {
       setLoadingQuote(true);
       try {
-        const res = await fetch("/api/europcar/getQuote", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            carCategory: booking.car?.carCategoryCode,
-            pickupStation: booking.pickupStation,
-            returnStation: booking.returnStation || booking.pickupStation,
-            pickupDate: booking.pickupDate,
-            returnDate: booking.returnDate,
-            pickupTime: booking.pickupTime || "1000",
-            returnTime: booking.returnTime || "1000",
-            contractID,
+        // 🔄 Duas chamadas paralelas: sem contrato (preço cheio) + com contrato (preço negociado)
+        const [stdRes, ctrRes] = await Promise.all([
+          fetch("/api/europcar/getQuote", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(baseParams), // SEM contractID → preço cheio
           }),
-        });
-        const data = await res.json();
-        // Extrair preço da resposta XRS getQuote
-        const quote =
-          data?.message?.serviceResponse?.reservation?.$  ||
-          data?.serviceResponse?.reservation?.$ ||
-          data?.message?.serviceResponse?.reservation ||
-          null;
-        if (quote) setContractedQuote(quote);
+          fetch("/api/europcar/getQuote", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...baseParams, contractID }), // COM contractID → preço negociado
+          }),
+        ]);
+
+        const [stdData, ctrData] = await Promise.all([stdRes.json(), ctrRes.json()]);
+
+        const std = extractQuote(stdData);
+        const ctr = extractQuote(ctrData);
+
+        if (std) setStandardQuote(std);
+        if (ctr) setContractedQuote(ctr);
+
+        console.log("[checkout] Preço padrão:", std?.totalRateEstimate, "| Contratado:", ctr?.totalRateEstimate);
       } catch (e) {
-        console.error("[checkout] Falha ao buscar tarifa contratada:", e);
+        console.error("[checkout] Falha ao buscar tarifas getQuote:", e);
       } finally {
         setLoadingQuote(false);
       }
     };
 
-    fetchContractedQuote();
+    fetchBoth();
   }, [booking]);
 
   useEffect(() => {
@@ -147,29 +165,41 @@ export default function CheckoutPage() {
   const formatDate = (d: string) => d?.length === 8 ? `${d.slice(6, 8)}/${d.slice(4, 6)}/${d.slice(0, 4)}` : d;
 
   // --- Calculate prices ---
-  // Se houver tarifa contratada, usa o preço do getQuote; senão usa o preço da listagem
   const contractID = booking?.contractID || "";
-  const originalTotalXRS = parseFloat(car.totalRateEstimate || car.total || 0);
-  const originalTotalBRL = parseFloat(car.totalRateEstimateInBookingCurrency || 0);
+  const bookingCurrency = car.bookingCurrencyOfTotalRateEstimate || "";
 
-  // Preço com contrato (se disponível)
+
+  // Preço do carro selecionado (já pode ser o preço contratado se contractID foi usado em getMultipleRates)
+  const carTotalXRS = parseFloat(car.totalRateEstimate || car.total || 0);
+  const carTotalBRL = parseFloat(car.totalRateEstimateInBookingCurrency || 0);
+
+  // Preço padrão sem contrato (do getQuote SEM contractID)
+  const standardTotalXRS = standardQuote
+    ? parseFloat(standardQuote.totalRateEstimate || standardQuote.totalRate || 0)
+    : carTotalXRS;
+  const standardTotalBRL = standardQuote
+    ? parseFloat(standardQuote.totalRateEstimateInBookingCurrency || standardQuote.totalRateInBookingCurrency || 0)
+    : carTotalBRL;
+
+  // Preço contratado (do getQuote COM contractID)
   const contractedTotalXRS = contractedQuote
     ? parseFloat(contractedQuote.totalRateEstimate || contractedQuote.totalRate || 0)
-    : originalTotalXRS;
+    : carTotalXRS;
   const contractedTotalBRL = contractedQuote
     ? parseFloat(contractedQuote.totalRateEstimateInBookingCurrency || contractedQuote.totalRateInBookingCurrency || 0)
-    : originalTotalBRL;
+    : carTotalBRL;
 
-  // Usar preço contratado se disponível, senão preço padrão
-  const totalRateXRS = contractedTotalXRS > 0 ? contractedTotalXRS : originalTotalXRS;
-  const totalBRL = contractedTotalBRL > 0 ? contractedTotalBRL : originalTotalBRL;
+  // Preço final exibido: usa o menor entre carro e preço contratado
+  const totalRateXRS = contractedTotalXRS > 0 ? contractedTotalXRS : carTotalXRS;
+  const totalBRL = contractedTotalBRL > 0 ? contractedTotalBRL : carTotalBRL;
 
-  // Desconto calculado
-  const discountXRS = originalTotalXRS > 0 && contractedTotalXRS > 0 ? originalTotalXRS - contractedTotalXRS : 0;
-  const discountBRL = originalTotalBRL > 0 && contractedTotalBRL > 0 ? originalTotalBRL - contractedTotalBRL : 0;
+  // Economia = preço padrão (sem contrato) − preço contratado (com contrato)
+  // ⚠️ Só calculado quando temos AMBAS as respostas do getQuote
+  const discountXRS = standardTotalXRS > 0 && contractedTotalXRS > 0 ? standardTotalXRS - contractedTotalXRS : 0;
+  const discountBRL = standardTotalBRL > 0 && contractedTotalBRL > 0 ? standardTotalBRL - contractedTotalBRL : 0;
   const hasDiscount = discountXRS > 0.01;
 
-  const bookingCurrency = car.bookingCurrencyOfTotalRateEstimate || "";
+
 
   // Calculate days
   const calcDays = () => {
