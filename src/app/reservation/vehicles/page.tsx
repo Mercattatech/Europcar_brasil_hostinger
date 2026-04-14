@@ -388,6 +388,21 @@ function VehiclesContent() {
         <div className="flex-1">
           {currentStep === 2 ? (
             <>
+              {/* ✅ Banner de Tarifa Contratada Ativa */}
+              {effectiveContractID && (
+                <div className="mb-5 flex items-center gap-3 bg-green-50 border border-green-300 rounded-lg px-5 py-3">
+                  <svg className="w-5 h-5 text-green-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div className="flex-1">
+                    <span className="text-sm font-bold text-green-800">Tarifa contratada aplicada: </span>
+                    <span className="text-sm font-mono font-black text-green-900 bg-green-100 px-2 py-0.5 rounded">{effectiveContractID}</span>
+                    <span className="text-xs text-green-600 ml-2">— Os preços exibidos já refletem sua tarifa negociada.</span>
+                  </div>
+                  <a href="/" className="text-xs text-green-600 hover:text-red-500 font-bold underline shrink-0">Remover</a>
+                </div>
+              )}
+
               <div className="flex justify-end items-center mb-5">
                 <label className="text-sm font-bold text-gray-900 mr-3">Classificar por:</label>
                 <select className="border border-gray-300 rounded bg-white px-3 py-2 text-sm font-bold text-gray-700 outline-none w-52" value={sortBy} onChange={e => setSortBy(e.target.value)}>

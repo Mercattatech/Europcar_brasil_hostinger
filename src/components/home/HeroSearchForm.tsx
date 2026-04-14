@@ -662,17 +662,32 @@ export default function HeroSearchForm() {
                         placeholder="Insira um número"
                         value={tarifNumber}
                         onChange={(e) => setTarifNumber(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') setShowTariffPopover(false); }}
                         className="w-full text-base font-normal outline-none"
                         autoFocus
                       />
+                      {tarifNumber && (
+                        <button
+                          type="button"
+                          onClick={() => setTarifNumber('')}
+                          className="text-gray-400 hover:text-gray-600 ml-1 shrink-0"
+                          title="Limpar"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowTariffPopover(false)}
-                      className="bg-[#ebebeb] hover:bg-gray-200 w-12 h-11 rounded flex justify-center items-center"
+                      className={`w-12 h-11 rounded flex justify-center items-center transition-colors ${
+                        tarifNumber ? 'bg-[#008d36] hover:bg-[#007530]' : 'bg-[#ebebeb] hover:bg-gray-200'
+                      }`}
                     >
                       <svg
-                        className="w-6 h-6 text-black font-bold"
+                        className={`w-6 h-6 font-bold ${ tarifNumber ? 'text-white' : 'text-black'}`}
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="3"
@@ -725,6 +740,27 @@ export default function HeroSearchForm() {
                     na página de pagamento deste site no ato da reserva.
                   </p>
                 </div>
+              </div>
+            )}
+
+            {/* ✅ Badge de tarifa ativa — aparece após fechar o popover com código preenchido */}
+            {!showTariffPopover && tarifNumber && (
+              <div className="absolute -bottom-7 right-0 flex items-center gap-1.5 bg-green-50 border border-green-300 rounded-full px-3 py-1">
+                <svg className="w-3.5 h-3.5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-[11px] font-bold text-green-700">Tarifa contratada ativa:</span>
+                <span className="text-[11px] font-mono font-black text-green-800">{tarifNumber}</span>
+                <button
+                  type="button"
+                  onClick={() => setTarifNumber('')}
+                  className="text-green-500 hover:text-red-500 ml-1"
+                  title="Remover tarifa"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
             )}
 
