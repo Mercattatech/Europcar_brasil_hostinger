@@ -172,7 +172,13 @@ export async function POST(request: Request) {
          cieloLog = "Sucesso Cartão Cielo: " + cieloResponseJson.Payment.ReturnMessage;
       }
 
-      // 2. Salva a reserva no banco de dados "LocalReservation"
+      // ✅ PCI-DSS: Remove dados sensíveis de pagamento antes de persistir no banco
+      // Nunca gravar número de cartão, CVV ou dados completos — apenas últimos 4 dígitos mascarados
+      const { creditCard: _cc, cvv: _cvv, cardNumber: _cn, ...safeCustomerData } = customerData as any;
+      const cardLastFour = paymentData.creditCard?.number
+        ? '**** **** **** ' + String(paymentData.creditCard.number.replace(/\D/g, '')).slice(-4)
+        : undefined;
+
       let finalResNumber = resNumber;
       let finalMerchantOrderId = merchantOrderId;
       try {
@@ -182,7 +188,13 @@ export async function POST(request: Request) {
               merchantOrderId,
               amountInCents: paymentData.amountInCents || 0,
               status: paymentData.method === 'PIX' ? 'PENDING_PIX' : (paymentData.method === 'BALCAO' ? 'CONFIRMED_NON_PREPAID' : 'CONFIRMED_PREPAID'),
-              customerData: JSON.stringify({ ...customerData, booking: bookingData, paymentId: pixData?.paymentId, systemLogOrigem: logOrigem })
+              customerData: JSON.stringify({
+                ...safeCustomerData,      // sem creditCard, cvv, cardNumber
+                booking: bookingData,
+                paymentId: pixData?.paymentId,
+                systemLogOrigem: logOrigem,
+                ...(cardLastFour && { cardLastFour }), // apenas **** **** **** 1234
+              })
            }
         });
         finalResNumber = localRes.resNumber;

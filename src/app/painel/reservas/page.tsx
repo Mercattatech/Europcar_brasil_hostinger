@@ -31,6 +31,8 @@ export default function PainelReservas() {
    const [expandedRow, setExpandedRow] = useState<string | null>(null);
    const [changingStatus, setChangingStatus] = useState<string | null>(null);
    const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+   // ✅ Modal de cancelamento com políticas Europcar (requisito de homologação XRS)
+   const [cancelModal, setCancelModal] = useState<{ id: string; resNumber: string } | null>(null);
 
    const showToast = (message: string, type: "success" | "error" = "success") => {
       setToast({ message, type });
@@ -82,17 +84,19 @@ export default function PainelReservas() {
    };
 
    const handleDelete = async (id: string) => {
-      if (!confirm("Tem certeza que deseja EXCLUIR permanentemente esta reserva?")) return;
+      // Chamado após confirmação no modal — não usa confirm() nativo
       try {
          const res = await fetch(`/api/admin/reservations/${id}`, { method: "DELETE" });
          if (res.ok) {
-            showToast("Reserva excluída!");
+            showToast("Reserva cancelada!");
             fetchReservations();
          } else {
-            showToast("Erro ao excluir", "error");
+            showToast("Erro ao cancelar", "error");
          }
       } catch (e) {
          showToast("Erro de conexão", "error");
+      } finally {
+         setCancelModal(null);
       }
    };
 
@@ -102,6 +106,50 @@ export default function PainelReservas() {
 
    return (
       <div className="space-y-6">
+
+         {/* ✅ Modal de Cancelamento com Políticas Europcar */}
+         {cancelModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+               <div className="bg-gray-900 border border-red-800/40 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
+                  <div className="flex items-center gap-3 mb-4">
+                     <div className="w-10 h-10 rounded-full bg-red-900/40 flex items-center justify-center shrink-0">
+                        <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                        </svg>
+                     </div>
+                     <div>
+                        <h3 className="text-lg font-black text-white">Confirmar Cancelamento</h3>
+                        <p className="text-xs text-gray-500">Reserva: <span className="text-white font-mono">{cancelModal.resNumber}</span></p>
+                     </div>
+                  </div>
+
+                  <div className="bg-yellow-950/40 border border-yellow-700/30 rounded-xl p-4 mb-6 space-y-1.5">
+                     <p className="text-xs font-bold text-yellow-300 mb-2 flex items-center gap-1.5">
+                        <span>📋</span> Política de Cancelamento Europcar
+                     </p>
+                     <p className="text-xs text-yellow-200/80">• Mais de 48h de antecedência: <strong className="text-yellow-200">sem cobrança.</strong></p>
+                     <p className="text-xs text-yellow-200/80">• Entre 24h e 48h antes: <strong className="text-yellow-200">50% do valor da primeira diária.</strong></p>
+                     <p className="text-xs text-yellow-200/80">• Menos de 24h ou no-show: <strong className="text-yellow-200">100% da primeira diária.</strong></p>
+                     <p className="text-xs text-yellow-200/80">• Modalidade "Pagar no Balcão" (NP): <strong className="text-yellow-200">cancelamento gratuito.</strong></p>
+                  </div>
+
+                  <div className="flex gap-3">
+                     <button
+                        onClick={() => setCancelModal(null)}
+                        className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2.5 rounded-xl text-sm transition-colors"
+                     >
+                        Manter Reserva
+                     </button>
+                     <button
+                        onClick={() => handleDelete(cancelModal.id)}
+                        className="flex-1 bg-red-700 hover:bg-red-600 text-white font-bold py-2.5 rounded-xl text-sm transition-colors"
+                     >
+                        Confirmar Cancelamento
+                     </button>
+                  </div>
+               </div>
+            </div>
+         )}
          {/* Toast */}
          {toast && (
             <div className={`fixed top-4 right-4 z-50 px-5 py-3 rounded-lg shadow-2xl font-bold text-sm animate-pulse ${
@@ -229,7 +277,7 @@ export default function PainelReservas() {
                                  <span className="text-[10px]">{new Date(res.createdAt).toLocaleTimeString("pt-BR")}</span>
                               </td>
                               <td className="px-5 py-4 text-right">
-                                 <button onClick={() => handleDelete(res.id)} className="p-1.5 rounded-lg bg-gray-800 hover:bg-red-900/50 text-gray-400 hover:text-red-400 transition-colors" title="Excluir reserva">
+                                 <button onClick={() => setCancelModal({ id: res.id, resNumber: res.resNumber || res.id })} className="p-1.5 rounded-lg bg-gray-800 hover:bg-red-900/50 text-gray-400 hover:text-red-400 transition-colors" title="Cancelar reserva">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                  </button>
                               </td>
