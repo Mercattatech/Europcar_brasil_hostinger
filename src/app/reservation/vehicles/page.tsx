@@ -126,7 +126,15 @@ function VehiclesContent() {
       const catRes = await fetch("/api/europcar/getCarCategories", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pickupStation, returnStation: returnStation || pickupStation, pickupDate, returnDate, pickupTime, returnTime }),
+        body: JSON.stringify({ 
+          pickupStation, 
+          returnStation: returnStation || pickupStation, 
+          pickupDate, 
+          returnDate, 
+          pickupTime, 
+          returnTime,
+          contractID: effectiveContractID 
+        }),
       });
       const catData = await catRes.json();
 

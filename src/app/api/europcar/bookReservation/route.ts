@@ -11,7 +11,8 @@ export async function POST(request: Request) {
       pickupStation, returnStation,
       pickupDate, returnDate,
       pickupTime, returnTime,
-      driverData, paymentData, contractID
+      driverData, paymentData, contractID,
+      voucherData
     } = body;
 
     if (!carCategory || !rateId) {
@@ -21,14 +22,34 @@ export async function POST(request: Request) {
     // Build contractID attribute if promotion is active
     const contractAttr = contractID ? ` contractID="${contractID}" type="C"` : '';
 
+    // CID to BA mapping for ETO vouchers provided by Ewa
+    const cidToBa: Record<string, string> = {
+      '56935466': '73675595',
+      '56935495': '73804373'
+    };
+
+    let meanOfPaymentXml = '';
+    if (voucherData && voucherData.type === 'ETO') {
+      const ba = cidToBa[contractID] || voucherData.businessAccount || '';
+      // Calculate duration in days for the voucher
+      const d1 = new Date(parseInt(pickupDate.slice(0,4)), parseInt(pickupDate.slice(4,6))-1, parseInt(pickupDate.slice(6,8)));
+      const d2 = new Date(parseInt(returnDate.slice(0,4)), parseInt(returnDate.slice(4,6))-1, parseInt(returnDate.slice(6,8)));
+      const duration = Math.max(1, Math.round((d2.getTime() - d1.getTime()) / 86400000));
+
+      meanOfPaymentXml = `
+        <meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="${voucherData.id || '1234'}"
+                       businessAccount="${ba}" voucherCarCategory="${carCategory}"
+                       voucherRentalDuration="${duration}"/>`;
+    }
+
     const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
 <message>
   <serviceRequest serviceCode="bookReservation">
     <serviceParameters>
-      <reservation carCategory="${carCategory}" rateId="${rateId}" prepaidMode="NP"${contractAttr}>
+      <reservation carCategory="${carCategory}" rateId="${rateId}" chargesDetail="TRE" prepaidMode="NP"${contractAttr}>
         <checkout stationID="${pickupStation}" date="${pickupDate}" time="${pickupTime || '1000'}"/>
         <checkin stationID="${returnStation || pickupStation}" date="${returnDate}" time="${returnTime || '1000'}"/>
-        <equipmentList/>
+        <equipmentList/>${meanOfPaymentXml}
       </reservation>
       <driver countryOfResidence="BR"
               firstName="${driverData?.firstName || 'Test'}"

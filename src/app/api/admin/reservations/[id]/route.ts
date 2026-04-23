@@ -38,17 +38,52 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
    }
 }
 
-// DELETE - Delete reservation
+// DELETE - Cancel reservation (XRS + local)
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
    if (!(await checkAdmin())) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
    }
 
    try {
-      await prisma.localReservation.delete({ where: { id: params.id } });
-      return NextResponse.json({ success: true });
+      // 1. Buscar a reserva local para pegar o resNumber
+      const reservation = await prisma.localReservation.findUnique({
+         where: { id: params.id }
+      });
+
+      if (!reservation) {
+         return NextResponse.json({ error: 'Reserva não encontrada' }, { status: 404 });
+      }
+
+      // 2. Se tem resNumber válido (não é local fake), cancelar na Europcar via XRS
+      let xrsCancelResult: any = null;
+      if (reservation.resNumber && !reservation.resNumber.startsWith('LOCAL_')) {
+         try {
+            const cancelRes = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/europcar/cancelReservation`, {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify({ resNumber: reservation.resNumber })
+            });
+            xrsCancelResult = await cancelRes.json();
+            console.log(`[CANCEL] XRS cancelamento para ${reservation.resNumber}:`, JSON.stringify(xrsCancelResult));
+         } catch (xrsErr: any) {
+            // Log mas não bloqueia — o admin pode cancelar manualmente no Greenway
+            console.error(`[CANCEL] Falha ao cancelar no XRS (${reservation.resNumber}):`, xrsErr.message);
+         }
+      }
+
+      // 3. Marcar como CANCELLED localmente (nunca deletar — preservar histórico)
+      const updated = await prisma.localReservation.update({
+         where: { id: params.id },
+         data: { status: 'CANCELLED' }
+      });
+
+      return NextResponse.json({
+         success: true,
+         xrsCancelled: xrsCancelResult?.success || false,
+         reservation: updated
+      });
    } catch (error: any) {
-      console.error('Error deleting reservation:', error);
-      return NextResponse.json({ error: 'Erro ao excluir reserva' }, { status: 500 });
+      console.error('Error cancelling reservation:', error);
+      return NextResponse.json({ error: 'Erro ao cancelar reserva' }, { status: 500 });
    }
 }

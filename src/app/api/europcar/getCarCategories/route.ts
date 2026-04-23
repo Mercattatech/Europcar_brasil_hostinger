@@ -5,13 +5,15 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime } = body;
+    const { pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, contractID } = body;
+
+    const contractAttr = contractID ? ` contractID="${contractID}" type="C"` : '';
 
     const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
 <message>
   <serviceRequest serviceCode="getCarCategories">
     <serviceParameters>
-      <reservation>
+      <reservation${contractAttr}>
         <checkout stationID="${pickupStation}" date="${pickupDate}" time="${pickupTime || '1000'}"/>
         <checkin stationID="${returnStation || pickupStation}" date="${returnDate}" time="${returnTime || '1000'}"/>
       </reservation>

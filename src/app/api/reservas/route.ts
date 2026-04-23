@@ -2,21 +2,19 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import prisma from '@/lib/prisma';
+import { callXRS } from '@/lib/europcar/xrsClient';
+
 export const dynamic = 'force-dynamic';
 
-// Função mock para gerar um Locator de reserva de 8 caracteres
-function gerarLocalizador() {
-   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-   let result = '';
-   for (let i = 0; i < 8; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-   }
-   return result;
-}
+// Helper to map CID to BA for ETO vouchers
+const CID_TO_BA: Record<string, string> = {
+  '56935466': '73675595',
+  '56935495': '73804373'
+};
 
 export async function POST(request: Request) {
    try {
-      const { bookingData, customerData, paymentData } = await request.json();
+      const { bookingData, customerData, paymentData, voucherData } = await request.json();
 
       const forwardedFor = request.headers.get("x-forwarded-for");
       const ip = forwardedFor ? forwardedFor.split(',')[0] : 'Desconhecido';
@@ -24,16 +22,12 @@ export async function POST(request: Request) {
       const username = session?.user?.name || session?.user?.email || 'Visitante/Deslogado';
       const logOrigem = `Usuário: ${username} | IP: ${ip}`;
 
-      const merchantOrderId = "ORD" + Date.now(); // Código do pedido pro gateway / banco de dados interno
+      const merchantOrderId = "ORD" + Date.now();
       
-      // ResNumber só é gerado agora se for Balcão ou CC. Se for PIX, será gerado depois pelo polling.
-      let resNumber: string | null = paymentData.method !== 'PIX' ? gerarLocalizador() : null;
-
       let cieloConfig: any = null;
       try {
         cieloConfig = await prisma.cieloConfig.findFirst();
       } catch (dbErr: any) {
-        // DB unreachable — fallback to environment variables for Cielo credentials
         console.warn('[reservas] DB indisponível, usando credenciais do .env como fallback:', dbErr.message);
         const envMerchantId = process.env.CIELO_MERCHANT_ID;
         const envMerchantKey = process.env.CIELO_MERCHANT_KEY;
@@ -45,7 +39,6 @@ export async function POST(request: Request) {
             error: `Banco de dados indisponível e credenciais Cielo não encontradas no ambiente. Verifique se o projeto Supabase está ativo e tente novamente. (${dbErr.message})`
           }, { status: 503 });
         }
-        // For BALCÃO, continue without DB config (will generate local ID)
       }
 
       if ((paymentData.method === 'PIX' || paymentData.method === 'CREDIT') && (!cieloConfig || !cieloConfig.merchantId || !cieloConfig.merchantKey)) {
@@ -53,11 +46,11 @@ export async function POST(request: Request) {
       }
 
       // 1. Iniciar transação CIELO baseada no paymentData.method
-      let cieloLog = "Não enviou para Cielo (Balcão)";
+      let cieloLog = "Não enviou para Cielo";
       let pixData: any = null;
       const CIELO_API_URL = cieloConfig?.isSandbox 
-          ? "https://apisandbox.cieloecommerce.cielo.com.br/1/sales/" // Ambiente de Testes
-          : "https://api.cieloecommerce.cielo.com.br/1/sales/"; // Produção Real
+          ? "https://apisandbox.cieloecommerce.cielo.com.br/1/sales/"
+          : "https://api.cieloecommerce.cielo.com.br/1/sales/";
           
       const cieloHeaders = {
          "Content-Type": "application/json",
@@ -65,41 +58,20 @@ export async function POST(request: Request) {
          "MerchantKey": cieloConfig?.merchantKey || ''
       };
 
+      let paymentApproved = false;
 
       if (paymentData.method === 'PIX') {
-         // Cielo PIX Real
          const resCielo = await fetch(CIELO_API_URL, {
              method: 'POST',
              headers: cieloHeaders,
              body: JSON.stringify({
                  "MerchantOrderId": merchantOrderId,
                  "Customer": { "Name": customerData.nome + " " + customerData.sobrenome, "Identity": customerData.cpf },
-                 "Payment": {
-                     "Type": "Pix",
-                     "Amount": paymentData.amountInCents
-                 }
+                 "Payment": { "Type": "Pix", "Amount": paymentData.amountInCents }
              })
          });
-         const resCieloText = await resCielo.text();
-         let cieloResponseJson: any;
-         try {
-             cieloResponseJson = JSON.parse(resCieloText);
-         } catch(e) {
-             throw new Error("Sistema Cielo Indisponível ou Resposta Inesperada: HTTP " + resCielo.status + " Corpo: " + resCieloText);
-         }
+         const cieloResponseJson = await resCielo.json();
          
-         try {
-           await prisma.logCielo.create({
-               data: {
-                   endpoint: "POST /1/sales/ (PIX)",
-                   payload: JSON.stringify({ amount: paymentData.amountInCents, type: 'Pix' }),
-                   response: JSON.stringify(cieloResponseJson)
-               }
-           });
-         } catch (logErr: any) {
-           console.warn('[reservas] Falha ao salvar log Cielo (PIX):', logErr.message);
-         }
-
          if (!resCielo.ok || !cieloResponseJson.Payment || !cieloResponseJson.Payment.QrCodeString) {
              throw new Error("Erro na Cielo ao gerar PIX: " + JSON.stringify(cieloResponseJson));
          }
@@ -110,20 +82,16 @@ export async function POST(request: Request) {
             qrCodeString: cieloResponseJson.Payment.QrCodeString,
             paymentId: cieloResponseJson.Payment.PaymentId
          };
-
+         // PIX is not approved yet, reservation will be created later by status webhook/polling
       } else if (paymentData.method === 'CREDIT') {
-         // Detectar bandeira basica
          const firstDigit = paymentData.creditCard.number.charAt(0);
          const brand = firstDigit === '4' ? 'Visa' : firstDigit === '5' ? 'Master' : firstDigit === '3' ? 'Amex' : 'Elo';
-         
-         // Format MM/YYYY
          let validityFormatted = paymentData.creditCard.validity;
          if (validityFormatted.length === 5 && validityFormatted.includes('/')) {
              const [mm, yy] = validityFormatted.split('/');
              validityFormatted = `${mm}/20${yy}`;
          }
 
-         // Cielo Credit Card Real
          const resCielo = await fetch(CIELO_API_URL, {
              method: 'POST',
              headers: cieloHeaders,
@@ -131,49 +99,90 @@ export async function POST(request: Request) {
                  "MerchantOrderId": merchantOrderId,
                  "Customer": { "Name": customerData.nome + " " + customerData.sobrenome, "Identity": customerData.cpf.replace(/\D/g, '') },
                  "Payment": {
-                     "Type": "CreditCard",
-                     "Amount": paymentData.amountInCents,
-                     "Installments": 1,
-                     "Capture": true, // Autoriza e Captura ao mesmo tempo
+                     "Type": "CreditCard", "Amount": paymentData.amountInCents, "Installments": 1, "Capture": true,
                      "CreditCard": {
                          "CardNumber": paymentData.creditCard.number.replace(/\D/g, ''),
                          "Holder": paymentData.creditCard.name,
                          "ExpirationDate": validityFormatted,
                          "SecurityCode": paymentData.creditCard.cvv,
-                         "Brand": brand
+                          brand
                      }
                  }
              })
          });
-         const resCieloText = await resCielo.text();
-         let cieloResponseJson: any;
-         try {
-             cieloResponseJson = JSON.parse(resCieloText);
-         } catch(e) {
-             throw new Error("Sistema Cielo Indisponível ou Resposta Inesperada: HTTP " + resCielo.status + " Corpo: " + resCieloText);
-         }
-
-         try {
-           await prisma.logCielo.create({
-               data: {
-                   endpoint: "POST /1/sales/ (CreditCard)",
-                   payload: JSON.stringify({ amount: paymentData.amountInCents, type: 'CreditCard' }), // NO PAN/CVV logs here for security!
-                   response: JSON.stringify(cieloResponseJson)
-               }
-           });
-         } catch (logErr: any) {
-           console.warn('[reservas] Falha ao salvar log Cielo (CC):', logErr.message);
-         }
+         const cieloResponseJson = await resCielo.json();
 
          if (!resCielo.ok || (cieloResponseJson.Payment.Status !== 1 && cieloResponseJson.Payment.Status !== 2)) {
              throw new Error("Pagamento Recusado pela Cielo: " + (cieloResponseJson.Payment?.ReturnMessage || JSON.stringify(cieloResponseJson)));
          }
 
          cieloLog = "Sucesso Cartão Cielo: " + cieloResponseJson.Payment.ReturnMessage;
+         paymentApproved = true;
+      } else if (paymentData.method === 'BALCAO' || paymentData.method === 'VOUCHER') {
+         paymentApproved = true;
       }
 
-      // ✅ PCI-DSS: Remove dados sensíveis de pagamento antes de persistir no banco
-      // Nunca gravar número de cartão, CVV ou dados completos — apenas últimos 4 dígitos mascarados
+      // 2. Chamar Europcar XRS bookReservation se o pagamento estiver aprovado (ou for Balcão/Voucher)
+      let resNumber: string | null = null;
+      if (paymentApproved) {
+        const car = bookingData.car || {};
+        const pickupDate = bookingData.pickupDate;
+        const returnDate = bookingData.returnDate;
+        const pickupStation = bookingData.pickupStation;
+        const returnStation = bookingData.returnStation || pickupStation;
+        const contractID = bookingData.contractID || "";
+        const carCategory = car.carCategoryCode;
+        const rateId = car.rateId;
+
+        const contractAttr = contractID ? ` contractID="${contractID}" type="C"` : '';
+        
+        let meanOfPaymentXml = '';
+        if (paymentData.method === 'VOUCHER' && voucherData?.type === 'ETO') {
+          const ba = CID_TO_BA[contractID] || voucherData.businessAccount || '';
+          const d1 = new Date(parseInt(pickupDate.slice(0,4)), parseInt(pickupDate.slice(4,6))-1, parseInt(pickupDate.slice(6,8)));
+          const d2 = new Date(parseInt(returnDate.slice(0,4)), parseInt(returnDate.slice(4,6))-1, parseInt(returnDate.slice(6,8)));
+          const duration = Math.max(1, Math.round((d2.getTime() - d1.getTime()) / 86400000));
+
+          meanOfPaymentXml = `
+            <meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="${voucherData.id || '1234'}"
+                           businessAccount="${ba}" voucherCarCategory="${carCategory}"
+                           voucherRentalDuration="${duration}"/>`;
+        }
+
+        const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="bookReservation">
+    <serviceParameters>
+      <reservation carCategory="${carCategory}" rateId="${rateId}" chargesDetail="TRE" prepaidMode="NP"${contractAttr}>
+        <checkout stationID="${pickupStation}" date="${pickupDate}" time="${bookingData.pickupTime || '1000'}"/>
+        <checkin stationID="${returnStation}" date="${returnDate}" time="${bookingData.returnTime || '1000'}"/>
+        <equipmentList/>${meanOfPaymentXml}
+      </reservation>
+      <driver countryOfResidence="BR"
+              firstName="${customerData.nome}"
+              lastName="${customerData.sobrenome}"
+              title="MR"/>
+    </serviceParameters>
+  </serviceRequest>
+</message>`;
+
+        const xrsConfig = {
+          callerCode: process.env.XRS_CALLER_CODE || 'DEMO',
+          password: process.env.XRS_PASSWORD || 'DEMO',
+          action: 'bookReservation',
+          sourceFile: 'reservas/route.ts'
+        };
+
+        const xrsResponse = await callXRS(xmlRequest, xrsConfig);
+        resNumber = xrsResponse?.message?.serviceResponse?.reservation?.$?.resNumber ||
+                    xrsResponse?.serviceResponse?.reservation?.$?.resNumber || null;
+        
+        if (!resNumber) {
+          throw new Error("Europcar não retornou número de reserva. Verifique os logs.");
+        }
+      }
+
+      // 3. Salvar no Banco de Dados local
       const { creditCard: _cc, cvv: _cvv, cardNumber: _cn, ...safeCustomerData } = customerData as any;
       const cardLastFour = paymentData.creditCard?.number
         ? '**** **** **** ' + String(paymentData.creditCard.number.replace(/\D/g, '')).slice(-4)

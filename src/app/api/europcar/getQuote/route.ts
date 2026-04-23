@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { carCategory, pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, contractID } = body;
+    const { carCategory, rateId, pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, contractID } = body;
 
     if (!carCategory) {
       return NextResponse.json({ error: 'carCategory é obrigatório' }, { status: 400 });
@@ -13,13 +13,14 @@ export async function POST(request: Request) {
 
     // Build contractID attribute if promotion is active
     const contractAttr = contractID ? ` contractID="${contractID}" type="C"` : '';
+    const rateIdAttr = rateId ? ` rateId="${rateId}"` : '';
 
     const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
 <message>
   <serviceRequest serviceCode="getQuote">
     <caller/>
     <serviceParameters>
-      <reservation chargesDetail="TRE" rateDetails="Y" prepaidMode="NP" carCategory="${carCategory}"${contractAttr}>
+      <reservation chargesDetail="TRE" rateDetails="Y" prepaidMode="NP" carCategory="${carCategory}"${contractAttr}${rateIdAttr}>
         <checkout stationID="${pickupStation}" date="${pickupDate}" time="${pickupTime || '1000'}"/>
         <checkin stationID="${returnStation || pickupStation}" date="${returnDate}" time="${returnTime || '1000'}"/>
       </reservation>

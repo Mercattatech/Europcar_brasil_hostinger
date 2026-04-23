@@ -13,7 +13,7 @@ export default function CheckoutPage() {
   const [cpf, setCpf] = useState("");
 
   // Pagamento
-  const [paymentMethod, setPaymentMethod] = useState<"BALCAO" | "CREDIT" | "PIX">("BALCAO");
+  const [paymentMethod, setPaymentMethod] = useState<"BALCAO" | "CREDIT" | "PIX" | "VOUCHER">("BALCAO");
   const [ccName, setCcName] = useState("");
   const [ccNumber, setCcNumber] = useState("");
   const [ccValidity, setCcValidity] = useState("");
@@ -78,6 +78,7 @@ export default function CheckoutPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             carCategory: booking.car?.carCategoryCode,
+            rateId: booking.car?.rateId,
             pickupStation: booking.pickupStation,
             returnStation: booking.returnStation || booking.pickupStation,
             pickupDate: booking.pickupDate,
@@ -219,6 +220,7 @@ export default function CheckoutPage() {
             amountInCents,
             creditCard: paymentMethod === "CREDIT" ? { name: ccName, number: ccNumber, validity: ccValidity, cvv: ccCvv } : undefined,
           },
+          voucherData: paymentMethod === "VOUCHER" ? { type: 'ETO', id: '1234' } : undefined,
         }),
       });
       const json = await res.json();
@@ -496,6 +498,17 @@ export default function CheckoutPage() {
                       <span className="bg-[#1b75bb] text-white text-[10px] px-2 py-0.5 rounded font-bold">RÁPIDO</span>
                     </span>
                     <span className="text-xs text-gray-500">Aprovação imediata.</span>
+                  </div>
+                </label>
+
+                <label className={`block border-2 rounded-lg p-5 cursor-pointer flex items-center gap-4 transition-colors ${paymentMethod === "VOUCHER" ? "border-[#008d36] bg-green-50" : "border-gray-200 hover:border-gray-300"}`}>
+                  <input type="radio" checked={paymentMethod === "VOUCHER"} onChange={() => setPaymentMethod("VOUCHER")} className="w-5 h-5 accent-[#008d36]" />
+                  <div>
+                    <span className="font-bold text-gray-900 flex items-center gap-2">
+                      Voucher ETO (Faturado)
+                      <span className="bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded font-bold">BUSINESS</span>
+                    </span>
+                    <span className="text-xs text-gray-500">Uso exclusivo para contas corporativas autorizadas.</span>
                   </div>
                 </label>
 

@@ -87,11 +87,16 @@ export default function PainelReservas() {
       // Chamado após confirmação no modal — não usa confirm() nativo
       try {
          const res = await fetch(`/api/admin/reservations/${id}`, { method: "DELETE" });
+         const data = await res.json();
          if (res.ok) {
-            showToast("Reserva cancelada!");
+            if (data.xrsCancelled) {
+               showToast("Reserva cancelada na Europcar e no sistema local!");
+            } else {
+               showToast("Reserva cancelada localmente. Verifique o portal Europcar se necessário.", "success");
+            }
             fetchReservations();
          } else {
-            showToast("Erro ao cancelar", "error");
+            showToast(data.error || "Erro ao cancelar", "error");
          }
       } catch (e) {
          showToast("Erro de conexão", "error");
