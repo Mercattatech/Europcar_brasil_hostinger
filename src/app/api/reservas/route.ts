@@ -143,12 +143,16 @@ export async function POST(request: Request) {
           const d2 = new Date(parseInt(returnDate.slice(0,4)), parseInt(returnDate.slice(4,6))-1, parseInt(returnDate.slice(6,8)));
           const duration = Math.max(1, Math.round((d2.getTime() - d1.getTime()) / 86400000));
 
+          console.log('[bookReservation] Montando voucher ETO - BA:', ba, '| CID:', contractID, '| Duration:', duration);
+
           meanOfPaymentXml = `
-            <meanOfPayment meanOfPaymentCode="VOUCHER">
-              <voucher voucherNumber="${voucherData.id || '1234'}" voucherType="F" 
-                       billingAccount="${ba}" voucherCarCategory="${carCategory}" 
-                       voucherRentalDuration="${duration}"/>
-            </meanOfPayment>`;
+      <meanOfPayment meanOfPaymentCode="VOUCHER">
+        <voucher voucherNumber="${voucherData.id || '1234'}" voucherType="F" 
+                 billingAccount="${ba}" voucherCarCategory="${carCategory}" 
+                 voucherRentalDuration="${duration}"/>
+      </meanOfPayment>`;
+        } else {
+          console.log('[bookReservation] Sem voucher - method:', paymentData.method, '| voucherData:', JSON.stringify(voucherData));
         }
 
         const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
@@ -158,8 +162,8 @@ export async function POST(request: Request) {
       <reservation carCategory="${carCategory}" rateId="${rateId}" chargesDetail="TRE" prepaidMode="NP"${contractAttr}>
         <checkout stationID="${pickupStation}" date="${pickupDate}" time="${bookingData.pickupTime || '1000'}"/>
         <checkin stationID="${returnStation}" date="${returnDate}" time="${bookingData.returnTime || '1000'}"/>
-        <equipmentList/>${meanOfPaymentXml}
-      </reservation>
+        <equipmentList/>
+      </reservation>${meanOfPaymentXml}
       <driver countryOfResidence="BR"
               firstName="${customerData.nome}"
               lastName="${customerData.sobrenome}"
