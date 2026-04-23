@@ -18,30 +18,44 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Senha", type: "password" }
       },
       async authorize(credentials) {
+        console.log("[AUTH] Tentativa de login para:", credentials?.email);
         if (!credentials?.email || !credentials?.password) {
+          console.log("[AUTH] Credenciais faltantes");
           throw new Error("Credenciais inválidas");
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email }
-        });
+        try {
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email }
+          });
 
-        if (!user || (!user.password && !user.email)) {
-          throw new Error("Usuário não encontrado.");
-        }
-
-        if ((user as any).status === "BLOCKED") {
-          throw new Error("Sua conta foi bloqueada. Entre em contato com o suporte.");
-        }
-
-        if (user.password) {
-          const isCorrectPassword = await bcrypt.compare(credentials.password, user.password);
-          if (!isCorrectPassword) {
-            throw new Error("Senha incorreta");
+          if (!user) {
+            console.log("[AUTH] Usuário não encontrado no DB");
+            throw new Error("Usuário não encontrado.");
           }
-        }
 
-        return user;
+          if ((user as any).status === "BLOCKED") {
+            console.log("[AUTH] Usuário bloqueado");
+            throw new Error("Sua conta foi bloqueada. Entre em contato com o suporte.");
+          }
+
+          if (user.password) {
+            const isCorrectPassword = await bcrypt.compare(credentials.password, user.password);
+            if (!isCorrectPassword) {
+              console.log("[AUTH] Senha incorreta");
+              throw new Error("Senha incorreta");
+            }
+          } else {
+            console.log("[AUTH] Usuário sem senha cadastrada");
+            throw new Error("Usuário sem senha definida");
+          }
+
+          console.log("[AUTH] Login bem-sucedido para:", user.email);
+          return user;
+        } catch (dbErr: any) {
+          console.error("[AUTH] Erro no banco de dados durante authorize:", dbErr.message);
+          throw new Error("Erro de conexão com o banco de dados.");
+        }
       }
     })
   ],
