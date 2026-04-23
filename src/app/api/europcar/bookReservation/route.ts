@@ -54,7 +54,10 @@ export async function POST(request: Request) {
       <driver countryOfResidence="BR"
               firstName="${driverData?.firstName || 'Test'}"
               lastName="${driverData?.lastName || 'Client'}"
-              title="${driverData?.title || 'MR'}"/>
+              title="${driverData?.title || 'MR'}"
+              driverID="${driverData?.cpf?.replace(/\D/g, '') || driverData?.document?.replace(/\D/g, '')}"
+              email="${driverData?.email}"
+              phone="${driverData?.telefone || driverData?.phone}"/>
     </serviceParameters>
   </serviceRequest>
 </message>`;

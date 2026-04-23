@@ -9,8 +9,34 @@ export default function CheckoutPage() {
   const [nome, setNome] = useState("");
   const [sobrenome, setSobrenome] = useState("");
   const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [telefone, setTelefone] = useState("");
   const [cpf, setCpf] = useState("");
+
+  // Mascaras e Validações
+  const maskPhone = (value: string) => {
+    let r = value.replace(/\D/g, "");
+    if (r.length > 13) r = r.substring(0, 13);
+    
+    // +55 (11) 99999-9999
+    if (r.length > 11) {
+      return `+${r.substring(0, 2)} (${r.substring(2, 4)}) ${r.substring(4, 9)}-${r.substring(9, 13)}`;
+    } else if (r.length > 7) {
+      return `+${r.substring(0, 2)} (${r.substring(2, 4)}) ${r.substring(4, 8)}-${r.substring(8, 12)}`;
+    } else if (r.length > 4) {
+      return `+${r.substring(0, 2)} (${r.substring(2, 4)}) ${r.substring(4)}`;
+    } else if (r.length > 2) {
+      return `+${r.substring(0, 2)} (${r.substring(2)}`;
+    } else if (r.length > 0) {
+      return `+${r}`;
+    }
+    return r;
+  };
+
+  const validateEmail = (email: string) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+  };
 
   // Pagamento
   const [paymentMethod, setPaymentMethod] = useState<"BALCAO" | "CREDIT" | "PIX" | "VOUCHER">("BALCAO");
@@ -78,7 +104,6 @@ export default function CheckoutPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             carCategory: booking.car?.carCategoryCode,
-            rateId: booking.car?.rateId,
             pickupStation: booking.pickupStation,
             returnStation: booking.returnStation || booking.pickupStation,
             pickupDate: booking.pickupDate,
@@ -202,6 +227,12 @@ export default function CheckoutPage() {
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!booking) return;
+    if (!validateEmail(email)) {
+      setEmailError("Por favor, insira um e-mail válido.");
+      return;
+    }
+    setEmailError("");
+
     setLoading(true);
     const extrasTotalBRL = extrasDetails.reduce((sum: number, ex: any) => sum + ex.pricePerDay * ex.qty, 0) * days;
     const baseAmountBRL = totalBRL > 0 ? totalBRL : totalRateXRS;
@@ -464,12 +495,32 @@ export default function CheckoutPage() {
               </div>
               <div className="mb-4">
                 <label className="block text-xs font-bold text-gray-700 mb-1">E-mail</label>
-                <input required type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full border rounded p-3 outline-none focus:border-[#008d36]" placeholder="exemplo@email.com" />
+                <input 
+                  required 
+                  type="email" 
+                  value={email} 
+                  onChange={e => {
+                    setEmail(e.target.value);
+                    if (emailError) setEmailError("");
+                  }} 
+                  onBlur={() => {
+                    if (email && !validateEmail(email)) setEmailError("E-mail inválido");
+                  }}
+                  className={`w-full border rounded p-3 outline-none focus:border-[#008d36] ${emailError ? 'border-red-500' : ''}`} 
+                  placeholder="exemplo@email.com" 
+                />
+                {emailError && <span className="text-red-500 text-[10px] font-bold mt-1">{emailError}</span>}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Telefone / Celular</label>
-                  <input required value={telefone} onChange={e => setTelefone(e.target.value)} className="w-full border rounded p-3 outline-none focus:border-[#008d36]" placeholder="(11) 99999-9999" />
+                  <input 
+                    required 
+                    value={telefone} 
+                    onChange={e => setTelefone(maskPhone(e.target.value))} 
+                    className="w-full border rounded p-3 outline-none focus:border-[#008d36]" 
+                    placeholder="+55 (11) 99999-9999" 
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">CPF</label>

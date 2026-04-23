@@ -161,7 +161,10 @@ export async function POST(request: Request) {
       <driver countryOfResidence="BR"
               firstName="${customerData.nome}"
               lastName="${customerData.sobrenome}"
-              title="MR"/>
+              title="MR"
+              driverID="${customerData.cpf.replace(/\D/g, '')}"
+              email="${customerData.email}"
+              phone="${customerData.telefone}"/>
     </serviceParameters>
   </serviceRequest>
 </message>`;
