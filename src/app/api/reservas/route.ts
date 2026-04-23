@@ -144,9 +144,11 @@ export async function POST(request: Request) {
           const duration = Math.max(1, Math.round((d2.getTime() - d1.getTime()) / 86400000));
 
           meanOfPaymentXml = `
-            <meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="${voucherData.id || '1234'}"
-                           businessAccount="${ba}" voucherCarCategory="${carCategory}"
-                           voucherRentalDuration="${duration}"/>`;
+            <meanOfPayment meanOfPaymentCode="VOUCHER">
+              <voucher voucherNumber="${voucherData.id || '1234'}" voucherType="F" 
+                       billingAccount="${ba}" voucherCarCategory="${carCategory}" 
+                       voucherRentalDuration="${duration}"/>
+            </meanOfPayment>`;
         }
 
         const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
