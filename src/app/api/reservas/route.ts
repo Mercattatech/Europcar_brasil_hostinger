@@ -145,12 +145,13 @@ export async function POST(request: Request) {
 
           console.log('[bookReservation] Montando voucher ETO - BA:', ba, '| CID:', contractID, '| Duration:', duration);
 
+          // ETO = Electronic Transfer Order: voucher corporativo vinculado à conta (businessAccount)
+          // Formato flat conforme especificação XRS para ETO
           meanOfPaymentXml = `
-      <meanOfPayment meanOfPaymentCode="VOUCHER">
-        <voucher voucherNumber="${voucherData.id || '1234'}" voucherType="F" 
-                 billingAccount="${ba}" voucherCarCategory="${carCategory}" 
-                 voucherRentalDuration="${duration}"/>
-      </meanOfPayment>`;
+      <meanOfPayment typeCode="VCH" voucherType="ETO"
+                     businessAccount="${ba}"
+                     voucherCarCategory="${carCategory}"
+                     voucherRentalDuration="${duration}"/>`;
         } else {
           console.log('[bookReservation] Sem voucher - method:', paymentData.method, '| voucherData:', JSON.stringify(voucherData));
         }
