@@ -10,6 +10,7 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
   },
+  useSecureCookies: false, // Permitir cookies em HTTP para domínios que não sejam localhost (ex: sslip.io)
   providers: [
     CredentialsProvider({
       name: "Credentials",
