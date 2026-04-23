@@ -12,7 +12,7 @@ export default async function CMSLayout({ children }: { children: React.ReactNod
     return <AdminLoginForm />;
   }
 
-  const bypassEmails = ["grupomercatta@gmail.com", "matheus@grupomercatta.com.br", "matheusconti@gmail.com", "matheus@grupomercatta.com"];
+  const bypassEmails = ["grupomercatta@gmail.com", "matheus@grupomercatta.com.br", "matheusconti@gmail.com", "matheus@grupomercatta.com", "admin@mercatta.com.br"];
   
   if (bypassEmails.includes(session.user.email)) {
      // Force bypass for these admin emails unconditionally!
