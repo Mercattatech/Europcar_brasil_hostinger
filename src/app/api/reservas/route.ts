@@ -145,26 +145,27 @@ export async function POST(request: Request) {
 
           console.log('[bookReservation] Montando voucher ETO - BA:', ba, '| CID:', contractID, '| Duration:', duration);
 
-          // ETO = Electronic Transfer Order: voucher corporativo vinculado à conta (businessAccount)
-          // Formato flat conforme especificação XRS para ETO
+          // Conforme documentação oficial XRS: meanOfPayment DENTRO de <reservation>
           meanOfPaymentXml = `
-      <meanOfPayment typeCode="VCH" voucherType="ETO"
-                     businessAccount="${ba}"
-                     voucherCarCategory="${carCategory}"
-                     voucherRentalDuration="${duration}"/>`;
+        <meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="${voucherData.id || '1234'}"
+                       businessAccount="${ba}" voucherCarCategory="${carCategory}"
+                       voucherRentalDuration="${duration}"/>`;
         } else {
           console.log('[bookReservation] Sem voucher - method:', paymentData.method, '| voucherData:', JSON.stringify(voucherData));
         }
+
+        // prepaidMode apenas para pagamentos não-ETO
+        const prepaidAttr = paymentData.method === 'VOUCHER' ? '' : ' prepaidMode="NP"';
 
         const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
 <message>
   <serviceRequest serviceCode="bookReservation">
     <serviceParameters>
-      <reservation carCategory="${carCategory}" rateId="${rateId}" chargesDetail="TRE" prepaidMode="NP"${contractAttr}>
+      <reservation carCategory="${carCategory}" rateId="${rateId}" chargesDetail="TRE"${prepaidAttr}${contractAttr}>
         <checkout stationID="${pickupStation}" date="${pickupDate}" time="${bookingData.pickupTime || '1000'}"/>
         <checkin stationID="${returnStation}" date="${returnDate}" time="${bookingData.returnTime || '1000'}"/>
-        <equipmentList/>
-      </reservation>${meanOfPaymentXml}
+        <equipmentList/>${meanOfPaymentXml}
+      </reservation>
       <driver countryOfResidence="BR"
               firstName="${customerData.nome}"
               lastName="${customerData.sobrenome}"
