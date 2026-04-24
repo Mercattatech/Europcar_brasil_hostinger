@@ -202,17 +202,17 @@ export async function POST(request: Request) {
 <message>
   <serviceRequest serviceCode="bookReservation">
     <serviceParameters>
-      <reservation carCategory="${carCategory}" rateId="${rateId}" chargesDetail="TRE"${prepaidAttr}${contractAttr}${productDataAttr} preferredLanguage="pt_BR">
+      <reservation carCategory="${carCategory}" rateId="${rateId}"${prepaidAttr}${contractAttr}${productDataAttr} preferredLanguage="pt_BR">
         <checkout stationID="${pickupStation}" date="${pickupDate}" time="${bookingData.pickupTime || '1000'}"/>
         <checkin stationID="${returnStation}" date="${returnDate}" time="${bookingData.returnTime || '1000'}"/>
-        <equipmentList/>${meanOfPaymentXml}
+        <equipmentList/>${meanOfPaymentXml.replace('voucherFullCredit="Y"', 'voucherFullCredit="N"')}
       </reservation>
       <driver countryOfResidence="BR"
-              firstName="${customerData.nome}"
-              lastName="${customerData.sobrenome}"
+              firstName="${customerData.nome.trim()}"
+              lastName="${customerData.sobrenome.trim()}"
               title="MR"
-              driverID="${customerData.cpf.replace(/\D/g, '')}"
-              email="${customerData.email}"
+              driverID="${customerData.cpf.replace(/\D/g, '').slice(0, 11)}"
+              email="${customerData.email.trim()}"
               phone="${customerData.telefone}"/>
     </serviceParameters>
   </serviceRequest>
