@@ -133,9 +133,9 @@ export async function POST(request: Request) {
         const contractID = bookingData.contractID || "";
         const carCategory = car.carCategoryCode;
         let rateId = car.rateId;
+        let productDataAttr = '';
 
         // ✅ Refresh do rateId via getQuote antes de reservar
-        // O rateId expira em minutos — buscamos um novo para garantir validade
         try {
           const meanOfPaymentForQuote = paymentData.method === 'VOUCHER' && voucherData?.type === 'ETO'
             ? (() => {
@@ -143,7 +143,8 @@ export async function POST(request: Request) {
                 const d1 = new Date(parseInt(pickupDate.slice(0,4)), parseInt(pickupDate.slice(4,6))-1, parseInt(pickupDate.slice(6,8)));
                 const d2 = new Date(parseInt(returnDate.slice(0,4)), parseInt(returnDate.slice(4,6))-1, parseInt(returnDate.slice(6,8)));
                 const duration = Math.max(1, Math.round((d2.getTime() - d1.getTime()) / 86400000));
-                return `<meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="${voucherData.id || '1234'}" businessAccount="${ba}" voucherCarCategory="${carCategory}" voucherRentalDuration="${duration}"/>`;
+                // voucherFullCredit="Y" é essencial para faturamento total (Full Credit)
+                return `<meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="${Date.now().toString().slice(-8)}" businessAccount="${ba}" voucherCarCategory="${carCategory}" voucherRentalDuration="${duration}" voucherFullCredit="Y"/>`;
               })()
             : '';
 
@@ -161,25 +162,23 @@ export async function POST(request: Request) {
   </serviceRequest>
 </message>`;
 
-          const quoteConfig = {
+          const quoteRes = await callXRS(quoteXml, {
             callerCode: process.env.XRS_CALLER_CODE || 'DEMO',
             password: process.env.XRS_PASSWORD || 'DEMO',
             action: 'getQuote',
-            sourceFile: 'reservas/route.ts (pre-book refresh)'
-          };
-          const quoteRes = await callXRS(quoteXml, quoteConfig);
-          const freshRateId =
-            quoteRes?.message?.serviceResponse?.reservation?.$?.rateId ||
-            quoteRes?.serviceResponse?.reservation?.$?.rateId;
-
-          if (freshRateId) {
-            console.log('[reservas] rateId renovado via getQuote:', freshRateId.slice(0, 16) + '...');
-            rateId = freshRateId;
-          } else {
-            console.warn('[reservas] getQuote não retornou rateId fresco, usando original.');
-          }
+            sourceFile: 'reservas/route.ts'
+          });
+          
+          const resNode = quoteRes?.message?.serviceResponse?.reservation?.$ || quoteRes?.serviceResponse?.reservation?.$;
+          if (resNode?.rateId) rateId = resNode.rateId;
+          
+          // Capturar metadados do produto que podem ser exigidos no book
+          if (resNode?.productCode) productDataAttr += ` productCode="${resNode.productCode}"`;
+          if (resNode?.productFamily) productDataAttr += ` productFamily="${resNode.productFamily}"`;
+          if (resNode?.productVersion) productDataAttr += ` productVersion="${resNode.productVersion}"`;
+          
         } catch (quoteErr: any) {
-          console.warn('[reservas] Falha ao renovar rateId via getQuote, usando original:', quoteErr.message);
+          console.warn('[reservas] Erro no refresh do rateId:', quoteErr.message);
         }
 
         const contractAttr = contractID ? ` contractID="${contractID}" type="C"` : '';
@@ -190,21 +189,20 @@ export async function POST(request: Request) {
           const d1 = new Date(parseInt(pickupDate.slice(0,4)), parseInt(pickupDate.slice(4,6))-1, parseInt(pickupDate.slice(6,8)));
           const d2 = new Date(parseInt(returnDate.slice(0,4)), parseInt(returnDate.slice(4,6))-1, parseInt(returnDate.slice(6,8)));
           const duration = Math.max(1, Math.round((d2.getTime() - d1.getTime()) / 86400000));
-          console.log('[bookReservation] Montando voucher ETO - BA:', ba, '| CID:', contractID, '| Duration:', duration);
+          
           meanOfPaymentXml = `
-        <meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="${voucherData.id || '1234'}"
+        <meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="${Date.now().toString().slice(-8)}"
                        businessAccount="${ba}" voucherCarCategory="${carCategory}"
-                       voucherRentalDuration="${duration}"/>`;
+                       voucherRentalDuration="${duration}" voucherFullCredit="Y"/>`;
         }
 
-        // prepaidMode apenas para pagamentos não-ETO
         const prepaidAttr = paymentData.method === 'VOUCHER' ? '' : ' prepaidMode="NP"';
 
         const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
 <message>
   <serviceRequest serviceCode="bookReservation">
     <serviceParameters>
-      <reservation carCategory="${carCategory}" rateId="${rateId}" chargesDetail="TRE"${prepaidAttr}${contractAttr}>
+      <reservation carCategory="${carCategory}" rateId="${rateId}" chargesDetail="TRE"${prepaidAttr}${contractAttr}${productDataAttr} preferredLanguage="pt_BR">
         <checkout stationID="${pickupStation}" date="${pickupDate}" time="${bookingData.pickupTime || '1000'}"/>
         <checkin stationID="${returnStation}" date="${returnDate}" time="${bookingData.returnTime || '1000'}"/>
         <equipmentList/>${meanOfPaymentXml}
