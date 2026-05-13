@@ -59,6 +59,10 @@ export default function CheckoutPage() {
   const [standardQuote, setStandardQuote] = useState<any>(null);
   const [loadingQuote, setLoadingQuote] = useState(false);
 
+  // On Request state
+  const [isOnRequest, setIsOnRequest] = useState(false);
+  const [onRequestItems, setOnRequestItems] = useState<any[]>([]);
+
 
   useEffect(() => {
     const data = sessionStorage.getItem("europcar_booking");
@@ -89,12 +93,16 @@ export default function CheckoutPage() {
     setExtrasDetails(resolved);
   }, [booking]);
 
+  // ETO CIDs have their own separate flow — no price-comparison getQuote
+  const ETO_CIDS = ['56935466', '56935495'];
+
   // ✅ Buscar preço SEM contrato via getQuote para calcular economia real
   // O preço COM contrato já está em booking.car (veio do getMultipleRates com contractID)
   useEffect(() => {
     if (!booking) return;
     const contractID = booking.contractID;
     if (!contractID) return;
+    if (ETO_CIDS.includes(contractID)) return; // ETO flow has its own getQuote — skip CC comparison
 
     const fetchStandardPrice = async () => {
       setLoadingQuote(true);
@@ -259,6 +267,10 @@ export default function CheckoutPage() {
         if (paymentMethod === "PIX" && json.pixData) {
           setPixQrCode(json.pixData.qrCodeString);
           setMerchantOrderId(json.merchantOrderId);
+        } else if (json.onRequest) {
+          setIsOnRequest(true);
+          setOnRequestItems(json.onRequestItems || []);
+          setResNumber(json.resNumber);
         } else {
           setResNumber(json.resNumber);
         }
@@ -271,6 +283,54 @@ export default function CheckoutPage() {
       setLoading(false);
     }
   };
+
+  // ---- On Request confirmation screen ----
+  if (resNumber && isOnRequest) {
+    return (
+      <div className="min-h-screen bg-[#f7f7f7] flex flex-col items-center justify-center p-4 gap-6">
+        <div className="bg-[#008d36] px-6 py-3 rounded-md shadow-md">
+          <img src="/logo.jpg" alt="Europcar" className="h-10 object-contain" />
+        </div>
+        <div className="bg-white p-10 rounded-lg shadow-xl max-w-lg w-full text-center border-t-8 border-yellow-400">
+          <div className="w-20 h-20 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-black text-gray-900 mb-2">Reserva em Análise</h1>
+          <p className="text-gray-600 mb-4 text-sm">
+            Um ou mais itens da sua reserva precisam de confirmação pela estação. A Europcar entrará em contato em até <strong>8 horas úteis</strong>.
+          </p>
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6">
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-widest block mb-1">Código de Reserva</span>
+            <span className="text-3xl font-black text-[#008d36] tracking-widest">{resNumber}</span>
+            <span className="block mt-2 text-xs text-yellow-700 font-bold bg-yellow-50 border border-yellow-200 rounded px-2 py-1">
+              Status: Aguardando Confirmação (On Request)
+            </span>
+          </div>
+          {onRequestItems.length > 0 && (
+            <div className="text-left mb-6">
+              <p className="text-xs font-bold text-gray-500 uppercase mb-2">Itens aguardando aprovação:</p>
+              <ul className="space-y-1">
+                {onRequestItems.map((item: any, i: number) => (
+                  <li key={i} className="text-sm text-gray-700 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-yellow-400 rounded-full inline-block" />
+                    {item.description || item.code || JSON.stringify(item)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <p className="text-xs text-gray-400 mb-6">
+            Guarde o código acima. Se a solicitação não for confirmada, a reserva será cancelada automaticamente e você será contatado para alternativas.
+          </p>
+          <button onClick={() => window.location.href = "/"} className="font-bold text-[#008d36] hover:underline">
+            Voltar para o início
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // ---- Confirmation screen ----
   if (resNumber) {

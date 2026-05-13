@@ -124,6 +124,8 @@ export async function POST(request: Request) {
 
       // 2. Chamar Europcar XRS bookReservation se o pagamento estiver aprovado (ou for Balcão/Voucher)
       let resNumber: string | null = null;
+      let isOnRequest = false;
+      let onRequestItems: any[] = [];
       if (paymentApproved) {
         const car = bookingData.car || {};
         const pickupDate = bookingData.pickupDate;
@@ -137,6 +139,10 @@ export async function POST(request: Request) {
 
         // ✅ Refresh do rateId via getQuote antes de reservar
         try {
+          const numericVoucherID = (voucherData?.id && /^\d+$/.test(voucherData.id)) 
+            ? voucherData.id 
+            : Date.now().toString().slice(-8);
+
           const meanOfPaymentForQuote = paymentData.method === 'VOUCHER' && voucherData?.type === 'ETO'
             ? (() => {
                 const ba = CID_TO_BA[contractID] || voucherData.businessAccount || '';
@@ -144,7 +150,7 @@ export async function POST(request: Request) {
                 const d2 = new Date(parseInt(returnDate.slice(0,4)), parseInt(returnDate.slice(4,6))-1, parseInt(returnDate.slice(6,8)));
                 const duration = Math.max(1, Math.round((d2.getTime() - d1.getTime()) / 86400000));
                 // voucherFullCredit="Y" é essencial para faturamento total (Full Credit)
-                return `<meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="${Date.now().toString().slice(-8)}" businessAccount="${ba}" voucherCarCategory="${carCategory}" voucherRentalDuration="${duration}" voucherFullCredit="Y"/>`;
+                return `<meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="${numericVoucherID}" businessAccount="${ba}" voucherCarCategory="${carCategory}" voucherRentalDuration="${duration}" voucherFullCredit="Y"/>`;
               })()
             : '';
 
@@ -190,8 +196,12 @@ export async function POST(request: Request) {
           const d2 = new Date(parseInt(returnDate.slice(0,4)), parseInt(returnDate.slice(4,6))-1, parseInt(returnDate.slice(6,8)));
           const duration = Math.max(1, Math.round((d2.getTime() - d1.getTime()) / 86400000));
           
-          meanOfPaymentXml = `
-        <meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="${Date.now().toString().slice(-8)}"
+        const numericVoucherID = (voucherData?.id && /^\d+$/.test(voucherData.id)) 
+          ? voucherData.id 
+          : Date.now().toString().slice(-8);
+
+        meanOfPaymentXml = `
+        <meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="${numericVoucherID}"
                        businessAccount="${ba}" voucherCarCategory="${carCategory}"
                        voucherRentalDuration="${duration}" voucherFullCredit="Y"/>`;
         }
@@ -226,11 +236,22 @@ export async function POST(request: Request) {
         };
 
         const xrsResponse = await callXRS(xmlRequest, xrsConfig);
-        resNumber = xrsResponse?.message?.serviceResponse?.reservation?.$?.resNumber ||
-                    xrsResponse?.serviceResponse?.reservation?.$?.resNumber || null;
-        
+        const bookResNode = xrsResponse?.message?.serviceResponse?.reservation || xrsResponse?.serviceResponse?.reservation;
+        resNumber = bookResNode?.$?.resNumber || null;
+
         if (!resNumber) {
           throw new Error("Europcar não retornou número de reserva. Verifique os logs.");
+        }
+
+        const xrsStatusCode: string = bookResNode?.$?.statusCode || 'S';
+        isOnRequest = xrsStatusCode === 'R';
+        if (isOnRequest) {
+          const raw = bookResNode?.onRequestItemList?.onRequestItem;
+          if (Array.isArray(raw)) {
+            onRequestItems = raw.map((i: any) => i.$ || i);
+          } else if (raw) {
+            onRequestItems = [raw.$ || raw];
+          }
         }
       }
 
@@ -248,7 +269,7 @@ export async function POST(request: Request) {
               resNumber: resNumber,
               merchantOrderId,
               amountInCents: paymentData.amountInCents || 0,
-              status: paymentData.method === 'PIX' ? 'PENDING_PIX' : (paymentData.method === 'BALCAO' ? 'CONFIRMED_NON_PREPAID' : 'CONFIRMED_PREPAID'),
+              status: isOnRequest ? 'ON_REQUEST' : (paymentData.method === 'PIX' ? 'PENDING_PIX' : (paymentData.method === 'BALCAO' ? 'CONFIRMED_NON_PREPAID' : 'CONFIRMED_PREPAID')),
               customerData: JSON.stringify({
                 ...safeCustomerData,      // sem creditCard, cvv, cardNumber
                 booking: bookingData,
@@ -275,6 +296,8 @@ export async function POST(request: Request) {
          resNumber: finalResNumber,
          merchantOrderId: finalMerchantOrderId,
          pixData,
+         onRequest: isOnRequest,
+         onRequestItems,
          cieloLog: `${cieloLog} | ${logOrigem}`
       });
 
