@@ -203,7 +203,7 @@ export async function POST(request: Request) {
         meanOfPaymentXml = `
         <meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="${numericVoucherID}"
                        businessAccount="${ba}" voucherCarCategory="${carCategory}"
-                       voucherRentalDuration="${duration}" voucherFullCredit="Y"/>`;
+                       voucherRentalDuration="${duration}"/>`;
         }
 
         const prepaidAttr = paymentData.method === 'VOUCHER' ? '' : ' prepaidMode="NP"';
@@ -215,7 +215,7 @@ export async function POST(request: Request) {
       <reservation carCategory="${carCategory}" rateId="${rateId}"${prepaidAttr}${contractAttr}${productDataAttr} preferredLanguage="pt_BR">
         <checkout stationID="${pickupStation}" date="${pickupDate}" time="${bookingData.pickupTime || '1000'}"/>
         <checkin stationID="${returnStation}" date="${returnDate}" time="${bookingData.returnTime || '1000'}"/>
-        <equipmentList/>${meanOfPaymentXml.replace('voucherFullCredit="Y"', 'voucherFullCredit="N"')}
+        <equipmentList/>${meanOfPaymentXml}
       </reservation>
       <driver countryOfResidence="BR"
               firstName="${customerData.nome.trim()}"

@@ -240,7 +240,7 @@ async function runETOFlow() {
         <equipmentList/>
         <meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="${ETO_VOUCHER_ID}"
                        businessAccount="${ETO_BA}" voucherCarCategory="${CAR_CATEGORY}"
-                       voucherRentalDuration="2" voucherFullCredit="Y"/>
+                       voucherRentalDuration="2"/>
       </reservation>
       <driver countryOfResidence="BR"
               firstName="Teste"
