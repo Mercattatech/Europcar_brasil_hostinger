@@ -150,7 +150,7 @@ export async function POST(request: Request) {
                 const d2 = new Date(parseInt(returnDate.slice(0,4)), parseInt(returnDate.slice(4,6))-1, parseInt(returnDate.slice(6,8)));
                 const duration = Math.max(1, Math.round((d2.getTime() - d1.getTime()) / 86400000));
                 // voucherFullCredit="Y" é essencial para faturamento total (Full Credit)
-                return `<meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="${numericVoucherID}" businessAccount="${ba}" voucherCarCategory="${carCategory}" voucherRentalDuration="${duration}" voucherFullCredit="Y"/>`;
+                return `<meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="${numericVoucherID}" businessAccount="${ba}" voucherCarCategory="${carCategory}" voucherRentalDuration="${duration}"/>`;
               })()
             : '';
 

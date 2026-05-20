@@ -42,7 +42,8 @@ const ETO_BA          = "73675595";
 const ETO_VOUCHER_ID  = "88889999"; // numeric, as required
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FLUXO CC / POA  (sem meanOfPayment no getQuote, conforme instrução da Europcar)
+// FLUXO CC / POA
+// Fluxo obrigatório: getCarCategories → getMultipleRates → getQuote → bookReservation
 // ─────────────────────────────────────────────────────────────────────────────
 async function testCCFlow() {
     console.log("\n\n========================================");
@@ -62,7 +63,21 @@ async function testCCFlow() {
   </serviceRequest>
 </message>`, "CC_getCarCategories");
 
-    // 2. getQuote sem meanOfPayment (typeCode CARD não é necessário para CC POA)
+    // 2. getMultipleRates (obrigatório antes do getQuote)
+    await callXRS(`<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="getMultipleRates">
+    <serviceParameters>
+      <reservation carCategory="${CAR_CATEGORY}" contractID="${ETO_CONTRACT_ID}" type="C" chargesDetail="TRE">
+        <checkout stationID="${PICKUP_STATION}" date="${PICKUP_DATE}" time="${PICKUP_TIME}"/>
+        <checkin stationID="${RETURN_STATION}" date="${RETURN_DATE}" time="${RETURN_TIME}"/>
+      </reservation>
+      <driver countryOfResidence="BR"/>
+    </serviceParameters>
+  </serviceRequest>
+</message>`, "CC_getMultipleRates");
+
+    // 3. getQuote sem meanOfPayment (typeCode CARD não é necessário para CC POA)
     await callXRS(`<?xml version="1.0" encoding="UTF-8"?>
 <message>
   <serviceRequest serviceCode="getQuote">
@@ -77,7 +92,7 @@ async function testCCFlow() {
   </serviceRequest>
 </message>`, "CC_getQuote");
 
-    // 3. bookReservation CC (BALCÃO — sem MOP)
+    // 4. bookReservation CC (BALCÃO — sem MOP)
     await callXRS(`<?xml version="1.0" encoding="UTF-8"?>
 <message>
   <serviceRequest serviceCode="bookReservation">
@@ -101,14 +116,15 @@ async function testCCFlow() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FLUXO ETO VOUCHER  (fluxo separado, somente com ETO MOP)
+// FLUXO ETO VOUCHER
+// Fluxo obrigatório: getCarCategories → getMultipleRates → getQuote (com ETO MOP) → bookReservation
 // ─────────────────────────────────────────────────────────────────────────────
 async function testETOFlow() {
     console.log("\n\n========================================");
     console.log("  FLUXO ETO VOUCHER");
     console.log("========================================");
 
-    // 1. getCarCategories (mesmo XML do CC — categorias independem de MOP)
+    // 1. getCarCategories
     await callXRS(`<?xml version="1.0" encoding="UTF-8"?>
 <message>
   <serviceRequest serviceCode="getCarCategories">
@@ -121,7 +137,21 @@ async function testETOFlow() {
   </serviceRequest>
 </message>`, "ETO_getCarCategories");
 
-    // 2. getQuote com ETO MOP (único getQuote neste fluxo)
+    // 2. getMultipleRates (obrigatório antes do getQuote)
+    await callXRS(`<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="getMultipleRates">
+    <serviceParameters>
+      <reservation carCategory="${CAR_CATEGORY}" contractID="${ETO_CONTRACT_ID}" type="C" chargesDetail="TRE">
+        <checkout stationID="${PICKUP_STATION}" date="${PICKUP_DATE}" time="${PICKUP_TIME}"/>
+        <checkin stationID="${RETURN_STATION}" date="${RETURN_DATE}" time="${RETURN_TIME}"/>
+      </reservation>
+      <driver countryOfResidence="BR"/>
+    </serviceParameters>
+  </serviceRequest>
+</message>`, "ETO_getMultipleRates");
+
+    // 3. getQuote com ETO MOP (único getQuote neste fluxo — sem duplicata)
     await callXRS(`<?xml version="1.0" encoding="UTF-8"?>
 <message>
   <serviceRequest serviceCode="getQuote">
@@ -139,7 +169,7 @@ async function testETOFlow() {
   </serviceRequest>
 </message>`, "ETO_getQuote");
 
-    // 3. bookReservation ETO
+    // 4. bookReservation ETO (sem voucherFullCredit — conforme instrução Antonio)
     await callXRS(`<?xml version="1.0" encoding="UTF-8"?>
 <message>
   <serviceRequest serviceCode="bookReservation">
@@ -187,10 +217,14 @@ async function testSearchById(resNumber) {
 // ENTRYPOINT — edite aqui o que quer testar
 // ─────────────────────────────────────────────────────────────────────────────
 async function run() {
-    // Descomentar o fluxo desejado:
+    // Teste search.searchbyid na reserva On Request rejeitada (solicitado por Antonio)
+    await testSearchById("1201263810");
+
+    // Fluxo CC completo
     await testCCFlow();
+
+    // Fluxo ETO completo
     // await testETOFlow();
-    // await testSearchById("SEU_RES_NUMBER_AQUI");
 
     console.log("\n\n✅ TESTES FINALIZADOS.");
 }
