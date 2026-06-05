@@ -113,11 +113,10 @@ export default function HeroSearchForm() {
   // Date Picker Custom Popover
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // Data mínima: sandbox ativo a partir de hoje+10 dias (verificado 28/03/2026)
-  // Em produção com estações BR reais, pode usar +1
+  // Data mínima: +1 dia (estações validadas em 28/05/2026 — CallerCode 1132581 confirmado)
   const minPickupDate = (() => {
     const d = new Date();
-    d.setDate(d.getDate() + 10);
+    d.setDate(d.getDate() + 1);
     return d.toISOString().split("T")[0];
   })();
 
