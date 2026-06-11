@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-export default function ResetSenhaPage() {
+function ResetSenhaContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get('token');
@@ -118,5 +118,13 @@ export default function ResetSenhaPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ResetSenhaPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#f7f7f7] flex items-center justify-center p-4"><div className="text-[#008d36] font-bold">Carregando...</div></div>}>
+      <ResetSenhaContent />
+    </Suspense>
   );
 }
