@@ -53,8 +53,14 @@ export const authOptions: NextAuthOptions = {
 
           console.log("[AUTH] Login bem-sucedido para:", user.email);
           return user;
-        } catch (dbErr: any) {
-          console.error("[AUTH] Erro no banco de dados durante authorize:", dbErr.message);
+        } catch (error: any) {
+          if (error.message === "Usuário não encontrado." || 
+              error.message === "Sua conta foi bloqueada. Entre em contato com o suporte." || 
+              error.message === "Senha incorreta" || 
+              error.message === "Usuário sem senha definida") {
+            throw error;
+          }
+          console.error("[AUTH] Erro no banco de dados durante authorize:", error.message);
           throw new Error("Erro de conexão com o banco de dados.");
         }
       }

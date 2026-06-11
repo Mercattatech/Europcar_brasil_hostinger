@@ -52,10 +52,12 @@ ENV DATABASE_URL=$DATABASE_URL \
     CIELO_SANDBOX=$CIELO_SANDBOX \
     NEXT_TELEMETRY_DISABLED=1
 
+# Roda o push do schema para o banco de dados (sincroniza as tabelas)
+RUN npx prisma db push --accept-data-loss
+
 # Roda o build do Next.js (gera .next/standalone)
 # NODE_OPTIONS limita o heap para evitar OOM no "Collecting build traces" em servidores com pouca RAM
 RUN NODE_OPTIONS=--max-old-space-size=1024 npm run build
-
 # =============================================================================
 # Stage 3 — Runner (imagem final leve)
 # =============================================================================
