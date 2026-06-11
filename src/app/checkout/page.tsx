@@ -1,8 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import LoginModal from "@/components/auth/LoginModal";
 
 export default function CheckoutPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [booking, setBooking] = useState<any>(null);
 
   // Condutor
@@ -145,6 +150,34 @@ export default function CheckoutPage() {
     fetchStandardPrice();
   }, [booking]);
 
+  // --- Enforce Login & Auto-fill ---
+  const [showLogin, setShowLogin] = useState(false);
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      setShowLogin(true);
+    }
+  }, [status]);
+
+  useEffect(() => {
+    if (status === "authenticated" && session?.user?.email) {
+      // Fetch full profile to get phone, city, cpf
+      fetch("/api/auth/me")
+        .then(r => r.json())
+        .then(user => {
+          if (user.name) {
+            const parts = user.name.split(" ");
+            setNome(parts[0]);
+            if (parts.length > 1) setSobrenome(parts.slice(1).join(" "));
+          }
+          if (user.email) setEmail(user.email);
+          if (user.phone) setTelefone(user.phone);
+          if (user.cpf) setCpf(user.cpf);
+        })
+        .catch(console.error);
+    }
+  }, [status, session]);
+
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (merchantOrderId && !resNumber && paymentMethod === "PIX") {
@@ -164,6 +197,23 @@ export default function CheckoutPage() {
     }
     return () => clearInterval(timer);
   }, [merchantOrderId, resNumber, paymentMethod]);
+
+  if (status === "loading") return (
+    <div className="min-h-screen bg-[#f7f7f7] flex items-center justify-center">
+      <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
+
+  if (status === "unauthenticated") return (
+    <div className="min-h-screen bg-[#f7f7f7] flex items-center justify-center">
+      {showLogin && (
+        <LoginModal 
+          onClose={() => router.push("/")} 
+          onLoginSuccess={() => setShowLogin(false)}
+        />
+      )}
+    </div>
+  );
 
   if (!booking) return (
     <div className="min-h-screen bg-[#f7f7f7] flex items-center justify-center">

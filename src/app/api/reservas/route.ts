@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import prisma from '@/lib/prisma';
 import { callXRS } from '@/lib/europcar/xrsClient';
+import { sendBookingConfirmation } from '@/lib/email/sendBookingConfirmation';
 
 export const dynamic = 'force-dynamic';
 
@@ -289,6 +290,30 @@ export async function POST(request: Request) {
           throw new Error('Pagamento processado mas falha ao salvar reserva: ' + dbSaveErr.message);
         }
         // BALCÃO: use in-memory generated resNumber
+      }
+
+      // 4. Send Email Confirmation
+      if (finalResNumber && paymentData.method !== 'PIX') {
+        // Only send if it's not PIX (PIX sends after payment confirmation)
+        try {
+          await sendBookingConfirmation({
+            toEmail: customerData.email,
+            customerName: customerData.nome,
+            resNumber: finalResNumber,
+            carName: bookingData.car?.carCategoryName || bookingData.car?.name || "Veículo não identificado",
+            pickupStation: bookingData.pickupStation,
+            returnStation: bookingData.returnStation || bookingData.pickupStation,
+            pickupDate: bookingData.pickupDate,
+            returnDate: bookingData.returnDate,
+            paymentMethod: paymentData.method,
+            totalBRL: bookingData.car?.totalRateEstimateInBookingCurrency 
+              ? parseFloat(bookingData.car.totalRateEstimateInBookingCurrency) 
+              : undefined,
+            isOnRequest: isOnRequest
+          });
+        } catch (emailErr) {
+          console.error('[reservas] Error calling sendBookingConfirmation:', emailErr);
+        }
       }
 
       return NextResponse.json({

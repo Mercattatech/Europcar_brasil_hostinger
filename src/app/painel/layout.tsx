@@ -4,7 +4,7 @@ import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import LoginModal from "@/components/auth/LoginModal";
+import AdminLoginForm from "@/components/auth/AdminLoginForm";
 
 const ADMIN_EMAILS = ["grupomercatta@gmail.com", "matheus@grupomercatta.com.br", "matheusconti@gmail.com", "matheus@grupomercatta.com", "admin@mercatta.com.br"];
 
@@ -59,26 +59,7 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
    }
 
    if (!session?.user) {
-      return (
-         <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-            {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-10 text-center max-w-md w-full shadow-2xl">
-               <div className="w-16 h-16 bg-green-600/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                  </svg>
-               </div>
-               <h1 className="text-2xl font-black text-white mb-2">Acesso Restrito</h1>
-               <p className="text-gray-400 text-sm mb-8">Faça login com sua conta de administrador para acessar o painel.</p>
-               <button onClick={() => setShowLoginModal(true)} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors">
-                  Fazer Login
-               </button>
-               <Link href="/" className="block mt-4 text-sm text-gray-500 hover:text-gray-300 transition-colors">
-                  ← Voltar ao site
-               </Link>
-            </div>
-         </div>
-      );
+      return <AdminLoginForm />;
    }
 
    if (!authorized) {

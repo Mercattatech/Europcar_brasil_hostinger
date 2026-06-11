@@ -12,6 +12,14 @@ export default function PainelUsuarios() {
    const [newPassword, setNewPassword] = useState("");
    const [newName, setNewName] = useState("");
    const [saving, setSaving] = useState(false);
+   
+   // Create User
+   const [showCreateModal, setShowCreateModal] = useState(false);
+   const [createName, setCreateName] = useState("");
+   const [createEmail, setCreateEmail] = useState("");
+   const [createPassword, setCreatePassword] = useState("");
+   const [createRole, setCreateRole] = useState("USER");
+
    const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
    const showToast = (message: string, type: "success" | "error" = "success") => {
@@ -66,6 +74,34 @@ export default function PainelUsuarios() {
       }
    };
 
+   const handleCreateUser = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setSaving(true);
+      try {
+         const res = await fetch("/api/admin/users", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: createName, email: createEmail, password: createPassword, role: createRole }),
+         });
+         if (res.ok) {
+            showToast("Usuário criado com sucesso!");
+            fetchUsers();
+            setShowCreateModal(false);
+            setCreateName("");
+            setCreateEmail("");
+            setCreatePassword("");
+            setCreateRole("USER");
+         } else {
+            const data = await res.json();
+            showToast(data.error || "Erro ao criar", "error");
+         }
+      } catch (e) {
+         showToast("Erro de conexão", "error");
+      } finally {
+         setSaving(false);
+      }
+   };
+
    const handleDeleteUser = async (userId: string, email: string) => {
       if (!confirm(`Tem certeza que deseja EXCLUIR permanentemente o usuário ${email}? Esta ação não pode ser desfeita.`)) return;
       
@@ -112,8 +148,15 @@ export default function PainelUsuarios() {
                <h1 className="text-2xl font-black text-white">Gestão de Usuários</h1>
                <p className="text-gray-400 text-sm mt-1">Gerencie todos os usuários da plataforma</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
                <span className="bg-gray-800 text-gray-300 px-3 py-1.5 rounded-lg text-xs font-bold">{filteredUsers.length} usuários</span>
+               <button 
+                 onClick={() => setShowCreateModal(true)}
+                 className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
+               >
+                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
+                 Criar Usuário
+               </button>
             </div>
          </div>
 
@@ -233,6 +276,51 @@ export default function PainelUsuarios() {
                </table>
             </div>
          </div>
+
+         {/* Create User Modal */}
+         {showCreateModal && (
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+               <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg shadow-2xl">
+                  <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
+                     <h2 className="text-lg font-black text-white">Criar Novo Usuário</h2>
+                     <button onClick={() => setShowCreateModal(false)} className="text-gray-500 hover:text-white transition-colors">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                     </button>
+                  </div>
+                  <form onSubmit={handleCreateUser}>
+                    <div className="p-6 space-y-4">
+                       <div>
+                          <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Nome Completo</label>
+                          <input type="text" required value={createName} onChange={e => setCreateName(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-500 outline-none focus:border-green-600" placeholder="Nome do usuário" />
+                       </div>
+                       <div>
+                          <label className="block text-xs font-bold text-gray-400 uppercase mb-2">E-mail</label>
+                          <input type="email" required value={createEmail} onChange={e => setCreateEmail(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-500 outline-none focus:border-green-600" placeholder="usuario@email.com" />
+                       </div>
+                       <div>
+                          <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Senha</label>
+                          <input type="password" required minLength={6} value={createPassword} onChange={e => setCreatePassword(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-500 outline-none focus:border-green-600" placeholder="Mínimo 6 caracteres" />
+                       </div>
+                       <div>
+                          <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Papel (Role)</label>
+                          <select value={createRole} onChange={e => setCreateRole(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-white outline-none focus:border-green-600">
+                             <option value="USER">Usuário Comum (USER)</option>
+                             <option value="ADMIN">Administrador (ADMIN)</option>
+                          </select>
+                       </div>
+                    </div>
+                    <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-800">
+                       <button type="button" onClick={() => setShowCreateModal(false)} className="px-5 py-2.5 rounded-lg bg-gray-800 text-gray-300 font-bold text-sm hover:bg-gray-700 transition-colors">
+                          Cancelar
+                       </button>
+                       <button type="submit" disabled={saving} className="px-5 py-2.5 rounded-lg bg-green-600 hover:bg-green-700 text-white font-bold text-sm transition-colors disabled:opacity-50">
+                          {saving ? "Criando..." : "Criar Usuário"}
+                       </button>
+                    </div>
+                  </form>
+               </div>
+            </div>
+         )}
 
          {/* Edit User Modal */}
          {editingUser && (

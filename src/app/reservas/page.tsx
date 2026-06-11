@@ -13,8 +13,12 @@ interface Reserva {
   email?: string;
   pickupDate?: string;
   returnDate?: string;
+  pickupStation?: string;
+  returnStation?: string;
   car?: string;
   total?: number;
+  paymentMethod?: string;
+  paymentData?: any;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -78,10 +82,12 @@ export default function MinhasReservas() {
   const [modifying, setModifying]         = useState(false);
   const [modifyMsg, setModifyMsg]         = useState('');
 
-  // Cancel modal
   const [cancelTarget, setCancelTarget]   = useState<Reserva | null>(null);
   const [cancelling, setCancelling]       = useState(false);
   const [cancelMsg, setCancelMsg]         = useState('');
+
+  // Voucher modal
+  const [voucherTarget, setVoucherTarget] = useState<Reserva | null>(null);
 
   // ── Load user reservations ──
   const loadReservas = useCallback(async () => {
@@ -189,6 +195,83 @@ export default function MinhasReservas() {
   // ── Render ──
   return (
     <>
+      {/* ── Voucher Modal ─────────────────────────────────────────────────── */}
+      {voucherTarget && (
+        <ModalOverlay onClose={() => setVoucherTarget(null)}>
+          <div className="p-6 bg-white rounded-2xl" id="print-area">
+            <div className="flex items-center justify-between border-b pb-4 mb-4">
+              <div>
+                <h3 className="text-gray-900 font-black text-2xl uppercase italic text-[#008d36]">Europcar</h3>
+                <p className="text-gray-500 text-sm font-bold">Comprovante de Reserva</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-gray-500 uppercase font-bold">Reserva</p>
+                <p className="font-mono text-xl text-gray-900 font-black">{voucherTarget.resNumber}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-gray-400">Retirada</p>
+                    <p className="text-sm font-bold text-gray-900">{formatDate(voucherTarget.pickupDate)}</p>
+                    <p className="text-xs text-gray-600 truncate">{voucherTarget.pickupStation || 'Europcar Station'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-gray-400">Devolução</p>
+                    <p className="text-sm font-bold text-gray-900">{formatDate(voucherTarget.returnDate)}</p>
+                    <p className="text-xs text-gray-600 truncate">{voucherTarget.returnStation || voucherTarget.pickupStation || 'Europcar Station'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[10px] uppercase font-bold text-gray-400">Veículo Selecionado</p>
+                <p className="text-sm font-bold text-gray-900">{voucherTarget.car || 'Veículo Standard'}</p>
+              </div>
+
+              <div>
+                <p className="text-[10px] uppercase font-bold text-gray-400">Pagamento</p>
+                <div className="flex justify-between items-end">
+                  <p className="text-sm font-bold text-gray-900">
+                    {voucherTarget.paymentMethod === 'PIX' ? 'PIX' : 
+                     voucherTarget.paymentMethod === 'CREDIT' ? 'Cartão de Crédito' : 
+                     voucherTarget.paymentMethod === 'VOUCHER' ? 'Voucher ETO' : 
+                     'No Balcão'}
+                  </p>
+                  <p className="text-lg font-black text-[#008d36]">{formatCurrency(voucherTarget.total)}</p>
+                </div>
+              </div>
+
+              <div className="bg-green-50 text-green-800 p-3 rounded-lg text-xs font-medium border border-green-200 text-center">
+                Apresente este comprovante no balcão da Europcar junto com seu documento e CNH.
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6 print:hidden">
+              <button onClick={() => setVoucherTarget(null)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl transition-colors text-sm">
+                Fechar
+              </button>
+              <button
+                onClick={() => {
+                  const printContent = document.getElementById('print-area')?.innerHTML;
+                  if (!printContent) return;
+                  const originalContent = document.body.innerHTML;
+                  document.body.innerHTML = printContent;
+                  window.print();
+                  document.body.innerHTML = originalContent;
+                  window.location.reload();
+                }}
+                className="flex-1 bg-[#008d36] hover:bg-[#007a2d] text-white font-bold py-2.5 rounded-xl transition-colors text-sm flex items-center justify-center gap-2"
+              >
+                🖨️ Imprimir PDF
+              </button>
+            </div>
+          </div>
+        </ModalOverlay>
+      )}
+
       {/* ── Modify Modal ─────────────────────────────────────────────────── */}
       {modifyTarget && (
         <ModalOverlay onClose={() => setModifyTarget(null)}>
@@ -421,22 +504,22 @@ export default function MinhasReservas() {
                           {!isCancelled && r.resNumber && (
                             <div className="flex flex-col gap-2 shrink-0">
                               <button
-                                onClick={() => { setModifyTarget(r); setModifyDate(''); setModifyTime('1000'); setModifyMsg(''); }}
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-400 text-xs font-bold rounded-lg transition-all"
+                                onClick={() => setVoucherTarget(r)}
+                                className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 text-xs font-bold rounded-lg transition-all"
                               >
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                                Modificar
+                                📄 Comprovante
+                              </button>
+                              <button
+                                onClick={() => { setModifyTarget(r); setModifyDate(''); setModifyTime('1000'); setModifyMsg(''); }}
+                                className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-400 text-xs font-bold rounded-lg transition-all"
+                              >
+                                ✏️ Modificar
                               </button>
                               <button
                                 onClick={() => { setCancelTarget(r); setCancelMsg(''); }}
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-400 text-xs font-bold rounded-lg transition-all"
+                                className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-400 text-xs font-bold rounded-lg transition-all"
                               >
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                                Cancelar
+                                ❌ Cancelar
                               </button>
                             </div>
                           )}

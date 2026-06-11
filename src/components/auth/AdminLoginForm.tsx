@@ -32,7 +32,7 @@ export default function AdminLoginForm() {
       } else {
          setDebug(JSON.stringify(result));
          // Let's force a hard browser navigate using assign, or full url
-         window.location.assign(window.location.origin + "/admin");
+         window.location.assign(window.location.origin + "/painel");
       }
     } catch (err: any) {
       setError(`Crash: ${err.message}`);

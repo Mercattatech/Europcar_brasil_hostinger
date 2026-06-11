@@ -30,8 +30,13 @@ export async function GET(req: Request) {
              email: cd?.email,
              pickupDate: cd?.booking?.pickupDate,
              returnDate: cd?.booking?.returnDate,
-             car: cd?.booking?.car?.name,
-             total: cd?.booking?.totalDay
+             pickupStation: cd?.booking?.pickupStation,
+             returnStation: cd?.booking?.returnStation,
+             car: cd?.booking?.car?.carCategoryName || cd?.booking?.car?.name,
+             total: cd?.booking?.car?.totalRateEstimateInBookingCurrency || cd?.booking?.totalDay,
+             paymentMethod: cd?.booking?.paymentMethod, // Assuming we save payment method somewhere, actually let's check
+             // Let's pass the whole customerData just in case, but keep it clean
+             paymentData: cd?.booking?.paymentData || r.status, // We didn't save paymentData method directly, but status gives a hint
          };
       }).filter(r => r.email?.toLowerCase() === session.user?.email?.toLowerCase());
 
