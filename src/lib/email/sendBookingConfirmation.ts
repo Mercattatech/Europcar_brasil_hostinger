@@ -1,6 +1,5 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 interface BookingConfirmationData {
   toEmail: string;
@@ -32,6 +31,7 @@ function paymentLabel(method: string): string {
 }
 
 export async function sendBookingConfirmation(data: BookingConfirmationData) {
+  const resend = new Resend(process.env.RESEND_API_KEY);
   const {
     toEmail, customerName, resNumber, carName,
     pickupStation, returnStation, pickupDate, returnDate,
