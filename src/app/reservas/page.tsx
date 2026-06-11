@@ -1,89 +1,522 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
+import Link from 'next/link';
 
-export default function MinhasReservas() {
-  const [resNumber, setResNumber] = useState('');
-  const [email, setEmail] = useState('');
-  
-  const handleLookup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-        const res = await fetch(`/api/reservas?resNumber=${resNumber}`);
-        const data = await res.json();
-        
-        if (res.ok) {
-           alert(`Reserva encontrada! Status: ${data.status} | Cliente: ${data.customerData?.firstName || ''}`);
-        } else {
-           alert("Reserva não encontrada.");
-        }
-    } catch(err) {
-        alert("Erro de conexão ao buscar.");
-    }
-  }
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface Reserva {
+  id: string;
+  resNumber: string | null;
+  status: string;
+  createdAt: string;
+  email?: string;
+  pickupDate?: string;
+  returnDate?: string;
+  car?: string;
+  total?: number;
+}
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function formatDate(d?: string) {
+  if (!d || d.length < 8) return d || '—';
+  return `${d.slice(6, 8)}/${d.slice(4, 6)}/${d.slice(0, 4)}`;
+}
+
+function formatCurrency(v?: number) {
+  if (v == null) return '—';
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+}
+
+const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
+  CONFIRMED_PREPAID:     { label: 'Confirmada',     color: 'text-emerald-400', bg: 'bg-emerald-400/10 border-emerald-400/30' },
+  CONFIRMED_NON_PREPAID: { label: 'Confirmada',     color: 'text-emerald-400', bg: 'bg-emerald-400/10 border-emerald-400/30' },
+  PENDING_PIX:           { label: 'Aguard. PIX',    color: 'text-yellow-400',  bg: 'bg-yellow-400/10 border-yellow-400/30' },
+  ON_REQUEST:            { label: 'Sob Consulta',   color: 'text-blue-400',    bg: 'bg-blue-400/10 border-blue-400/30' },
+  CANCELLED:             { label: 'Cancelada',      color: 'text-red-400',     bg: 'bg-red-400/10 border-red-400/30' },
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const s = STATUS_MAP[status] || { label: status, color: 'text-gray-400', bg: 'bg-gray-400/10 border-gray-400/30' };
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Minhas Reservas
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Consulte, altere ou cancele sua reserva na Europcar
-        </p>
-      </div>
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${s.color} ${s.bg}`}>
+      {s.label}
+    </span>
+  );
+}
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-gray-100">
-          <form className="space-y-6" onSubmit={handleLookup}>
-            
-            <div>
-              <label htmlFor="resNumber" className="block text-sm font-medium text-gray-700">
-                Número da Reserva (Ex: 123456789)
-              </label>
-              <div className="mt-1">
-                <input
-                  id="resNumber"
-                  name="resNumber"
-                  type="text"
-                  required
-                  value={resNumber}
-                  onChange={(e) => setResNumber(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-europcar-green focus:border-europcar-green sm:text-sm"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                E-mail
-              </label>
-              <div className="mt-1">
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-europcar-green focus:border-europcar-green sm:text-sm"
-                />
-              </div>
-            </div>
-
-            <div>
-              <button
-                type="submit"
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-europcar-green hover:bg-europcar-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-europcar-green transition-colors"
-              >
-                Buscar Reserva
-              </button>
-            </div>
-            
-          </form>
-        </div>
+// ─── Modal Components ─────────────────────────────────────────────────────────
+function ModalOverlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={onClose}>
+      <div className="relative bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+        {children}
       </div>
     </div>
-  )
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+export default function MinhasReservas() {
+  const { data: session, status: sessionStatus } = useSession();
+
+  // My reservations (logged in)
+  const [reservas, setReservas]     = useState<Reserva[]>([]);
+  const [loading, setLoading]       = useState(false);
+  const [error, setError]           = useState('');
+
+  // Manual search
+  const [searchNum, setSearchNum]   = useState('');
+  const [searching, setSearching]   = useState(false);
+  const [searchResult, setSearchResult] = useState<any>(null);
+  const [searchError, setSearchError]   = useState('');
+
+  // Modify modal
+  const [modifyTarget, setModifyTarget]   = useState<Reserva | null>(null);
+  const [modifyTime, setModifyTime]       = useState('1000');
+  const [modifyDate, setModifyDate]       = useState('');
+  const [modifying, setModifying]         = useState(false);
+  const [modifyMsg, setModifyMsg]         = useState('');
+
+  // Cancel modal
+  const [cancelTarget, setCancelTarget]   = useState<Reserva | null>(null);
+  const [cancelling, setCancelling]       = useState(false);
+  const [cancelMsg, setCancelMsg]         = useState('');
+
+  // ── Load user reservations ──
+  const loadReservas = useCallback(async () => {
+    if (!session?.user) return;
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/reservas/user');
+      if (!res.ok) throw new Error('Erro ao carregar reservas');
+      const data = await res.json();
+      setReservas(data);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [session]);
+
+  useEffect(() => { loadReservas(); }, [loadReservas]);
+
+  // ── Manual search ──
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchNum.trim()) return;
+    setSearching(true);
+    setSearchResult(null);
+    setSearchError('');
+    try {
+      const res = await fetch('/api/europcar/searchById', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resNumber: searchNum.trim() })
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || 'Reserva não encontrada');
+      setSearchResult(data);
+    } catch (e: any) {
+      setSearchError(e.message);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  // ── Modify ──
+  const handleModify = async () => {
+    if (!modifyTarget?.resNumber) return;
+    setModifying(true);
+    setModifyMsg('');
+    try {
+      const res = await fetch('/api/europcar/modifyReservation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resNumber: modifyTarget.resNumber,
+          pickupStationID: undefined, // will use reservation's own station
+          pickupDate: modifyDate ? modifyDate.replace(/-/g, '') : modifyTarget.pickupDate,
+          pickupTime: modifyTime,
+          firstName: session?.user?.name?.split(' ')[0] || 'Passageiro',
+          lastName:  session?.user?.name?.split(' ').slice(1).join(' ') || 'Europcar',
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setModifyMsg('✅ Reserva modificada com sucesso!');
+        setTimeout(() => { setModifyTarget(null); setModifyMsg(''); loadReservas(); }, 2000);
+      } else {
+        setModifyMsg(`❌ Erro: ${data.returnCode || data.error}`);
+      }
+    } catch (e: any) {
+      setModifyMsg(`❌ ${e.message}`);
+    } finally {
+      setModifying(false);
+    }
+  };
+
+  // ── Cancel ──
+  const handleCancel = async () => {
+    if (!cancelTarget?.resNumber) return;
+    setCancelling(true);
+    setCancelMsg('');
+    try {
+      const res = await fetch('/api/europcar/cancelReservation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resNumber: cancelTarget.resNumber })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCancelMsg('✅ Reserva cancelada com sucesso!');
+        // Update local status
+        setReservas(prev => prev.map(r =>
+          r.resNumber === cancelTarget.resNumber ? { ...r, status: 'CANCELLED' } : r
+        ));
+        setTimeout(() => { setCancelTarget(null); setCancelMsg(''); }, 2000);
+      } else {
+        setCancelMsg(`❌ Erro: ${data.returnCode || data.error}`);
+      }
+    } catch (e: any) {
+      setCancelMsg(`❌ ${e.message}`);
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  // ── Render ──
+  return (
+    <>
+      {/* ── Modify Modal ─────────────────────────────────────────────────── */}
+      {modifyTarget && (
+        <ModalOverlay onClose={() => setModifyTarget(null)}>
+          <div className="p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-white font-bold text-lg">Modificar Reserva</h3>
+                <p className="text-gray-400 text-sm">Nº {modifyTarget.resNumber}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1.5">Nova data de retirada</label>
+                <input
+                  type="date"
+                  value={modifyDate || (modifyTarget.pickupDate
+                    ? `${modifyTarget.pickupDate.slice(0,4)}-${modifyTarget.pickupDate.slice(4,6)}-${modifyTarget.pickupDate.slice(6,8)}`
+                    : '')}
+                  onChange={e => setModifyDate(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1.5">Novo horário de retirada</label>
+                <select
+                  value={modifyTime}
+                  onChange={e => setModifyTime(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                >
+                  {['0800','0900','1000','1100','1200','1300','1400','1500','1600','1700','1800'].map(t =>
+                    <option key={t} value={t}>{t.slice(0,2)}:{t.slice(2)}</option>
+                  )}
+                </select>
+              </div>
+            </div>
+
+            {modifyMsg && (
+              <p className={`mt-4 text-sm text-center font-medium ${modifyMsg.startsWith('✅') ? 'text-emerald-400' : 'text-red-400'}`}>
+                {modifyMsg}
+              </p>
+            )}
+
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setModifyTarget(null)} className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium py-2.5 rounded-xl transition-colors text-sm">
+                Cancelar
+              </button>
+              <button
+                onClick={handleModify}
+                disabled={modifying}
+                className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl transition-colors text-sm flex items-center justify-center gap-2"
+              >
+                {modifying ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> Salvando...</> : 'Salvar Alteração'}
+              </button>
+            </div>
+          </div>
+        </ModalOverlay>
+      )}
+
+      {/* ── Cancel Modal ─────────────────────────────────────────────────── */}
+      {cancelTarget && (
+        <ModalOverlay onClose={() => setCancelTarget(null)}>
+          <div className="p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center">
+                <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-white font-bold text-lg">Cancelar Reserva</h3>
+                <p className="text-gray-400 text-sm">Nº {cancelTarget.resNumber}</p>
+              </div>
+            </div>
+
+            <div className="bg-red-900/20 border border-red-700/40 rounded-xl p-4 mb-5">
+              <p className="text-red-300 text-sm">
+                Você está prestes a cancelar esta reserva. <strong>Esta ação não pode ser desfeita.</strong> Políticas de cancelamento da Europcar podem se aplicar.
+              </p>
+            </div>
+
+            <div className="bg-gray-800/60 rounded-xl p-4 mb-5 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">Nº da Reserva</span>
+                <span className="text-white font-mono font-bold">{cancelTarget.resNumber}</span>
+              </div>
+              {cancelTarget.car && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Veículo</span>
+                  <span className="text-white">{cancelTarget.car}</span>
+                </div>
+              )}
+              {cancelTarget.pickupDate && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Retirada</span>
+                  <span className="text-white">{formatDate(cancelTarget.pickupDate)}</span>
+                </div>
+              )}
+            </div>
+
+            {cancelMsg && (
+              <p className={`mb-4 text-sm text-center font-medium ${cancelMsg.startsWith('✅') ? 'text-emerald-400' : 'text-red-400'}`}>
+                {cancelMsg}
+              </p>
+            )}
+
+            <div className="flex gap-3">
+              <button onClick={() => setCancelTarget(null)} className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium py-2.5 rounded-xl transition-colors text-sm">
+                Voltar
+              </button>
+              <button
+                onClick={handleCancel}
+                disabled={cancelling}
+                className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl transition-colors text-sm flex items-center justify-center gap-2"
+              >
+                {cancelling ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> Cancelando...</> : 'Confirmar Cancelamento'}
+              </button>
+            </div>
+          </div>
+        </ModalOverlay>
+      )}
+
+      {/* ── Page ─────────────────────────────────────────────────────────── */}
+      <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' }}>
+        {/* Header */}
+        <div className="border-b border-white/10 bg-white/5 backdrop-blur-xl">
+          <div className="max-w-5xl mx-auto px-4 py-5 flex items-center gap-4">
+            <Link href="/" className="text-gray-400 hover:text-white transition-colors">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </Link>
+            <div>
+              <h1 className="text-2xl font-black text-white">Minhas Reservas</h1>
+              <p className="text-gray-400 text-sm">Consulte, altere ou cancele suas reservas Europcar</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-5xl mx-auto px-4 py-8 space-y-10">
+
+          {/* ── Section 1: User reservations ─────────────────────────────── */}
+          {sessionStatus === 'authenticated' && (
+            <section>
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <span className="text-xl">📋</span> Reservas da minha conta
+                </h2>
+                <button onClick={loadReservas} className="text-xs text-gray-400 hover:text-white flex items-center gap-1.5 transition-colors">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Atualizar
+                </button>
+              </div>
+
+              {loading && (
+                <div className="flex items-center justify-center py-16">
+                  <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+
+              {error && (
+                <div className="bg-red-900/20 border border-red-700/40 rounded-xl p-4 text-red-300 text-sm">{error}</div>
+              )}
+
+              {!loading && !error && reservas.length === 0 && (
+                <div className="text-center py-16 bg-white/5 border border-white/10 rounded-2xl">
+                  <div className="w-14 h-14 rounded-2xl bg-gray-700/50 flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-7 h-7 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-400 font-medium">Nenhuma reserva encontrada</p>
+                  <p className="text-gray-600 text-sm mt-1">Suas reservas aparecerão aqui após a confirmação.</p>
+                </div>
+              )}
+
+              {!loading && reservas.length > 0 && (
+                <div className="grid gap-4">
+                  {reservas.map(r => {
+                    const isCancelled = r.status === 'CANCELLED';
+                    return (
+                      <div
+                        key={r.id}
+                        className={`bg-white/5 border rounded-2xl p-5 transition-all ${isCancelled ? 'border-white/5 opacity-60' : 'border-white/10 hover:border-white/20'}`}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-3 flex-wrap mb-3">
+                              <span className="font-mono font-bold text-white text-lg">
+                                {r.resNumber || '—'}
+                              </span>
+                              <StatusBadge status={r.status} />
+                            </div>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                              {r.car && (
+                                <div>
+                                  <p className="text-gray-500 text-xs mb-0.5">Veículo</p>
+                                  <p className="text-gray-200 font-medium truncate">{r.car}</p>
+                                </div>
+                              )}
+                              {r.pickupDate && (
+                                <div>
+                                  <p className="text-gray-500 text-xs mb-0.5">Retirada</p>
+                                  <p className="text-gray-200 font-medium">{formatDate(r.pickupDate)}</p>
+                                </div>
+                              )}
+                              {r.returnDate && (
+                                <div>
+                                  <p className="text-gray-500 text-xs mb-0.5">Devolução</p>
+                                  <p className="text-gray-200 font-medium">{formatDate(r.returnDate)}</p>
+                                </div>
+                              )}
+                              {r.total != null && (
+                                <div>
+                                  <p className="text-gray-500 text-xs mb-0.5">Total</p>
+                                  <p className="text-emerald-400 font-bold">{formatCurrency(r.total)}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {!isCancelled && r.resNumber && (
+                            <div className="flex flex-col gap-2 shrink-0">
+                              <button
+                                onClick={() => { setModifyTarget(r); setModifyDate(''); setModifyTime('1000'); setModifyMsg(''); }}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-400 text-xs font-bold rounded-lg transition-all"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                                Modificar
+                              </button>
+                              <button
+                                onClick={() => { setCancelTarget(r); setCancelMsg(''); }}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-400 text-xs font-bold rounded-lg transition-all"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                Cancelar
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* ── Section 2: Manual search ──────────────────────────────────── */}
+          <section>
+            <h2 className="text-lg font-bold text-white flex items-center gap-2 mb-5">
+              <span className="text-xl">🔍</span> Buscar reserva por número
+            </h2>
+
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+              <form onSubmit={handleSearch} className="flex gap-3">
+                <input
+                  id="searchResNumber"
+                  type="text"
+                  placeholder="Ex: 1201272521"
+                  value={searchNum}
+                  onChange={e => setSearchNum(e.target.value)}
+                  className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-emerald-500 transition-colors"
+                />
+                <button
+                  type="submit"
+                  disabled={searching || !searchNum.trim()}
+                  className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors flex items-center gap-2"
+                >
+                  {searching ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : null}
+                  Buscar
+                </button>
+              </form>
+
+              {searchError && (
+                <div className="mt-4 bg-red-900/20 border border-red-700/40 rounded-xl p-4 text-red-300 text-sm">{searchError}</div>
+              )}
+
+              {searchResult && (
+                <div className="mt-5 bg-gray-800/60 border border-gray-700 rounded-xl p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono font-black text-white text-xl">{searchResult.resNumber}</span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                      searchResult.cancelled ? 'bg-red-400/10 border-red-400/30 text-red-400' :
+                      searchResult.confirmed ? 'bg-emerald-400/10 border-emerald-400/30 text-emerald-400' :
+                      searchResult.onRequest ? 'bg-blue-400/10 border-blue-400/30 text-blue-400' :
+                      'bg-gray-400/10 border-gray-400/30 text-gray-400'
+                    }`}>
+                      {searchResult.cancelled ? 'Cancelada' : searchResult.confirmed ? 'Confirmada' : searchResult.onRequest ? 'Sob Consulta' : searchResult.statusCode}
+                    </span>
+                  </div>
+                  <p className="text-gray-500 text-xs">Status XRS: <span className="text-gray-300 font-mono">{searchResult.statusCode}</span></p>
+                  {searchResult.warnings?.length > 0 && (
+                    <div className="bg-yellow-900/20 border border-yellow-700/40 rounded-lg p-3">
+                      {searchResult.warnings.map((w: any, i: number) => (
+                        <p key={i} className="text-yellow-300 text-xs">{w.msg || JSON.stringify(w)}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* ── Not logged in CTA ─────────────────────────────────────────── */}
+          {sessionStatus === 'unauthenticated' && (
+            <div className="bg-emerald-900/20 border border-emerald-700/40 rounded-2xl p-6 text-center">
+              <p className="text-emerald-300 font-medium mb-3">Faça login para ver todas as suas reservas automaticamente</p>
+              <Link href="/api/auth/signin" className="inline-block bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors">
+                Entrar na conta
+              </Link>
+            </div>
+          )}
+
+        </div>
+      </div>
+    </>
+  );
 }

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceResponse returnCode="OK">
+    <reservation carCategory="EDMR" carCategoryAirCond="Y" carCategoryAutomatic="N" carCategoryBaggageQuantity="1" carCategoryCO2Quantity="121" carCategoryDoors="5" carCategoryName="ECONOMY 4 DOORS,MANUAL,A/C" carCategorySample="FIAT MOBI 1.0" carCategorySeats="5" carCategoryType="Eco-responsable" countryOfReservation="BR" duration="4" fuelTypeCode="UL" productCode="LOCALVBR" productFamily="LOPU" productVersion="5" rateId="9046f042c0f39c508f21aa2f53b259bfd8b379cdc4e3b64dedada2dfaf16ac0e" resTimeStamp="202605061334" reservationDate="20260506" reservationTime="1334" statusCode="S" type="P" xrsPartnerCallerID="Europcar Brazil">
+      <links>
+        <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/EDMR_BR.png" />
+      </links>
+      <checkin date="20260714" stationID="VCPT02" time="1000" />
+      <checkout date="20260710" stationID="VCPT02" time="1000" />
+      <quote IncludedKmUnit="K" areTaxesIncluded="Y" basePrice="139.61" baseType="D" bookingCurrencyOfTotalRateEstimate="BRL" currency="BRL" exchangeRate="1" includedKm="99999" includedKmType="R" isAuthorizedForPublicUse="Y" isPrepaid="N" isPriceSecret="N" rentingCurrencyOfTotalRateEstimate="BRL" totalRateEstimate="558.44" totalRateEstimateInBookingCurrency="558.44" totalRateEstimateInRentingCurrency="558.44" xrsBasePrice="558.44" xrsBasePriceInBookingCurrency="558.44">
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" descr="Third party liability" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="68.77" rentalPriceInBookingCurrencyAI="68.77" type="O" />
+          <insurance bkExcessWithPOM="2500.00" code="MEDIUM" descr="Medium protection package" excessWithPOM="2500.00" price="56.95" priceInBookingCurrency="56.95" rentalPriceAI="261.97" rentalPriceInBookingCurrencyAI="261.97" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="LDW" descr="Ldw includes theft and collision damage waiver" excessWithPOM="5000.00" price="35.95" priceInBookingCurrency="35.95" rentalPriceAI="165.37" rentalPriceInBookingCurrencyAI="165.37" type="O" />
+        </insuranceList>
+        <chargeList>
+          <chargeLine act="AS" chrgPct="15.00" chrgTy="00028" chrgTyDesc="VAT" price="72.84" priceInBookingCurrency="72.84" vatRefCd="A">
+            <payer dvrName="Driver" />
+          </chargeLine>
+          <chargeLine act="AS" auxK="2" chrgPct="0.00" chrgTy="00024" chrgTyDesc="AIRPORT SURCHARGE" price="0.00" priceInBookingCurrency="0.00" vatCd="A">
+            <payer dvrName="Driver" />
+          </chargeLine>
+          <chargeLine act="AS" chrgTy="00048" chrgTyDesc="Basic Rental-Free Miles" price="0.00" priceInBookingCurrency="0.00" vatCd="A">
+            <payer dvrName="Driver" />
+          </chargeLine>
+          <chargeLine act="AS" chrgTy="00001" chrgTyDesc="Basic Rental" price="485.60" priceInBookingCurrency="485.60" vatCd="A">
+            <payer dvrName="Driver" />
+          </chargeLine>
+        </chargeList>
+        <payerList>
+          <payer chargeAllocatedInBookingCurrency="558.44" chargeAllocatedInRentingCurrency="558.44" dueToPayInBookingCurrency="558.44" dueToPayInRentingCurrency="558.44" dvrName="Driver" />
+        </payerList>
+      </quote>
+      <ageLimit minAgeForCategory="18" minAgeForCountry="19" minLicencePeriod="12 months" youngDriverAge="22" />
+    </reservation>
+    <driver addressCountry="BR" countryOfResidence="BR" />
+  </serviceResponse>
+</message>
+

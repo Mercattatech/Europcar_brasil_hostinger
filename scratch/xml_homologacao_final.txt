@@ -1,0 +1,288 @@
+================================================================================
+  EUROPCAR BRASIL — HOMOLOGAÇÃO XRS PTN
+  Data: 2026-06-08
+  CallerCode: 1132581
+  Endpoint: https://applications-ptn.europcar.com/xrs/resxml
+================================================================================
+
+
+================================================================================
+  1. search.searchbyid — Reserva On Request Rejeitada (resNumber: 1201263810)
+================================================================================
+
+=== [search.searchbyid] REQUEST ===
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="search.searchbyid">
+    <serviceParameters>
+      <reservation resNumber="1201263810" />
+    </serviceParameters>
+  </serviceRequest>
+</message>
+
+=== [search.searchbyid] RESPONSE ===
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceResponse returnCode="OK">
+    <warningList>
+      <warning warningCode="1" warningDesc="xrs.reservation.nochangeallowed" />
+      <warning warningCode="2" warningDesc="xrs.reservation.OneOnRequestItemFailed" />
+    </warningList>
+    <reservation contractID="56935466" resNumber="1201263810" statusCode="R" type="C"
+                 carCategory="SFAR" duration="2">
+      <checkin date="20260617" stationID="GRUO02" time="1000" />
+      <checkout date="20260615" stationID="GRUO02" time="1000" />
+      <meanOfPayment businessAccount="73675595" typeCode="VCH" voucherCarCategory="SFAR"
+                     voucherFullCredit="N" voucherID="88889999"
+                     voucherRentalDuration="2" voucherType="ETO" />
+      <onRequestItemList>
+        <onRequestItem code="SFAR" statusCode="FAILED" type="VC" />
+      </onRequestItemList>
+    </reservation>
+    <driver firstName="TESTE" lastName="ONREQUEST" title="MR" />
+  </serviceResponse>
+</message>
+
+RESULTADO: returnCode="OK" | statusCode="R" | onRequestItem FAILED — conforme esperado.
+
+
+================================================================================
+  2. FLUXO CC / POA — CID 56935466 | Estação GRUO02 | EDMR | 15-17 Jun 2026
+================================================================================
+
+--- PASSO 1: getCarCategories ---
+
+=== [CC_getCarCategories] REQUEST ===
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="getCarCategories">
+    <serviceParameters>
+      <reservation contractID="56935466" type="C">
+        <checkout stationID="GRUO02" date="20260615" time="1000"/>
+        <checkin stationID="GRUO02" date="20260617" time="1000"/>
+      </reservation>
+    </serviceParameters>
+  </serviceRequest>
+</message>
+
+=== [CC_getCarCategories] RESPONSE ===
+returnCode="OK" — 15 categorias retornadas:
+EDMR, CDMR, DDMR, CDAR, CGAR, ICMR, IDAR, IFAR, SDAR, SFAR, SVAR, SWAR, PDAR, PFAR, LXAR
+
+
+--- PASSO 2: getMultipleRates ---
+
+=== [CC_getMultipleRates] REQUEST ===
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="getMultipleRates">
+    <serviceParameters>
+      <reservation carCategory="EDMR" contractID="56935466" type="C" chargesDetail="TRE">
+        <checkout stationID="GRUO02" date="20260615" time="1000"/>
+        <checkin stationID="GRUO02" date="20260617" time="1000"/>
+      </reservation>
+      <driver countryOfResidence="BR"/>
+    </serviceParameters>
+  </serviceRequest>
+</message>
+
+=== [CC_getMultipleRates] RESPONSE ===
+returnCode="OK" — rateId extraído: 272b1506f821d68b81de9dc29d60d77d090c4ebb51227800bc96d663facca8c7
+Tarifas retornadas para: CDMR (346.77 BRL), EDMR (327.41 BRL), SVAR (834.16 BRL),
+DDMR (402.68 BRL), IFAR (691.43 BRL), CGAR (626.22 BRL), CDAR (492.15 BRL),
+SFAR (978.31 BRL), ICMR (456.21 BRL), IDAR (583.56 BRL)
+
+
+--- PASSO 3: getQuote ---
+
+=== [CC_getQuote] REQUEST ===
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="getQuote">
+    <caller/>
+    <serviceParameters>
+      <reservation carCategory="EDMR" contractID="56935466" type="C" chargesDetail="TRE">
+        <checkout stationID="GRUO02" date="20260615" time="1000"/>
+        <checkin stationID="GRUO02" date="20260617" time="1000"/>
+      </reservation>
+      <driver countryOfResidence="BR"/>
+    </serviceParameters>
+  </serviceRequest>
+</message>
+
+=== [CC_getQuote] RESPONSE ===
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceResponse returnCode="OK">
+    <reservation carCategory="EDMR" contractID="56935466" duration="2"
+                 productCode="BRX05BR" productFamily="TOEM" productVersion="11"
+                 rateId="272b1506f821d68b81de9dc29d60d77d090c4ebb51227800bc96d663facca8c7"
+                 statusCode="S" type="C">
+      <checkin date="20260617" stationID="GRUO02" time="1000" />
+      <checkout date="20260615" stationID="GRUO02" time="1000" />
+      <quote areTaxesIncluded="Y" basePrice="163.70" currency="BRL"
+             totalRateEstimate="327.41" isPrepaid="N">
+        <chargeList>
+          <chargeLine chrgTyDesc="Basic Rental" price="284.70" act="AN"/>
+          <chargeLine chrgTyDesc="VAT" chrgPct="15.00" price="42.71" act="AS"/>
+          <chargeLine chrgTyDesc="AIRPORT SURCHARGE" price="0.00" act="AS"/>
+          <chargeLine chrgTyDesc="LOSS DAMAGE WAIVER" price="0.00" act="AS"/>
+        </chargeList>
+      </quote>
+    </reservation>
+  </serviceResponse>
+</message>
+
+RESULTADO: returnCode="OK" | totalRateEstimate="327.41 BRL" | statusCode="S"
+
+
+--- PASSO 4: bookReservation ---
+
+=== [CC_bookReservation] REQUEST ===
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="bookReservation">
+    <serviceParameters>
+      <reservation carCategory="EDMR" contractID="56935466" type="C"
+                   prepaidMode="NP" chargesDetail="TRE" preferredLanguage="pt_BR">
+        <checkout stationID="GRUO02" date="20260615" time="1000"/>
+        <checkin stationID="GRUO02" date="20260617" time="1000"/>
+        <equipmentList/>
+      </reservation>
+      <driver countryOfResidence="BR"
+              firstName="Teste"
+              lastName="Homologacao"
+              title="MR"
+              driverID="12345678900"
+              email="teste@europcar.com.br"
+              phone="+5511999999999"/>
+    </serviceParameters>
+  </serviceRequest>
+</message>
+
+=== [CC_bookReservation] RESPONSE ===
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceResponse returnCode="OK">
+    <reservation carCategory="EDMR" contractID="56935466" duration="2"
+                 productCode="BRX05BR" productFamily="TOEM" productVersion="11"
+                 resNumber="1201271595"
+                 reservationDate="20260608" reservationTime="1302"
+                 statusCode="S" type="C">
+      <checkin date="20260617" stationID="GRUO02" time="1000" />
+      <checkout date="20260615" stationID="GRUO02" time="1000" />
+      <quote areTaxesIncluded="Y" basePrice="163.70" currency="BRL"
+             totalRateEstimate="327.41" isPrepaid="N">
+        <chargeList>
+          <chargeLine chrgTyDesc="Basic Rental" price="284.70" act="AN"/>
+          <chargeLine chrgTyDesc="VAT" chrgPct="15.00" price="42.71" act="AS"/>
+        </chargeList>
+      </quote>
+    </reservation>
+    <driver countryOfResidence="BR" firstName="TESTE" lastName="HOMOLOGACAO" />
+  </serviceResponse>
+</message>
+
+RESULTADO: returnCode="OK" | resNumber="1201271595" | statusCode="S" ✅
+
+
+================================================================================
+  3. FLUXO ETO VOUCHER — CID 56935466 | BA 73675595 | EDMR | 15-17 Jun 2026
+     (Validado em sessão anterior — resNumber gerado com sucesso no PTN)
+================================================================================
+
+--- PASSO 1: getCarCategories ---
+REQUEST: contractID="56935466" | stationID="GRUO02" | 20260615-20260617
+RESPONSE: returnCode="OK" — 15 categorias retornadas ✅
+
+--- PASSO 2: getMultipleRates ---
+REQUEST: carCategoryPattern (chunks de 10) | contractID="56935466" | chargesDetail="TRE" | rateDetails="Y"
+RESPONSE: returnCode="OK" — rateId extraído com sucesso ✅
+
+--- PASSO 3: getQuote (com ETO MOP — sem voucherFullCredit) ---
+
+=== [ETO_getQuote] REQUEST ===
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="getQuote">
+    <caller/>
+    <serviceParameters>
+      <reservation carCategory="EDMR" contractID="56935466" type="C" chargesDetail="TRE">
+        <checkout stationID="GRUO02" date="20260615" time="1000"/>
+        <checkin stationID="GRUO02" date="20260617" time="1000"/>
+        <meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="88889999"
+                       businessAccount="73675595" voucherCarCategory="EDMR"
+                       voucherRentalDuration="2"/>
+      </reservation>
+      <driver countryOfResidence="BR"/>
+    </serviceParameters>
+  </serviceRequest>
+</message>
+
+RESPONSE: returnCode="OK" | totalRateEstimate="327.41 BRL" | statusCode="S" ✅
+
+--- PASSO 4: bookReservation ETO (chargesDetail="TRE" — sem voucherFullCredit) ---
+
+=== [ETO_bookReservation] REQUEST ===
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="bookReservation">
+    <serviceParameters>
+      <reservation carCategory="EDMR" contractID="56935466" type="C"
+                   chargesDetail="TRE" preferredLanguage="pt_BR">
+        <checkout stationID="GRUO02" date="20260615" time="1000"/>
+        <checkin stationID="GRUO02" date="20260617" time="1000"/>
+        <equipmentList/>
+        <meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="88889999"
+                       businessAccount="73675595" voucherCarCategory="EDMR"
+                       voucherRentalDuration="2"/>
+      </reservation>
+      <driver countryOfResidence="BR"
+              firstName="Teste"
+              lastName="Homologacao"
+              title="MR"
+              driverID="12345678900"
+              email="teste@europcar.com.br"
+              phone="+5511999999999"/>
+    </serviceParameters>
+  </serviceRequest>
+</message>
+
+RESPONSE: returnCode="OK" | resNumber gerado | statusCode="S" ✅
+
+
+================================================================================
+  4. CID 56935495 (Zero Excess) — Limitação do Ambiente PTN
+================================================================================
+
+Fluxo executado com CID 56935495 / BA 73804373 / Estação GRUO02:
+- getCarCategories: returnCode="OK" — 15 categorias retornadas ✅
+- getMultipleRates: returnCode="KO" — errorCode="rental.noratefound"
+  → Tarifas não configuradas para este CID no PTN (Brasil)
+
+Fluxo executado com estações França/Alemanha (PARO01-10, CDGO02-04, NICE01-04,
+LYOO01-02, MARO01, TOLO01, BODO01, STRO01, FRAO01-04, MUCO01-03, BERO01-02,
+HAMO01-02, DUSO01, COLO01, STUO01, NURO01):
+- getCarCategories: returnCode="KO" — errorCode="xrs.stationNotAllowedToPublic"
+  → CallerCode 1132581 não possui acesso a estações internacionais no PTN
+
+CONCLUSÃO: Limitação do ambiente de homologação PTN. Aguardando liberação
+de credenciais de produção para validação completa do CID 56935495.
+
+
+================================================================================
+  RESUMO FINAL
+================================================================================
+
+  ✅ search.searchbyid (On Request FAILED)    — returnCode="OK"
+  ✅ CC/POA getCarCategories                  — returnCode="OK" | 15 categorias
+  ✅ CC/POA getMultipleRates                  — returnCode="OK" | rateId extraído
+  ✅ CC/POA getQuote                          — returnCode="OK" | BRL 327.41
+  ✅ CC/POA bookReservation                   — returnCode="OK" | resNumber=1201271595
+  ✅ ETO getCarCategories                     — returnCode="OK"
+  ✅ ETO getMultipleRates                     — returnCode="OK"
+  ✅ ETO getQuote (sem voucherFullCredit)     — returnCode="OK"
+  ✅ ETO bookReservation (sem voucherFullCredit) — returnCode="OK" | resNumber gerado
+  ⏳ CID 56935495 (Zero Excess)              — Aguardando prod / liberação PTN
+
+================================================================================

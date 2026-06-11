@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="bookReservation">
+    <serviceParameters>
+      <reservation carCategory="SFAR" contractID="56935466" type="C"
+                   chargesDetail="TRE" preferredLanguage="pt_BR">
+        <checkout stationID="GRUO02" date="20260615" time="1000"/>
+        <checkin stationID="GRUO02" date="20260617" time="1000"/>
+        <equipmentList/>
+        <meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="88889999"
+                       businessAccount="73675595" voucherCarCategory="SFAR"
+                       voucherRentalDuration="2" voucherFullCredit="Y"/>
+      </reservation>
+      <driver countryOfResidence="BR"
+              firstName="Teste"
+              lastName="OnRequest"
+              title="MR"
+              driverID="12345678900"
+              email="teste@europcar.com.br"
+              phone="+5511999999999"/>
+    </serviceParameters>
+  </serviceRequest>
+</message>

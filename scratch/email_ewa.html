@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>XRS Integration Test Results — Europcar Homologation</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 13px;
+    color: #222;
+    background: #fff;
+    padding: 48px 56px;
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 20px;
+    border-bottom: 3px solid #008d36;
+    margin-bottom: 28px;
+  }
+  .header-logo {
+    background: #008d36;
+    padding: 10px 20px;
+    border-radius: 6px;
+  }
+  .header-logo span {
+    color: #fff;
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: 2px;
+  }
+  .header-meta {
+    text-align: right;
+    font-size: 11px;
+    color: #666;
+    line-height: 1.7;
+  }
+
+  /* Email fields */
+  .email-fields {
+    background: #f7f7f7;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin-bottom: 28px;
+    font-size: 12px;
+    line-height: 1.9;
+  }
+  .email-fields strong { color: #444; min-width: 60px; display: inline-block; }
+
+  h1 { font-size: 18px; font-weight: 900; color: #008d36; margin-bottom: 8px; }
+  h2 { font-size: 14px; font-weight: 700; color: #333; margin: 24px 0 8px; border-left: 4px solid #008d36; padding-left: 10px; }
+  h3 { font-size: 13px; font-weight: 700; color: #555; margin: 18px 0 6px; }
+  p  { line-height: 1.7; margin-bottom: 10px; color: #333; }
+
+  /* Fix item */
+  .fix-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    padding: 10px 14px;
+    background: #f9fdf9;
+    border: 1px solid #d4edda;
+    border-radius: 6px;
+  }
+  .fix-num {
+    background: #008d36;
+    color: #fff;
+    font-weight: 900;
+    font-size: 12px;
+    min-width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .fix-body strong { display: block; font-size: 13px; margin-bottom: 2px; color: #222; }
+  .fix-body span { font-size: 12px; color: #555; line-height: 1.6; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
+  thead tr { background: #008d36; color: #fff; }
+  thead th { padding: 8px 12px; text-align: left; font-weight: 700; }
+  tbody tr:nth-child(even) { background: #f5f5f5; }
+  tbody td { padding: 7px 12px; border-bottom: 1px solid #e8e8e8; vertical-align: top; }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .badge-ok  { background: #d4edda; color: #155724; }
+  .badge-res { background: #cce5ff; color: #004085; }
+
+  /* Code blocks */
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 14px 16px;
+    border-radius: 6px;
+    font-size: 10.5px;
+    line-height: 1.55;
+    overflow: hidden;
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin: 8px 0 16px;
+    font-family: 'Courier New', monospace;
+  }
+  pre .attr  { color: #9cdcfe; }
+  pre .val   { color: #ce9178; }
+  pre .tag   { color: #4ec9b0; }
+  pre .cmt   { color: #6a9955; }
+
+  /* Info box */
+  .infobox {
+    background: #fff8e1;
+    border: 1px solid #ffe082;
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin: 14px 0;
+    font-size: 12px;
+    line-height: 1.7;
+  }
+  .infobox strong { color: #e65100; }
+
+  /* Split billing highlight */
+  .split-box {
+    background: #e8f5e9;
+    border: 1px solid #a5d6a7;
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin: 10px 0;
+    font-size: 12px;
+    line-height: 1.8;
+  }
+  .split-box strong { color: #1b5e20; }
+
+  /* Compliance table */
+  .compliance-table tbody td:first-child { font-weight: 600; }
+  .compliance-table .ok  { color: #155724; font-weight: 700; font-size: 14px; }
+  .compliance-table .na  { color: #856404; font-weight: 700; font-size: 14px; }
+
+  /* Pending list */
+  .pending-list { padding-left: 0; list-style: none; margin: 8px 0; }
+  .pending-list li { padding: 6px 0 6px 22px; position: relative; font-size: 12px; line-height: 1.6; border-bottom: 1px solid #f0f0f0; }
+  .pending-list li::before { content: "→"; position: absolute; left: 0; color: #008d36; font-weight: 700; }
+
+  /* Signature */
+  .signature {
+    margin-top: 32px;
+    padding-top: 18px;
+    border-top: 1px solid #e0e0e0;
+    font-size: 12px;
+    line-height: 1.9;
+    color: #444;
+  }
+  .signature strong { display: block; font-size: 13px; color: #222; }
+
+  /* Footer */
+  .footer {
+    margin-top: 40px;
+    padding-top: 14px;
+    border-top: 2px solid #008d36;
+    font-size: 10px;
+    color: #999;
+    text-align: center;
+  }
+
+  @media print {
+    body { padding: 32px 40px; }
+    pre  { font-size: 9.5px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<div class="header">
+  <div class="header-logo"><span>EUROPCAR</span></div>
+  <div class="header-meta">
+    PTN Environment — Homologation Test Report<br/>
+    Date: May 13, 2026 &nbsp;|&nbsp; 12:36 BRT<br/>
+    Prepared by: Mercatta Tech
+  </div>
+</div>
+
+<!-- ── EMAIL META ── -->
+<div class="email-fields">
+  <div><strong>To:</strong> Ewa Suchorska — Europcar Mobility Group</div>
+  <div><strong>From:</strong> Matheus Conti — Mercatta Tech &lt;grupomercatta@gmail.com&gt;</div>
+  <div><strong>Subject:</strong> XRS Integration Test Results — PTN Homologation (CID 56935466 / 56935495)</div>
+</div>
+
+<!-- ── OPENING ── -->
+<p>Hi Ewa,</p>
+<p>
+  Thank you for your detailed feedback. We have addressed all points raised in your previous email and completed
+  a full homologation test run against the PTN environment. Please find the results below.
+</p>
+
+<!-- ── FIXES ── -->
+<h2>1. Fixes Implemented</h2>
+
+<div class="fix-item">
+  <div class="fix-num">1</div>
+  <div class="fix-body">
+    <strong>&lt;meanOfPayment typeCode="CARD"/&gt; removed from getQuote (CC/POA flow)</strong>
+    <span>As requested, this tag has been removed. The CC getQuote now sends only the reservation parameters, with no MOP tag.</span>
+  </div>
+</div>
+
+<div class="fix-item">
+  <div class="fix-num">2</div>
+  <div class="fix-body">
+    <strong>Double getQuote in ETO flow — resolved</strong>
+    <span>
+      The issue was caused by a price-comparison call (without MOP) running in parallel with the ETO getQuote.
+      The two flows are now fully separated: the ETO flow performs exactly <strong>one</strong> getQuote — with the ETO MOP —
+      and the price-comparison call is skipped entirely for ETO CIDs (56935466 / 56935495).
+    </span>
+  </div>
+</div>
+
+<div class="fix-item">
+  <div class="fix-num">3</div>
+  <div class="fix-body">
+    <strong>search.searchbyid implemented (On Request handling)</strong>
+    <span>
+      After bookReservation, if <code>statusCode="R"</code> is returned, the system saves the reservation as
+      "On Request", extracts the <code>onRequestItemList</code>, displays a dedicated "Pending Confirmation"
+      screen to the customer, and exposes the <code>search.searchbyid</code> endpoint for status polling.
+    </span>
+  </div>
+</div>
+
+<!-- ── TEST RESULTS ── -->
+<h2>2. Test Results — PTN Environment</h2>
+
+<table style="font-size:11px; margin-bottom:14px;">
+  <tr><td style="padding:3px 10px 3px 0; color:#666; font-weight:600;">Endpoint</td><td>https://applications-ptn.europcar.com/xrs/resxml</td></tr>
+  <tr><td style="padding:3px 10px 3px 0; color:#666; font-weight:600;">CallerCode</td><td>1132581</td></tr>
+  <tr><td style="padding:3px 10px 3px 0; color:#666; font-weight:600;">Station</td><td>GRUO02 (Guarulhos)</td></tr>
+  <tr><td style="padding:3px 10px 3px 0; color:#666; font-weight:600;">Period</td><td>15/06/2026 10:00 → 17/06/2026 10:00 (2 days)</td></tr>
+  <tr><td style="padding:3px 10px 3px 0; color:#666; font-weight:600;">Category</td><td>EDMR — Economy 4 Doors, Manual, A/C (Fiat Mobi 1.0)</td></tr>
+  <tr><td style="padding:3px 10px 3px 0; color:#666; font-weight:600;">CID tested</td><td>56935466 | BA: 73675595</td></tr>
+</table>
+
+<!-- CC FLOW -->
+<h3>Flow 1 — CC / POA</h3>
+<table>
+  <thead><tr><th>Step</th><th>Status</th><th>HTTP</th><th>Key Result</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>getCarCategories</td>
+      <td><span class="badge badge-ok">✅ OK</span></td>
+      <td>200</td>
+      <td>15 categories returned (EDMR, CDMR, DDMR, CDAR, CGAR, ICMR, IDAR, IFAR, SDAR, SFAR, SVAR, SWAR, PDAR, PFAR, LXAR)</td>
+    </tr>
+    <tr>
+      <td>getQuote <em>(no MOP tag)</em></td>
+      <td><span class="badge badge-ok">✅ OK</span></td>
+      <td>200</td>
+      <td>rateId obtained &nbsp;|&nbsp; totalRateEstimate = <strong>BRL 327.41</strong></td>
+    </tr>
+    <tr>
+      <td>bookReservation</td>
+      <td><span class="badge badge-ok">✅ OK</span></td>
+      <td>200</td>
+      <td><span class="badge badge-res">resNumber: 1201260546</span> &nbsp; statusCode = <strong>S</strong> (Sold)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p style="font-size:12px; color:#555; margin-bottom:6px;"><strong>getQuote request sent (CC flow):</strong></p>
+<pre>&lt;<span class="tag">reservation</span> <span class="attr">carCategory</span>=<span class="val">"EDMR"</span> <span class="attr">contractID</span>=<span class="val">"56935466"</span> <span class="attr">type</span>=<span class="val">"C"</span> <span class="attr">chargesDetail</span>=<span class="val">"TRE"</span>&gt;
+  &lt;<span class="tag">checkout</span> <span class="attr">stationID</span>=<span class="val">"GRUO02"</span> <span class="attr">date</span>=<span class="val">"20260615"</span> <span class="attr">time</span>=<span class="val">"1000"</span>/&gt;
+  &lt;<span class="tag">checkin</span>  <span class="attr">stationID</span>=<span class="val">"GRUO02"</span> <span class="attr">date</span>=<span class="val">"20260617"</span> <span class="attr">time</span>=<span class="val">"1000"</span>/&gt;
+  <span class="cmt">&lt;!-- No meanOfPayment tag — removed as instructed --&gt;</span>
+&lt;/<span class="tag">reservation</span>&gt;</pre>
+
+<!-- ETO FLOW -->
+<h3>Flow 2 — ETO Voucher</h3>
+<table>
+  <thead><tr><th>Step</th><th>Status</th><th>HTTP</th><th>Key Result</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>getCarCategories</td>
+      <td><span class="badge badge-ok">✅ OK</span></td>
+      <td>200</td>
+      <td>15 categories returned</td>
+    </tr>
+    <tr>
+      <td>getQuote <em>(ETO MOP — single call)</em></td>
+      <td><span class="badge badge-ok">✅ OK</span></td>
+      <td>200</td>
+      <td>rateId obtained &nbsp;|&nbsp; totalRateEstimate = <strong>BRL 327.41</strong> &nbsp;|&nbsp; split billing visible in payerList</td>
+    </tr>
+    <tr>
+      <td>bookReservation <em>(ETO MOP)</em></td>
+      <td><span class="badge badge-ok">✅ OK</span></td>
+      <td>200</td>
+      <td><span class="badge badge-res">resNumber: 1201260547</span> &nbsp; statusCode = <strong>S</strong> (Sold)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p style="font-size:12px; color:#555; margin-bottom:6px;"><strong>getQuote request sent (ETO flow — single call, no CC duplication):</strong></p>
+<pre>&lt;<span class="tag">reservation</span> <span class="attr">carCategory</span>=<span class="val">"EDMR"</span> <span class="attr">contractID</span>=<span class="val">"56935466"</span> <span class="attr">type</span>=<span class="val">"C"</span> <span class="attr">chargesDetail</span>=<span class="val">"TRE"</span>&gt;
+  &lt;<span class="tag">checkout</span> <span class="attr">stationID</span>=<span class="val">"GRUO02"</span> <span class="attr">date</span>=<span class="val">"20260615"</span> <span class="attr">time</span>=<span class="val">"1000"</span>/&gt;
+  &lt;<span class="tag">checkin</span>  <span class="attr">stationID</span>=<span class="val">"GRUO02"</span> <span class="attr">date</span>=<span class="val">"20260617"</span> <span class="attr">time</span>=<span class="val">"1000"</span>/&gt;
+  &lt;<span class="tag">meanOfPayment</span> <span class="attr">typeCode</span>=<span class="val">"VCH"</span> <span class="attr">voucherType</span>=<span class="val">"ETO"</span> <span class="attr">voucherID</span>=<span class="val">"88889999"</span>
+                 <span class="attr">businessAccount</span>=<span class="val">"73675595"</span> <span class="attr">voucherCarCategory</span>=<span class="val">"EDMR"</span>
+                 <span class="attr">voucherRentalDuration</span>=<span class="val">"2"</span> <span class="attr">voucherFullCredit</span>=<span class="val">"Y"</span>/&gt;
+&lt;/<span class="tag">reservation</span>&gt;</pre>
+
+<p style="font-size:12px; color:#555; margin-bottom:6px;"><strong>Split billing confirmed in bookReservation response:</strong></p>
+<div class="split-box">
+  <strong>BA 73675595 pays:</strong> BRL 327.41 (full rental) — <code>dueToPayInBookingCurrency="327.41"</code><br/>
+  <strong>Driver pays:</strong> BRL 0.00 — <code>dueToPayInBookingCurrency="0.00"</code><br/>
+  <strong>MOP confirmed in response:</strong> <code>typeCode="VCH" voucherType="ETO" businessAccount="73675595"</code>
+</div>
+
+<!-- ── COMPLIANCE ── -->
+<h2>3. Compliance Checklist</h2>
+<table class="compliance-table">
+  <thead><tr><th>Item</th><th>Status</th><th>Details</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>meanOfPayment CARD removed from getQuote (CC)</td>
+      <td class="ok">✅</td>
+      <td>Confirmed — no MOP tag in CC getQuote request</td>
+    </tr>
+    <tr>
+      <td>ETO MOP present in ETO getQuote</td>
+      <td class="ok">✅</td>
+      <td>typeCode="VCH", voucherType="ETO", voucherFullCredit="Y"</td>
+    </tr>
+    <tr>
+      <td>Single getQuote call in ETO flow</td>
+      <td class="ok">✅</td>
+      <td>CC price-comparison call disabled for ETO CIDs</td>
+    </tr>
+    <tr>
+      <td>CC bookReservation</td>
+      <td class="ok">✅</td>
+      <td>resNumber 1201260546 — statusCode S</td>
+    </tr>
+    <tr>
+      <td>ETO bookReservation</td>
+      <td class="ok">✅</td>
+      <td>resNumber 1201260547 — statusCode S</td>
+    </tr>
+    <tr>
+      <td>Split billing correctly displayed</td>
+      <td class="ok">✅</td>
+      <td>BA pays BRL 327.41 / Driver pays BRL 0.00 — correctly interpreted</td>
+    </tr>
+    <tr>
+      <td>search.searchbyid implemented</td>
+      <td class="ok">✅</td>
+      <td>On Request (statusCode=R) triggers status polling — ready for GWY PTN validation</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ── PENDING ── -->
+<h2>4. Pending Tests</h2>
+<p>We are ready to test the following additional scenarios if you can enable them in PTN:</p>
+<ul class="pending-list">
+  <li><strong>One-way rentals</strong> — different pickup and return stations (e.g. GRUO02 → SAOO01)</li>
+  <li><strong>Special equipment</strong> — child seat, GPS, etc. — to trigger On Request if applicable</li>
+  <li><strong>Additional insurance</strong> packages (TPL, MEDIUM, LDW) combined with ETO voucher</li>
+  <li><strong>On Request confirmation/rejection via GWY PTN</strong> — so we can validate the full search.searchbyid polling flow end-to-end</li>
+  <li><strong>Second ETO CID</strong> — CID 56935495 / BA 73804373</li>
+</ul>
+
+<div class="infobox">
+  <strong>Note:</strong> Please confirm or reject test reservations <strong>1201260546</strong> and <strong>1201260547</strong>
+  in GWY PTN at your convenience. We will use these numbers to verify the status display on our end.
+  Once these tests are validated, we will provide the staging URL of our website for your review.
+</div>
+
+<!-- ── SIGNATURE ── -->
+<div class="signature">
+  <p>Kind regards,</p>
+  <strong>Matheus Conti</strong>
+  Mercatta Tech<br/>
+  grupomercatta@gmail.com
+</div>
+
+<!-- ── FOOTER ── -->
+<div class="footer">
+  Generated automatically from PTN XRS test run &nbsp;|&nbsp; 13/05/2026 12:36 BRT &nbsp;|&nbsp; Europcar Brasil Integration — Mercatta Tech
+</div>
+
+</body>
+</html>

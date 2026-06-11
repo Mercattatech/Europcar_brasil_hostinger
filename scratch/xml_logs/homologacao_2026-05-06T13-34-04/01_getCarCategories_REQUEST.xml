@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="getCarCategories">
+    <serviceParameters>
+      <reservation>
+        <checkout stationID="VCPT02" date="20260710" time="1000"/>
+        <checkin  stationID="VCPT02" date="20260714" time="1000"/>
+      </reservation>
+    </serviceParameters>
+  </serviceRequest>
+</message>

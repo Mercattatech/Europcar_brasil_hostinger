@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="bookReservation">
+    <serviceParameters>
+      <reservation carCategory="EDMR" rateId="43333c50a249518a7b7d5c9964d57ffed8b379cdc4e3b64dedada2dfaf16ac0e"
+                   contractID="56935466" type="C" chargesDetail="TRE">
+        <checkout stationID="VCPT02" date="20260710" time="1000"/>
+        <checkin  stationID="VCPT02" date="20260714" time="1000"/>
+        <meanOfPayment typeCode="VCH" voucherType="ETO"
+                       voucherID="ETO451644"
+                       businessAccount="73675595"
+                       voucherCarCategory="EDMR"
+                       voucherRentalDuration="4"/>
+      </reservation>
+      <driver countryOfResidence="BR" firstName="MATHEUS" lastName="CONTI"/>
+    </serviceParameters>
+  </serviceRequest>
+</message>

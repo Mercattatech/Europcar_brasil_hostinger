@@ -1,0 +1,1068 @@
+═══════════════════════════════════════════════════════════════════════
+1. search.searchbyid — Reserva On Request Rejeitada (res. 1201263810)
+═══════════════════════════════════════════════════════════════════════
+
+REQUEST:
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="search.searchbyid">
+    <serviceParameters>
+      <reservation resNumber="1201263810" />
+    </serviceParameters>
+  </serviceRequest>
+</message>
+
+RESPONSE:
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceResponse returnCode="OK">
+    <warningList>
+      <warning warningCode="1" warningDesc="xrs.reservation.nochangeallowed" />
+      <warning warningCode="2" warningDesc="xrs.reservation.OneOnRequestItemFailed" />
+    </warningList>
+    <reservation callerName="INTERNET" carCategory="SFAR" carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="5" carCategoryDoors="5" carCategorySample="JEEP COMPASS 1.3" carCategorySeats="5" contractID="56935466" countryOfReservation="BR" duration="2" fuelTypeCode="UL" isModifiable="N" preferredLanguage="en_GB" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77d7b0400d47992931c1ff4900fc96e43a2" resNumber="1201263810" resStationID="RIOC75" resTimeStamp="202605181609" reservationDate="20260518" reservationTime="1609" statusCode="R" type="C">
+      <checkin date="20260617" stationID="GRUO02" time="1000" />
+      <checkout date="20260615" stationID="GRUO02" time="1000" />
+      <quote IncludedKmUnit="K" areTaxesIncluded="Y" bookingCurrencyOfTotalRateEstimate="BRL" currency="BRL" exchangeRate="1" includedKm="99999" includedKmType="R" isAuthorizedForPublicUse="Y" isPrepaid="N" isPriceSecret="Y" totalRateEstimate="978.31" totalRateEstimateInBookingCurrency="978.31" xrsBasePrice="978.31">
+        <insuranceList>
+          <insurance bkExcessWithPOM="16000.00" code="LDW" excessWithPOM="16000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+      </quote>
+      <ageLimit minAgeForCategory="21" minAgeForCountry="19" minLicencePeriod="24 months" youngDriverAge="22" />
+      <meanOfPayment businessAccount="73675595" typeCode="VCH" voucherCarCategory="SFAR" voucherFullCredit="N" voucherID="88889999" voucherRentalDuration="2" voucherType="ETO" />
+      <loyaltyProgram />
+      <externalReferences />
+      <onRequestItemList>
+        <onRequestItem code="SFAR" statusCode="FAILED" type="VC" />
+      </onRequestItemList>
+    </reservation>
+    <driver firstName="TESTE" lastName="ONREQUEST" title="MR" />
+  </serviceResponse>
+</message>
+
+
+═══════════════════════════════════════════════════════════════════════
+2. FLUXO CC / PAY ON ARRIVAL
+   getCarCategories → getMultipleRates → getQuote → bookReservation
+═══════════════════════════════════════════════════════════════════════
+
+───────────────────────────────────────────────────────────────────────
+CC_getCarCategories  (HTTP 200)
+───────────────────────────────────────────────────────────────────────
+
+REQUEST:
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="getCarCategories">
+    <serviceParameters>
+      <reservation contractID="56935466">
+        <checkout stationID="GRUO02" date="20260615" time="1000"/>
+        <checkin stationID="GRUO02" date="20260617" time="1000"/>
+      </reservation>
+    </serviceParameters>
+  </serviceRequest>
+</message>
+
+RESPONSE:
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceResponse returnCode="OK">
+    <carCategoryList>
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="N" carCategoryBaggageQuantity="1" carCategoryCO2Quantity="121" carCategoryCode="EDMR" carCategoryDoors="5" carCategoryName="ECONOMY 4 DOORS,MANUAL,A/C" carCategorySample="FIAT MOBI 1.0" carCategorySeats="5" carCategoryStatusCode="F" carCategoryType="Eco-responsable" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="N" carCategoryBaggageQuantity="2" carCategoryCO2Quantity="131" carCategoryCode="CDMR" carCategoryDoors="5" carCategoryName="COMPACT 4 DOORS,MANUAL,A/C" carCategorySample="FIAT ARGO 1.0" carCategorySeats="5" carCategoryStatusCode="F" carCategoryType="Eco-responsable" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="N" carCategoryBaggageQuantity="2" carCategoryCO2Quantity="153" carCategoryCode="DDMR" carCategoryDoors="5" carCategoryName="COMPACT ELITE,5-DOOR,MANUAL, A/C" carCategorySample="VOLKSWAGEN POLO 1.0" carCategorySeats="5" carCategoryStatusCode="F" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="2" carCategoryCO2Quantity="131" carCategoryCode="CDAR" carCategoryDoors="5" carCategoryName="COMPACT 4 DOORS,AUTOMATIC,A/C" carCategorySample="HYUNDAI HB20 1.0" carCategorySeats="5" carCategoryStatusCode="F" carCategoryType="Eco-responsable" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="3" carCategoryCO2Quantity="131" carCategoryCode="CGAR" carCategoryDoors="5" carCategoryName="COMPACT 4 DOORS,AUTOMATIC,A/C" carCategorySample="NISSAN KICKS 1.6" carCategorySeats="5" carCategoryStatusCode="F" carCategoryType="Eco-responsable" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="N" carCategoryBaggageQuantity="3" carCategoryCO2Quantity="141" carCategoryCode="ICMR" carCategoryDoors="4" carCategoryName="INTERMEDIATE 2/4 DOORS,MANUAL,A/C" carCategorySample="CHEVROLET ONIX PLUS 1.0" carCategorySeats="5" carCategoryStatusCode="F" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="3" carCategoryCO2Quantity="141" carCategoryCode="IDAR" carCategoryDoors="4" carCategoryName="INTERMEDIATE,4 DOORS,AUTO,A/C" carCategorySample="FIAT CRONOS 1.3" carCategorySeats="5" carCategoryStatusCode="F" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="4" carCategoryCO2Quantity="141" carCategoryCode="IFAR" carCategoryDoors="5" carCategoryName="INTERMEDIATE , 2WD AUTOMATIC" carCategorySample="VOLKSWAGEN T CROSS 1.0" carCategorySeats="5" carCategoryStatusCode="F" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="3" carCategoryCO2Quantity="157" carCategoryCode="SDAR" carCategoryDoors="4" carCategoryName="STANDARD, 4 DOORS, AUTOMATIC, A/C" carCategorySample="VOLKSWAGEN VIRTUS 1.0" carCategorySeats="5" carCategoryStatusCode="F" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="5" carCategoryCO2Quantity="157" carCategoryCode="SFAR" carCategoryDoors="5" carCategoryName="STANDARD, SUV, AUTOMATIC" carCategorySample="JEEP COMPASS 1.3" carCategorySeats="5" carCategoryStatusCode="R" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="1" carCategoryCO2Quantity="157" carCategoryCode="SVAR" carCategoryDoors="4" carCategoryName="STANDARD , VAN , AUTOMATIC , HAS AC" carCategorySample="CITROEN C3 1.0 AIRCROSS" carCategorySeats="7" carCategoryStatusCode="F" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="5" carCategoryCO2Quantity="157" carCategoryCode="SWAR" carCategoryDoors="4" carCategoryName="STANDARD , WAGON , AUTOMATIC , HAS" carCategorySample="CITROEN C3 1.0 AIRCROSS" carCategorySeats="5" carCategoryStatusCode="F" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="4" carCategoryCO2Quantity="176" carCategoryCode="PDAR" carCategoryDoors="4" carCategoryName="PREMIUM,4 DOORS,AUTOMATIC,A/C" carCategorySample="TOYOTA COROLLA 1.8" carCategorySeats="5" carCategoryStatusCode="F" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="5" carCategoryCO2Quantity="176" carCategoryCode="PFAR" carCategoryDoors="5" carCategoryName="PREMIUM , SUV, AUTOMATIC" carCategorySample="JEEP COMMANDER 1.3" carCategorySeats="7" carCategoryStatusCode="R" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="3" carCategoryCO2Quantity="258" carCategoryCode="LXAR" carCategoryDoors="4" carCategoryName="LUXURY , SPECIAL , AUTOMATIC , HAS" carCategorySample="MERCEDES BENZ C 180 1.6 ARMORED" carCategorySeats="5" carCategoryStatusCode="R" carType="CR" fuelTypeCode="UL" />
+    </carCategoryList>
+  </serviceResponse>
+</message>
+
+
+───────────────────────────────────────────────────────────────────────
+CC_getMultipleRates_1  (HTTP 200)
+───────────────────────────────────────────────────────────────────────
+
+REQUEST:
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="getMultipleRates">
+    <serviceParameters>
+      <reservation carCategoryPattern="EDMRCDMRDDMRCDARCGARICMRIDARIFARSDARSFAR" rateDetails="Y" contractID="56935466" type="C">
+        <checkout stationID="GRUO02" date="20260615" time="1000"/>
+        <checkin stationID="GRUO02" date="20260617" time="1000"/>
+      </reservation>
+      <driver countryOfResidence="BR"/>
+    </serviceParameters>
+  </serviceRequest>
+</message>
+
+RESPONSE:
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceResponse returnCode="OK">
+    <reservationRateList>
+      <reservationRate basePrice="163.70" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="N" carCategoryBaggageQuantity="1" carCategoryCO2Quantity="121" carCategoryCode="EDMR" carCategoryDoors="5" carCategoryName="ECONOMY 4 DOORS,MANUAL,A/C" carCategorySample="FIAT MOBI 1.0" carCategorySeats="5" carCategoryStatusCode="F" carCategoryType="Eco-responsable" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="327.41" totalRateEstimateInBookingCurrency="327.41" type="C" xrsBasePrice="327.41" xrsBasePriceInBookingCurrency="327.41">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/EDMR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="18" minAgeForCategoryScr="18" minAgeForCountry="19" minAgeForCountryScr="19" minLicencePeriod="12 months" youngDriverAge="22" youngDriverAgeScr="22.00" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="2500.00" code="MEDIUM" excessWithPOM="2500.00" price="56.95" priceInBookingCurrency="56.95" rentalPriceAI="130.99" rentalPriceInBookingCurrencyAI="130.99" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="LDW" excessWithPOM="5000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+      <reservationRate basePrice="173.39" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="N" carCategoryBaggageQuantity="2" carCategoryCO2Quantity="131" carCategoryCode="CDMR" carCategoryDoors="5" carCategoryName="COMPACT 4 DOORS,MANUAL,A/C" carCategorySample="FIAT ARGO 1.0" carCategorySeats="5" carCategoryStatusCode="F" carCategoryType="Eco-responsable" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="346.77" totalRateEstimateInBookingCurrency="346.77" type="C" xrsBasePrice="346.77" xrsBasePriceInBookingCurrency="346.77">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/CDMR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="18" minAgeForCategoryScr="18" minAgeForCountry="19" minAgeForCountryScr="19" minLicencePeriod="12 months" youngDriverAge="22" youngDriverAgeScr="22.00" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="2500.00" code="MEDIUM" excessWithPOM="2500.00" price="56.95" priceInBookingCurrency="56.95" rentalPriceAI="130.99" rentalPriceInBookingCurrencyAI="130.99" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="LDW" excessWithPOM="5000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+      <reservationRate basePrice="246.08" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="2" carCategoryCO2Quantity="131" carCategoryCode="CDAR" carCategoryDoors="5" carCategoryName="COMPACT 4 DOORS,AUTOMATIC,A/C" carCategorySample="HYUNDAI HB20 1.0" carCategorySeats="5" carCategoryStatusCode="F" carCategoryType="Eco-responsable" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="492.15" totalRateEstimateInBookingCurrency="492.15" type="C" xrsBasePrice="492.15" xrsBasePriceInBookingCurrency="492.15">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/CDAR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="18" minAgeForCategoryScr="18" minAgeForCountry="19" minAgeForCountryScr="19" minLicencePeriod="12 months" youngDriverAge="22" youngDriverAgeScr="22.00" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="MEDIUM" excessWithPOM="5000.00" price="75.95" priceInBookingCurrency="75.95" rentalPriceAI="174.69" rentalPriceInBookingCurrencyAI="174.69" type="O" />
+          <insurance bkExcessWithPOM="10000.00" code="LDW" excessWithPOM="10000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+      <reservationRate basePrice="313.11" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="3" carCategoryCO2Quantity="131" carCategoryCode="CGAR" carCategoryDoors="5" carCategoryName="COMPACT 4 DOORS,AUTOMATIC,A/C" carCategorySample="NISSAN KICKS 1.6" carCategorySeats="5" carCategoryStatusCode="F" carCategoryType="Eco-responsable" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="626.22" totalRateEstimateInBookingCurrency="626.22" type="C" xrsBasePrice="626.22" xrsBasePriceInBookingCurrency="626.22">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/CGAR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="21" minAgeForCategoryScr="21" minAgeForCountry="19" minAgeForCountryScr="19" minLicencePeriod="24 months" youngDriverAge="22" youngDriverAgeScr="22.00" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="MEDIUM" excessWithPOM="5000.00" price="75.95" priceInBookingCurrency="75.95" rentalPriceAI="174.69" rentalPriceInBookingCurrencyAI="174.69" type="O" />
+          <insurance bkExcessWithPOM="10000.00" code="LDW" excessWithPOM="10000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+      <reservationRate basePrice="201.34" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="N" carCategoryBaggageQuantity="2" carCategoryCO2Quantity="153" carCategoryCode="DDMR" carCategoryDoors="5" carCategoryName="COMPACT ELITE,5-DOOR,MANUAL, A/C" carCategorySample="VOLKSWAGEN POLO 1.0" carCategorySeats="5" carCategoryStatusCode="F" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="402.68" totalRateEstimateInBookingCurrency="402.68" type="C" xrsBasePrice="402.68" xrsBasePriceInBookingCurrency="402.68">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/DDMR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="18" minAgeForCategoryScr="18" minAgeForCountry="19" minAgeForCountryScr="19" minLicencePeriod="12 months" youngDriverAge="22" youngDriverAgeScr="22.00" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="2500.00" code="MEDIUM" excessWithPOM="2500.00" price="56.95" priceInBookingCurrency="56.95" rentalPriceAI="130.99" rentalPriceInBookingCurrencyAI="130.99" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="LDW" excessWithPOM="5000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+      <reservationRate basePrice="228.10" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="N" carCategoryBaggageQuantity="3" carCategoryCO2Quantity="141" carCategoryCode="ICMR" carCategoryDoors="4" carCategoryName="INTERMEDIATE 2/4 DOORS,MANUAL,A/C" carCategorySample="CHEVROLET ONIX PLUS 1.0" carCategorySeats="5" carCategoryStatusCode="F" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="456.21" totalRateEstimateInBookingCurrency="456.21" type="C" xrsBasePrice="456.21" xrsBasePriceInBookingCurrency="456.21">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/ICMR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="18" minAgeForCategoryScr="18" minAgeForCountry="19" minAgeForCountryScr="19" minLicencePeriod="12 months" youngDriverAge="22" youngDriverAgeScr="22.00" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="3750.00" code="MEDIUM" excessWithPOM="3750.00" price="56.95" priceInBookingCurrency="56.95" rentalPriceAI="130.99" rentalPriceInBookingCurrencyAI="130.99" type="O" />
+          <insurance bkExcessWithPOM="7500.00" code="LDW" excessWithPOM="7500.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+      <reservationRate basePrice="291.78" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="3" carCategoryCO2Quantity="141" carCategoryCode="IDAR" carCategoryDoors="4" carCategoryName="INTERMEDIATE,4 DOORS,AUTO,A/C" carCategorySample="FIAT CRONOS 1.3" carCategorySeats="5" carCategoryStatusCode="F" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="583.56" totalRateEstimateInBookingCurrency="583.56" type="C" xrsBasePrice="583.56" xrsBasePriceInBookingCurrency="583.56">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/IDAR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="18" minAgeForCategoryScr="18" minAgeForCountry="19" minAgeForCountryScr="19" minLicencePeriod="12 months" youngDriverAge="22" youngDriverAgeScr="22.00" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="MEDIUM" excessWithPOM="5000.00" price="75.95" priceInBookingCurrency="75.95" rentalPriceAI="174.69" rentalPriceInBookingCurrencyAI="174.69" type="O" />
+          <insurance bkExcessWithPOM="10000.00" code="LDW" excessWithPOM="10000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+      <reservationRate basePrice="345.71" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="4" carCategoryCO2Quantity="141" carCategoryCode="IFAR" carCategoryDoors="5" carCategoryName="INTERMEDIATE , 2WD AUTOMATIC" carCategorySample="VOLKSWAGEN T CROSS 1.0" carCategorySeats="5" carCategoryStatusCode="F" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="691.43" totalRateEstimateInBookingCurrency="691.43" type="C" xrsBasePrice="691.43" xrsBasePriceInBookingCurrency="691.43">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/IFAR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="21" minAgeForCategoryScr="21" minAgeForCountry="19" minAgeForCountryScr="19" minLicencePeriod="24 months" youngDriverAge="22" youngDriverAgeScr="22.00" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="MEDIUM" excessWithPOM="5000.00" price="75.95" priceInBookingCurrency="75.95" rentalPriceAI="174.69" rentalPriceInBookingCurrencyAI="174.69" type="O" />
+          <insurance bkExcessWithPOM="10000.00" code="LDW" excessWithPOM="10000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+      <reservationRate basePrice="367.94" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="3" carCategoryCO2Quantity="157" carCategoryCode="SDAR" carCategoryDoors="4" carCategoryName="STANDARD, 4 DOORS, AUTOMATIC, A/C" carCategorySample="VOLKSWAGEN VIRTUS 1.0" carCategorySeats="5" carCategoryStatusCode="F" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="735.89" totalRateEstimateInBookingCurrency="735.89" type="C" xrsBasePrice="735.89" xrsBasePriceInBookingCurrency="735.89">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/SDAR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="18" minAgeForCategoryScr="18" minAgeForCountry="19" minAgeForCountryScr="19" minLicencePeriod="12 months" youngDriverAge="22" youngDriverAgeScr="22.00" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="MEDIUM" excessWithPOM="5000.00" price="75.95" priceInBookingCurrency="75.95" rentalPriceAI="174.69" rentalPriceInBookingCurrencyAI="174.69" type="O" />
+          <insurance bkExcessWithPOM="10000.00" code="LDW" excessWithPOM="10000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+      <reservationRate basePrice="489.15" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="5" carCategoryCO2Quantity="157" carCategoryCode="SFAR" carCategoryDoors="5" carCategoryName="STANDARD, SUV, AUTOMATIC" carCategorySample="JEEP COMPASS 1.3" carCategorySeats="5" carCategoryStatusCode="R" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="978.31" totalRateEstimateInBookingCurrency="978.31" type="C" xrsBasePrice="978.31" xrsBasePriceInBookingCurrency="978.31">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/SFAR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="21" minAgeForCountry="19" minLicencePeriod="24 months" youngDriverAge="22" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="8000.00" code="MEDIUM" excessWithPOM="8000.00" price="88.95" priceInBookingCurrency="88.95" rentalPriceAI="204.59" rentalPriceInBookingCurrencyAI="204.59" type="O" />
+          <insurance bkExcessWithPOM="16000.00" code="LDW" excessWithPOM="16000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+    </reservationRateList>
+    <reservation contractID="56935466" duration="2" type="C" xrsPartnerCallerID="Europcar Brazil">
+      <checkin date="20260617" stationID="GRUO02" time="1000" />
+      <checkout date="20260615" stationID="GRUO02" time="1000" />
+    </reservation>
+    <driver countryOfResidence="BR" />
+  </serviceResponse>
+</message>
+
+
+───────────────────────────────────────────────────────────────────────
+CC_getMultipleRates_2  (HTTP 200)
+───────────────────────────────────────────────────────────────────────
+
+REQUEST:
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="getMultipleRates">
+    <serviceParameters>
+      <reservation carCategoryPattern="SVARSWARPDARPFARLXAR" rateDetails="Y" contractID="56935466" type="C">
+        <checkout stationID="GRUO02" date="20260615" time="1000"/>
+        <checkin stationID="GRUO02" date="20260617" time="1000"/>
+      </reservation>
+      <driver countryOfResidence="BR"/>
+    </serviceParameters>
+  </serviceRequest>
+</message>
+
+RESPONSE:
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceResponse returnCode="OK">
+    <reservationRateList>
+      <reservationRate basePrice="401.72" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="5" carCategoryCO2Quantity="157" carCategoryCode="SWAR" carCategoryDoors="4" carCategoryName="STANDARD , WAGON , AUTOMATIC , HAS" carCategorySample="CITROEN C3 1.0 AIRCROSS" carCategorySeats="5" carCategoryStatusCode="F" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="803.44" totalRateEstimateInBookingCurrency="803.44" type="C" xrsBasePrice="803.44" xrsBasePriceInBookingCurrency="803.44">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/SWAR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="21" minAgeForCategoryScr="21" minAgeForCountry="19" minAgeForCountryScr="19" minLicencePeriod="24 months" youngDriverAge="22" youngDriverAgeScr="22.00" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="MEDIUM" excessWithPOM="5000.00" price="75.95" priceInBookingCurrency="75.95" rentalPriceAI="174.69" rentalPriceInBookingCurrencyAI="174.69" type="O" />
+          <insurance bkExcessWithPOM="10000.00" code="LDW" excessWithPOM="10000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+      <reservationRate basePrice="417.08" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="1" carCategoryCO2Quantity="157" carCategoryCode="SVAR" carCategoryDoors="4" carCategoryName="STANDARD , VAN , AUTOMATIC , HAS AC" carCategorySample="CITROEN C3 1.0 AIRCROSS" carCategorySeats="7" carCategoryStatusCode="F" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="834.16" totalRateEstimateInBookingCurrency="834.16" type="C" xrsBasePrice="834.16" xrsBasePriceInBookingCurrency="834.16">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/SVAR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="21" minAgeForCategoryScr="21" minAgeForCountry="19" minAgeForCountryScr="19" minLicencePeriod="24 months" youngDriverAge="22" youngDriverAgeScr="22.00" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="MEDIUM" excessWithPOM="5000.00" price="75.95" priceInBookingCurrency="75.95" rentalPriceAI="174.69" rentalPriceInBookingCurrencyAI="174.69" type="O" />
+          <insurance bkExcessWithPOM="10000.00" code="LDW" excessWithPOM="10000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+      <reservationRate basePrice="410.26" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="4" carCategoryCO2Quantity="176" carCategoryCode="PDAR" carCategoryDoors="4" carCategoryName="PREMIUM,4 DOORS,AUTOMATIC,A/C" carCategorySample="TOYOTA COROLLA 1.8" carCategorySeats="5" carCategoryStatusCode="F" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="820.53" totalRateEstimateInBookingCurrency="820.53" type="C" xrsBasePrice="820.53" xrsBasePriceInBookingCurrency="820.53">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/PDAR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="21" minAgeForCategoryScr="21" minAgeForCountry="19" minAgeForCountryScr="19" minLicencePeriod="24 months" youngDriverAge="22" youngDriverAgeScr="22.00" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="MEDIUM" excessWithPOM="5000.00" price="75.95" priceInBookingCurrency="75.95" rentalPriceAI="174.69" rentalPriceInBookingCurrencyAI="174.69" type="O" />
+          <insurance bkExcessWithPOM="10000.00" code="LDW" excessWithPOM="10000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+      <reservationRate basePrice="806.12" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="5" carCategoryCO2Quantity="176" carCategoryCode="PFAR" carCategoryDoors="5" carCategoryName="PREMIUM , SUV, AUTOMATIC" carCategorySample="JEEP COMMANDER 1.3" carCategorySeats="7" carCategoryStatusCode="R" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="1612.23" totalRateEstimateInBookingCurrency="1612.23" type="C" xrsBasePrice="1612.23" xrsBasePriceInBookingCurrency="1612.23">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/PFAR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="21" minAgeForCountry="19" minLicencePeriod="24 months" youngDriverAge="22" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="8000.00" code="MEDIUM" excessWithPOM="8000.00" price="88.95" priceInBookingCurrency="88.95" rentalPriceAI="204.59" rentalPriceInBookingCurrencyAI="204.59" type="O" />
+          <insurance bkExcessWithPOM="16000.00" code="LDW" excessWithPOM="16000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+      <reservationRate basePrice="1599.51" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="3" carCategoryCO2Quantity="258" carCategoryCode="LXAR" carCategoryDoors="4" carCategoryName="LUXURY , SPECIAL , AUTOMATIC , HAS" carCategorySample="MERCEDES BENZ C 180 1.6 ARMORED" carCategorySeats="5" carCategoryStatusCode="R" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="3199.02" totalRateEstimateInBookingCurrency="3199.02" type="C" xrsBasePrice="3199.02" xrsBasePriceInBookingCurrency="3199.02">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/LXAR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="26" minAgeForCountry="19" minLicencePeriod="24 months" youngDriverAge="22" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="10000.00" code="MEDIUM" excessWithPOM="10000.00" price="243.95" priceInBookingCurrency="243.95" rentalPriceAI="561.09" rentalPriceInBookingCurrencyAI="561.09" type="O" />
+          <insurance bkExcessWithPOM="20000.00" code="LDW" excessWithPOM="20000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+    </reservationRateList>
+    <reservation contractID="56935466" duration="2" type="C" xrsPartnerCallerID="Europcar Brazil">
+      <checkin date="20260617" stationID="GRUO02" time="1000" />
+      <checkout date="20260615" stationID="GRUO02" time="1000" />
+    </reservation>
+    <driver countryOfResidence="BR" />
+  </serviceResponse>
+</message>
+
+
+───────────────────────────────────────────────────────────────────────
+CC_getQuote  (HTTP 200)
+───────────────────────────────────────────────────────────────────────
+
+REQUEST:
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="getQuote">
+    <caller/>
+    <serviceParameters>
+      <reservation carCategory="EDMR" contractID="56935466" type="C"
+                   chargesDetail="TRE" rateDetails="Y" prepaidMode="NP" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7">
+        <checkout stationID="GRUO02" date="20260615" time="1000"/>
+        <checkin stationID="GRUO02" date="20260617" time="1000"/>
+      </reservation>
+      <driver countryOfResidence="BR"/>
+    </serviceParameters>
+  </serviceRequest>
+</message>
+
+RESPONSE:
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceResponse returnCode="OK">
+    <reservation carCategory="EDMR" carCategoryAirCond="Y" carCategoryAutomatic="N" carCategoryBaggageQuantity="1" carCategoryCO2Quantity="121" carCategoryDoors="5" carCategoryName="ECONOMY 4 DOORS,MANUAL,A/C" carCategorySample="FIAT MOBI 1.0" carCategorySeats="5" carCategoryType="Eco-responsable" contractID="56935466" countryOfReservation="BR" duration="2" fuelTypeCode="UL" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" resTimeStamp="202605191935" reservationDate="20260519" reservationTime="1935" statusCode="S" type="C" xrsPartnerCallerID="Europcar Brazil">
+      <links>
+        <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/EDMR_BR.png" />
+      </links>
+      <checkin date="20260617" stationID="GRUO02" time="1000" />
+      <checkout date="20260615" stationID="GRUO02" time="1000" />
+      <quote IncludedKmUnit="K" areTaxesIncluded="Y" basePrice="163.70" baseType="D" bookingCurrencyOfTotalRateEstimate="BRL" contractCondIDUsed="11877368" currency="BRL" exchangeRate="1" includedKm="99999" includedKmType="R" isAuthorizedForPublicUse="N" isPrepaid="N" isPriceSecret="Y" rentingCurrencyOfTotalRateEstimate="BRL" totalRateEstimate="327.41" totalRateEstimateInBookingCurrency="327.41" totalRateEstimateInRentingCurrency="327.41" xrsBasePrice="327.41" xrsBasePriceInBookingCurrency="327.41">
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" descr="Third party liability" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="2500.00" code="MEDIUM" descr="Medium protection package" excessWithPOM="2500.00" price="56.95" priceInBookingCurrency="56.95" rentalPriceAI="130.99" rentalPriceInBookingCurrencyAI="130.99" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="LDW" descr="Ldw includes theft and collision damage waiver" excessWithPOM="5000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <chargeList>
+          <chargeLine act="AS" chrgPct="15.00" chrgTy="00028" chrgTyDesc="VAT" price="42.71" priceInBookingCurrency="42.71" vatRefCd="A">
+            <payer dvrName="Driver" />
+          </chargeLine>
+          <chargeLine act="AS" auxK="2" chrgPct="0.00" chrgTy="00024" chrgTyDesc="AIRPORT SURCHARGE" price="0.00" priceInBookingCurrency="0.00" vatCd="A">
+            <payer dvrName="Driver" />
+          </chargeLine>
+          <chargeLine act="AS" auxK="LDW" chrgTy="00079" chrgTyDesc="LOSS DAMAGE WAIVER" price="0.00" priceInBookingCurrency="0.00" vatCd="A">
+            <payer dvrName="Driver" />
+          </chargeLine>
+          <chargeLine act="AS" chrgTy="00048" chrgTyDesc="Basic Rental-Free Miles" price="0.00" priceInBookingCurrency="0.00" vatCd="A">
+            <payer dvrName="Driver" />
+          </chargeLine>
+          <chargeLine act="AN" chrgTy="00001" chrgTyDesc="Basic Rental" price="284.70" priceInBookingCurrency="284.70" vatCd="A">
+            <payer dvrName="Driver" />
+          </chargeLine>
+        </chargeList>
+        <payerList>
+          <payer chargeAllocatedInBookingCurrency="327.41" chargeAllocatedInRentingCurrency="327.41" dueToPayInBookingCurrency="327.41" dueToPayInRentingCurrency="327.41" dvrName="Driver" />
+        </payerList>
+      </quote>
+      <ageLimit minAgeForCategory="18" minAgeForCategoryScr="18" minAgeForCountry="19" minAgeForCountryScr="19" minLicencePeriod="12 months" youngDriverAge="22" youngDriverAgeScr="22.00" />
+    </reservation>
+    <driver addressCountry="BR" countryOfResidence="BR" />
+  </serviceResponse>
+</message>
+
+
+───────────────────────────────────────────────────────────────────────
+CC_bookReservation  (HTTP 200)
+───────────────────────────────────────────────────────────────────────
+
+REQUEST:
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="bookReservation">
+    <serviceParameters>
+      <reservation carCategory="EDMR" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" contractID="56935466" type="C"
+                   preferredLanguage="pt_BR">
+        <checkout stationID="GRUO02" date="20260615" time="1000"/>
+        <checkin stationID="GRUO02" date="20260617" time="1000"/>
+        <equipmentList/>
+      </reservation>
+      <driver countryOfResidence="BR"
+              firstName="Teste"
+              lastName="Homologacao"
+              title="MR"
+              driverID="12345678900"
+              email="teste@europcar.com.br"
+              phone="+5511999999999"/>
+    </serviceParameters>
+  </serviceRequest>
+</message>
+
+RESPONSE:
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceResponse returnCode="OK">
+    <reservation carCategory="EDMR" carCategoryAirCond="Y" carCategoryAutomatic="N" carCategoryBaggageQuantity="1" carCategoryDoors="5" carCategorySample="FIAT MOBI 1.0" carCategorySeats="5" contractID="56935466" countryOfReservation="BR" duration="2" fuelTypeCode="UL" preferredLanguage="en_GB" productCode="BRX05BR" productFamily="TOEM" productVersion="11" resNumber="1201264210" resTimeStamp="202605191935" reservationDate="20260519" reservationTime="1935" statusCode="S" type="C" xrsPartnerCallerID="Europcar Brazil">
+      <checkin date="20260617" stationID="GRUO02" time="1000" />
+      <checkout date="20260615" stationID="GRUO02" time="1000" />
+      <quote IncludedKmUnit="K" areTaxesIncluded="Y" basePrice="163.70" baseType="D" bookingCurrencyOfTotalRateEstimate="BRL" contractCondIDUsed="11877368" currency="BRL" exchangeRate="1" includedKm="99999" includedKmType="R" isAuthorizedForPublicUse="N" isPrepaid="N" isPriceSecret="Y" rentingCurrencyOfTotalRateEstimate="BRL" totalRateEstimate="327.41" totalRateEstimateInBookingCurrency="327.41" totalRateEstimateInRentingCurrency="327.41" xrsBasePrice="327.41" xrsBasePriceInBookingCurrency="327.41">
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="2500.00" code="MEDIUM" excessWithPOM="2500.00" price="56.95" priceInBookingCurrency="56.95" rentalPriceAI="130.99" rentalPriceInBookingCurrencyAI="130.99" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="LDW" excessWithPOM="5000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+        <taxList>
+          <tax taxCode="STD" taxRate="15.00" />
+        </taxList>
+      </quote>
+      <ageLimit minAgeForCategory="18" minAgeForCountry="19" minLicencePeriod="12 months" youngDriverAge="22" />
+    </reservation>
+    <driver countryOfResidence="BR" firstName="TESTE" lastName="HOMOLOGACAO" />
+  </serviceResponse>
+</message>
+
+RESULTADO: resNumber=1201264210 | statusCode=S
+
+
+═══════════════════════════════════════════════════════════════════════
+3. FLUXO ETO VOUCHER
+   getCarCategories → getMultipleRates → getQuote (ETO MOP) → bookReservation
+═══════════════════════════════════════════════════════════════════════
+
+───────────────────────────────────────────────────────────────────────
+ETO_getCarCategories  (HTTP 200)
+───────────────────────────────────────────────────────────────────────
+
+REQUEST:
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="getCarCategories">
+    <serviceParameters>
+      <reservation contractID="56935466">
+        <checkout stationID="GRUO02" date="20260615" time="1000"/>
+        <checkin stationID="GRUO02" date="20260617" time="1000"/>
+      </reservation>
+    </serviceParameters>
+  </serviceRequest>
+</message>
+
+RESPONSE:
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceResponse returnCode="OK">
+    <carCategoryList>
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="N" carCategoryBaggageQuantity="1" carCategoryCO2Quantity="121" carCategoryCode="EDMR" carCategoryDoors="5" carCategoryName="ECONOMY 4 DOORS,MANUAL,A/C" carCategorySample="FIAT MOBI 1.0" carCategorySeats="5" carCategoryStatusCode="F" carCategoryType="Eco-responsable" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="N" carCategoryBaggageQuantity="2" carCategoryCO2Quantity="131" carCategoryCode="CDMR" carCategoryDoors="5" carCategoryName="COMPACT 4 DOORS,MANUAL,A/C" carCategorySample="FIAT ARGO 1.0" carCategorySeats="5" carCategoryStatusCode="F" carCategoryType="Eco-responsable" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="N" carCategoryBaggageQuantity="2" carCategoryCO2Quantity="153" carCategoryCode="DDMR" carCategoryDoors="5" carCategoryName="COMPACT ELITE,5-DOOR,MANUAL, A/C" carCategorySample="VOLKSWAGEN POLO 1.0" carCategorySeats="5" carCategoryStatusCode="F" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="2" carCategoryCO2Quantity="131" carCategoryCode="CDAR" carCategoryDoors="5" carCategoryName="COMPACT 4 DOORS,AUTOMATIC,A/C" carCategorySample="HYUNDAI HB20 1.0" carCategorySeats="5" carCategoryStatusCode="F" carCategoryType="Eco-responsable" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="3" carCategoryCO2Quantity="131" carCategoryCode="CGAR" carCategoryDoors="5" carCategoryName="COMPACT 4 DOORS,AUTOMATIC,A/C" carCategorySample="NISSAN KICKS 1.6" carCategorySeats="5" carCategoryStatusCode="F" carCategoryType="Eco-responsable" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="N" carCategoryBaggageQuantity="3" carCategoryCO2Quantity="141" carCategoryCode="ICMR" carCategoryDoors="4" carCategoryName="INTERMEDIATE 2/4 DOORS,MANUAL,A/C" carCategorySample="CHEVROLET ONIX PLUS 1.0" carCategorySeats="5" carCategoryStatusCode="F" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="3" carCategoryCO2Quantity="141" carCategoryCode="IDAR" carCategoryDoors="4" carCategoryName="INTERMEDIATE,4 DOORS,AUTO,A/C" carCategorySample="FIAT CRONOS 1.3" carCategorySeats="5" carCategoryStatusCode="F" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="4" carCategoryCO2Quantity="141" carCategoryCode="IFAR" carCategoryDoors="5" carCategoryName="INTERMEDIATE , 2WD AUTOMATIC" carCategorySample="VOLKSWAGEN T CROSS 1.0" carCategorySeats="5" carCategoryStatusCode="F" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="3" carCategoryCO2Quantity="157" carCategoryCode="SDAR" carCategoryDoors="4" carCategoryName="STANDARD, 4 DOORS, AUTOMATIC, A/C" carCategorySample="VOLKSWAGEN VIRTUS 1.0" carCategorySeats="5" carCategoryStatusCode="F" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="5" carCategoryCO2Quantity="157" carCategoryCode="SFAR" carCategoryDoors="5" carCategoryName="STANDARD, SUV, AUTOMATIC" carCategorySample="JEEP COMPASS 1.3" carCategorySeats="5" carCategoryStatusCode="R" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="1" carCategoryCO2Quantity="157" carCategoryCode="SVAR" carCategoryDoors="4" carCategoryName="STANDARD , VAN , AUTOMATIC , HAS AC" carCategorySample="CITROEN C3 1.0 AIRCROSS" carCategorySeats="7" carCategoryStatusCode="F" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="5" carCategoryCO2Quantity="157" carCategoryCode="SWAR" carCategoryDoors="4" carCategoryName="STANDARD , WAGON , AUTOMATIC , HAS" carCategorySample="CITROEN C3 1.0 AIRCROSS" carCategorySeats="5" carCategoryStatusCode="F" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="4" carCategoryCO2Quantity="176" carCategoryCode="PDAR" carCategoryDoors="4" carCategoryName="PREMIUM,4 DOORS,AUTOMATIC,A/C" carCategorySample="TOYOTA COROLLA 1.8" carCategorySeats="5" carCategoryStatusCode="F" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="5" carCategoryCO2Quantity="176" carCategoryCode="PFAR" carCategoryDoors="5" carCategoryName="PREMIUM , SUV, AUTOMATIC" carCategorySample="JEEP COMMANDER 1.3" carCategorySeats="7" carCategoryStatusCode="R" carType="CR" fuelTypeCode="UL" />
+      <carCategory carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="3" carCategoryCO2Quantity="258" carCategoryCode="LXAR" carCategoryDoors="4" carCategoryName="LUXURY , SPECIAL , AUTOMATIC , HAS" carCategorySample="MERCEDES BENZ C 180 1.6 ARMORED" carCategorySeats="5" carCategoryStatusCode="R" carType="CR" fuelTypeCode="UL" />
+    </carCategoryList>
+  </serviceResponse>
+</message>
+
+
+───────────────────────────────────────────────────────────────────────
+ETO_getMultipleRates_1  (HTTP 200)
+───────────────────────────────────────────────────────────────────────
+
+REQUEST:
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="getMultipleRates">
+    <serviceParameters>
+      <reservation carCategoryPattern="EDMRCDMRDDMRCDARCGARICMRIDARIFARSDARSFAR" rateDetails="Y" contractID="56935466" type="C">
+        <checkout stationID="GRUO02" date="20260615" time="1000"/>
+        <checkin stationID="GRUO02" date="20260617" time="1000"/>
+        <equipmentList/>
+      </reservation>
+      <driver countryOfResidence="BR"/>
+    </serviceParameters>
+  </serviceRequest>
+</message>
+
+RESPONSE:
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceResponse returnCode="OK">
+    <reservationRateList>
+      <reservationRate basePrice="163.70" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="N" carCategoryBaggageQuantity="1" carCategoryCO2Quantity="121" carCategoryCode="EDMR" carCategoryDoors="5" carCategoryName="ECONOMY 4 DOORS,MANUAL,A/C" carCategorySample="FIAT MOBI 1.0" carCategorySeats="5" carCategoryStatusCode="F" carCategoryType="Eco-responsable" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="327.41" totalRateEstimateInBookingCurrency="327.41" type="C" xrsBasePrice="327.41" xrsBasePriceInBookingCurrency="327.41">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/EDMR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="18" minAgeForCategoryScr="18" minAgeForCountry="19" minAgeForCountryScr="19" minLicencePeriod="12 months" youngDriverAge="22" youngDriverAgeScr="22.00" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="2500.00" code="MEDIUM" excessWithPOM="2500.00" price="56.95" priceInBookingCurrency="56.95" rentalPriceAI="130.99" rentalPriceInBookingCurrencyAI="130.99" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="LDW" excessWithPOM="5000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+      <reservationRate basePrice="173.39" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="N" carCategoryBaggageQuantity="2" carCategoryCO2Quantity="131" carCategoryCode="CDMR" carCategoryDoors="5" carCategoryName="COMPACT 4 DOORS,MANUAL,A/C" carCategorySample="FIAT ARGO 1.0" carCategorySeats="5" carCategoryStatusCode="F" carCategoryType="Eco-responsable" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="346.77" totalRateEstimateInBookingCurrency="346.77" type="C" xrsBasePrice="346.77" xrsBasePriceInBookingCurrency="346.77">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/CDMR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="18" minAgeForCategoryScr="18" minAgeForCountry="19" minAgeForCountryScr="19" minLicencePeriod="12 months" youngDriverAge="22" youngDriverAgeScr="22.00" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="2500.00" code="MEDIUM" excessWithPOM="2500.00" price="56.95" priceInBookingCurrency="56.95" rentalPriceAI="130.99" rentalPriceInBookingCurrencyAI="130.99" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="LDW" excessWithPOM="5000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+      <reservationRate basePrice="246.08" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="2" carCategoryCO2Quantity="131" carCategoryCode="CDAR" carCategoryDoors="5" carCategoryName="COMPACT 4 DOORS,AUTOMATIC,A/C" carCategorySample="HYUNDAI HB20 1.0" carCategorySeats="5" carCategoryStatusCode="F" carCategoryType="Eco-responsable" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="492.15" totalRateEstimateInBookingCurrency="492.15" type="C" xrsBasePrice="492.15" xrsBasePriceInBookingCurrency="492.15">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/CDAR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="18" minAgeForCategoryScr="18" minAgeForCountry="19" minAgeForCountryScr="19" minLicencePeriod="12 months" youngDriverAge="22" youngDriverAgeScr="22.00" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="MEDIUM" excessWithPOM="5000.00" price="75.95" priceInBookingCurrency="75.95" rentalPriceAI="174.69" rentalPriceInBookingCurrencyAI="174.69" type="O" />
+          <insurance bkExcessWithPOM="10000.00" code="LDW" excessWithPOM="10000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+      <reservationRate basePrice="313.11" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="3" carCategoryCO2Quantity="131" carCategoryCode="CGAR" carCategoryDoors="5" carCategoryName="COMPACT 4 DOORS,AUTOMATIC,A/C" carCategorySample="NISSAN KICKS 1.6" carCategorySeats="5" carCategoryStatusCode="F" carCategoryType="Eco-responsable" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="626.22" totalRateEstimateInBookingCurrency="626.22" type="C" xrsBasePrice="626.22" xrsBasePriceInBookingCurrency="626.22">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/CGAR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="21" minAgeForCategoryScr="21" minAgeForCountry="19" minAgeForCountryScr="19" minLicencePeriod="24 months" youngDriverAge="22" youngDriverAgeScr="22.00" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="MEDIUM" excessWithPOM="5000.00" price="75.95" priceInBookingCurrency="75.95" rentalPriceAI="174.69" rentalPriceInBookingCurrencyAI="174.69" type="O" />
+          <insurance bkExcessWithPOM="10000.00" code="LDW" excessWithPOM="10000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+      <reservationRate basePrice="201.34" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="N" carCategoryBaggageQuantity="2" carCategoryCO2Quantity="153" carCategoryCode="DDMR" carCategoryDoors="5" carCategoryName="COMPACT ELITE,5-DOOR,MANUAL, A/C" carCategorySample="VOLKSWAGEN POLO 1.0" carCategorySeats="5" carCategoryStatusCode="F" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="402.68" totalRateEstimateInBookingCurrency="402.68" type="C" xrsBasePrice="402.68" xrsBasePriceInBookingCurrency="402.68">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/DDMR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="18" minAgeForCategoryScr="18" minAgeForCountry="19" minAgeForCountryScr="19" minLicencePeriod="12 months" youngDriverAge="22" youngDriverAgeScr="22.00" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="2500.00" code="MEDIUM" excessWithPOM="2500.00" price="56.95" priceInBookingCurrency="56.95" rentalPriceAI="130.99" rentalPriceInBookingCurrencyAI="130.99" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="LDW" excessWithPOM="5000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+      <reservationRate basePrice="228.10" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="N" carCategoryBaggageQuantity="3" carCategoryCO2Quantity="141" carCategoryCode="ICMR" carCategoryDoors="4" carCategoryName="INTERMEDIATE 2/4 DOORS,MANUAL,A/C" carCategorySample="CHEVROLET ONIX PLUS 1.0" carCategorySeats="5" carCategoryStatusCode="F" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="456.21" totalRateEstimateInBookingCurrency="456.21" type="C" xrsBasePrice="456.21" xrsBasePriceInBookingCurrency="456.21">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/ICMR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="18" minAgeForCategoryScr="18" minAgeForCountry="19" minAgeForCountryScr="19" minLicencePeriod="12 months" youngDriverAge="22" youngDriverAgeScr="22.00" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="3750.00" code="MEDIUM" excessWithPOM="3750.00" price="56.95" priceInBookingCurrency="56.95" rentalPriceAI="130.99" rentalPriceInBookingCurrencyAI="130.99" type="O" />
+          <insurance bkExcessWithPOM="7500.00" code="LDW" excessWithPOM="7500.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+      <reservationRate basePrice="291.78" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="3" carCategoryCO2Quantity="141" carCategoryCode="IDAR" carCategoryDoors="4" carCategoryName="INTERMEDIATE,4 DOORS,AUTO,A/C" carCategorySample="FIAT CRONOS 1.3" carCategorySeats="5" carCategoryStatusCode="F" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="583.56" totalRateEstimateInBookingCurrency="583.56" type="C" xrsBasePrice="583.56" xrsBasePriceInBookingCurrency="583.56">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/IDAR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="18" minAgeForCategoryScr="18" minAgeForCountry="19" minAgeForCountryScr="19" minLicencePeriod="12 months" youngDriverAge="22" youngDriverAgeScr="22.00" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="MEDIUM" excessWithPOM="5000.00" price="75.95" priceInBookingCurrency="75.95" rentalPriceAI="174.69" rentalPriceInBookingCurrencyAI="174.69" type="O" />
+          <insurance bkExcessWithPOM="10000.00" code="LDW" excessWithPOM="10000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+      <reservationRate basePrice="345.71" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="4" carCategoryCO2Quantity="141" carCategoryCode="IFAR" carCategoryDoors="5" carCategoryName="INTERMEDIATE , 2WD AUTOMATIC" carCategorySample="VOLKSWAGEN T CROSS 1.0" carCategorySeats="5" carCategoryStatusCode="F" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="691.43" totalRateEstimateInBookingCurrency="691.43" type="C" xrsBasePrice="691.43" xrsBasePriceInBookingCurrency="691.43">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/IFAR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="21" minAgeForCategoryScr="21" minAgeForCountry="19" minAgeForCountryScr="19" minLicencePeriod="24 months" youngDriverAge="22" youngDriverAgeScr="22.00" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="MEDIUM" excessWithPOM="5000.00" price="75.95" priceInBookingCurrency="75.95" rentalPriceAI="174.69" rentalPriceInBookingCurrencyAI="174.69" type="O" />
+          <insurance bkExcessWithPOM="10000.00" code="LDW" excessWithPOM="10000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+      <reservationRate basePrice="367.94" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="3" carCategoryCO2Quantity="157" carCategoryCode="SDAR" carCategoryDoors="4" carCategoryName="STANDARD, 4 DOORS, AUTOMATIC, A/C" carCategorySample="VOLKSWAGEN VIRTUS 1.0" carCategorySeats="5" carCategoryStatusCode="F" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="735.89" totalRateEstimateInBookingCurrency="735.89" type="C" xrsBasePrice="735.89" xrsBasePriceInBookingCurrency="735.89">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/SDAR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="18" minAgeForCategoryScr="18" minAgeForCountry="19" minAgeForCountryScr="19" minLicencePeriod="12 months" youngDriverAge="22" youngDriverAgeScr="22.00" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="MEDIUM" excessWithPOM="5000.00" price="75.95" priceInBookingCurrency="75.95" rentalPriceAI="174.69" rentalPriceInBookingCurrencyAI="174.69" type="O" />
+          <insurance bkExcessWithPOM="10000.00" code="LDW" excessWithPOM="10000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+      <reservationRate basePrice="489.15" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="5" carCategoryCO2Quantity="157" carCategoryCode="SFAR" carCategoryDoors="5" carCategoryName="STANDARD, SUV, AUTOMATIC" carCategorySample="JEEP COMPASS 1.3" carCategorySeats="5" carCategoryStatusCode="R" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="978.31" totalRateEstimateInBookingCurrency="978.31" type="C" xrsBasePrice="978.31" xrsBasePriceInBookingCurrency="978.31">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/SFAR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="21" minAgeForCountry="19" minLicencePeriod="24 months" youngDriverAge="22" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="8000.00" code="MEDIUM" excessWithPOM="8000.00" price="88.95" priceInBookingCurrency="88.95" rentalPriceAI="204.59" rentalPriceInBookingCurrencyAI="204.59" type="O" />
+          <insurance bkExcessWithPOM="16000.00" code="LDW" excessWithPOM="16000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+    </reservationRateList>
+    <reservation contractID="56935466" duration="2" type="C" xrsPartnerCallerID="Europcar Brazil">
+      <checkin date="20260617" stationID="GRUO02" time="1000" />
+      <checkout date="20260615" stationID="GRUO02" time="1000" />
+      <equipmentList>
+        <equipment code="ADD" per="D" price="19.95" priceInBookingCurrency="19.95" qty="1" rentalMax="99999.00" rentalMaxAI="114998.85" rentalMaxInBookingCurrencyAI="114998.85" rentalPriceAI="45.89" rentalPriceInBookingCurrencyAI="45.89" statusCode="F" tax="15.00" type="O" />
+        <equipment code="CBS" per="D" price="35.00" priceInBookingCurrency="35.00" qty="1" rentalMax="500.00" rentalMaxAI="575.00" rentalMaxInBookingCurrencyAI="575.00" rentalPriceAI="80.50" rentalPriceInBookingCurrencyAI="80.50" statusCode="F" tax="15.00" type="O" />
+        <equipment code="CSB" per="D" price="35.00" priceInBookingCurrency="35.00" qty="1" rentalMax="500.00" rentalMaxAI="575.00" rentalMaxInBookingCurrencyAI="575.00" rentalPriceAI="80.50" rentalPriceInBookingCurrencyAI="80.50" statusCode="F" tax="15.00" type="O" />
+        <equipment code="CSI" per="D" price="35.00" priceInBookingCurrency="35.00" qty="1" rentalMax="500.00" rentalMaxAI="575.00" rentalMaxInBookingCurrencyAI="575.00" rentalPriceAI="80.50" rentalPriceInBookingCurrencyAI="80.50" statusCode="F" tax="15.00" type="O" />
+        <equipment code="CST" per="D" price="35.00" priceInBookingCurrency="35.00" qty="1" rentalMax="500.00" rentalMaxAI="575.00" rentalMaxInBookingCurrencyAI="575.00" rentalPriceAI="80.50" rentalPriceInBookingCurrencyAI="80.50" statusCode="F" tax="15.00" type="O" />
+        <equipment code="NAV" per="D" price="35.00" priceInBookingCurrency="35.00" qty="1" rentalMax="500.00" rentalMaxAI="575.00" rentalMaxInBookingCurrencyAI="575.00" rentalPriceAI="80.50" rentalPriceInBookingCurrencyAI="80.50" statusCode="R" tax="15.00" type="O" />
+        <equipment code="SNR" per="D" price="34.95" priceInBookingCurrency="34.95" qty="1" rentalMax="99999.00" rentalMaxAI="114998.85" rentalMaxInBookingCurrencyAI="114998.85" rentalPriceAI="80.39" rentalPriceInBookingCurrencyAI="80.39" statusCode="F" tax="15.00" type="O" />
+        <equipment code="TOL" per="D" price="20.00" priceInBookingCurrency="20.00" qty="1" rentalMax="20.00" rentalMaxAI="20.00" rentalMaxInBookingCurrencyAI="20.00" rentalPriceAI="20.00" rentalPriceInBookingCurrencyAI="20.00" statusCode="F" tax="0.00" type="O" />
+        <equipment code="YOU" per="D" price="34.95" priceInBookingCurrency="34.95" qty="1" rentalMax="99999.00" rentalMaxAI="114998.85" rentalMaxInBookingCurrencyAI="114998.85" rentalPriceAI="80.39" rentalPriceInBookingCurrencyAI="80.39" statusCode="F" tax="15.00" type="O" />
+      </equipmentList>
+    </reservation>
+    <driver countryOfResidence="BR" />
+  </serviceResponse>
+</message>
+
+
+───────────────────────────────────────────────────────────────────────
+ETO_getMultipleRates_2  (HTTP 200)
+───────────────────────────────────────────────────────────────────────
+
+REQUEST:
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="getMultipleRates">
+    <serviceParameters>
+      <reservation carCategoryPattern="SVARSWARPDARPFARLXAR" rateDetails="Y" contractID="56935466" type="C">
+        <checkout stationID="GRUO02" date="20260615" time="1000"/>
+        <checkin stationID="GRUO02" date="20260617" time="1000"/>
+        <equipmentList/>
+      </reservation>
+      <driver countryOfResidence="BR"/>
+    </serviceParameters>
+  </serviceRequest>
+</message>
+
+RESPONSE:
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceResponse returnCode="OK">
+    <reservationRateList>
+      <reservationRate basePrice="401.72" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="5" carCategoryCO2Quantity="157" carCategoryCode="SWAR" carCategoryDoors="4" carCategoryName="STANDARD , WAGON , AUTOMATIC , HAS" carCategorySample="CITROEN C3 1.0 AIRCROSS" carCategorySeats="5" carCategoryStatusCode="F" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="803.44" totalRateEstimateInBookingCurrency="803.44" type="C" xrsBasePrice="803.44" xrsBasePriceInBookingCurrency="803.44">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/SWAR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="21" minAgeForCategoryScr="21" minAgeForCountry="19" minAgeForCountryScr="19" minLicencePeriod="24 months" youngDriverAge="22" youngDriverAgeScr="22.00" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="MEDIUM" excessWithPOM="5000.00" price="75.95" priceInBookingCurrency="75.95" rentalPriceAI="174.69" rentalPriceInBookingCurrencyAI="174.69" type="O" />
+          <insurance bkExcessWithPOM="10000.00" code="LDW" excessWithPOM="10000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+      <reservationRate basePrice="417.08" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="1" carCategoryCO2Quantity="157" carCategoryCode="SVAR" carCategoryDoors="4" carCategoryName="STANDARD , VAN , AUTOMATIC , HAS AC" carCategorySample="CITROEN C3 1.0 AIRCROSS" carCategorySeats="7" carCategoryStatusCode="F" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="834.16" totalRateEstimateInBookingCurrency="834.16" type="C" xrsBasePrice="834.16" xrsBasePriceInBookingCurrency="834.16">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/SVAR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="21" minAgeForCategoryScr="21" minAgeForCountry="19" minAgeForCountryScr="19" minLicencePeriod="24 months" youngDriverAge="22" youngDriverAgeScr="22.00" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="MEDIUM" excessWithPOM="5000.00" price="75.95" priceInBookingCurrency="75.95" rentalPriceAI="174.69" rentalPriceInBookingCurrencyAI="174.69" type="O" />
+          <insurance bkExcessWithPOM="10000.00" code="LDW" excessWithPOM="10000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+      <reservationRate basePrice="410.26" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="4" carCategoryCO2Quantity="176" carCategoryCode="PDAR" carCategoryDoors="4" carCategoryName="PREMIUM,4 DOORS,AUTOMATIC,A/C" carCategorySample="TOYOTA COROLLA 1.8" carCategorySeats="5" carCategoryStatusCode="F" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="820.53" totalRateEstimateInBookingCurrency="820.53" type="C" xrsBasePrice="820.53" xrsBasePriceInBookingCurrency="820.53">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/PDAR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="21" minAgeForCategoryScr="21" minAgeForCountry="19" minAgeForCountryScr="19" minLicencePeriod="24 months" youngDriverAge="22" youngDriverAgeScr="22.00" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="MEDIUM" excessWithPOM="5000.00" price="75.95" priceInBookingCurrency="75.95" rentalPriceAI="174.69" rentalPriceInBookingCurrencyAI="174.69" type="O" />
+          <insurance bkExcessWithPOM="10000.00" code="LDW" excessWithPOM="10000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+      <reservationRate basePrice="806.12" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="5" carCategoryCO2Quantity="176" carCategoryCode="PFAR" carCategoryDoors="5" carCategoryName="PREMIUM , SUV, AUTOMATIC" carCategorySample="JEEP COMMANDER 1.3" carCategorySeats="7" carCategoryStatusCode="R" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="1612.23" totalRateEstimateInBookingCurrency="1612.23" type="C" xrsBasePrice="1612.23" xrsBasePriceInBookingCurrency="1612.23">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/PFAR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="21" minAgeForCountry="19" minLicencePeriod="24 months" youngDriverAge="22" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="8000.00" code="MEDIUM" excessWithPOM="8000.00" price="88.95" priceInBookingCurrency="88.95" rentalPriceAI="204.59" rentalPriceInBookingCurrencyAI="204.59" type="O" />
+          <insurance bkExcessWithPOM="16000.00" code="LDW" excessWithPOM="16000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+      <reservationRate basePrice="1599.51" bookingCurrencyOfTotalRateEstimate="BRL" carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="3" carCategoryCO2Quantity="258" carCategoryCode="LXAR" carCategoryDoors="4" carCategoryName="LUXURY , SPECIAL , AUTOMATIC , HAS" carCategorySample="MERCEDES BENZ C 180 1.6 ARMORED" carCategorySeats="5" carCategoryStatusCode="R" contractID="56935466" currency="BRL" exchangeRate="1" fuelTypeCode="UL" includedKm="UNLIMITED" includedKmScr="UNLIMITED" includedKmType="R" includedKmUnit="K" isPrepaid="N" isPriceSecret="Y" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" totalRateEstimate="3199.02" totalRateEstimateInBookingCurrency="3199.02" type="C" xrsBasePrice="3199.02" xrsBasePriceInBookingCurrency="3199.02">
+        <links>
+          <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/LXAR_BR.png" />
+        </links>
+        <ageLimit minAgeForCategory="26" minAgeForCountry="19" minLicencePeriod="24 months" youngDriverAge="22" />
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="10000.00" code="MEDIUM" excessWithPOM="10000.00" price="243.95" priceInBookingCurrency="243.95" rentalPriceAI="561.09" rentalPriceInBookingCurrencyAI="561.09" type="O" />
+          <insurance bkExcessWithPOM="20000.00" code="LDW" excessWithPOM="20000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <taxList>
+          <tax taxCode="BR VAT STD" taxRate="15.00" />
+        </taxList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+      </reservationRate>
+    </reservationRateList>
+    <reservation contractID="56935466" duration="2" type="C" xrsPartnerCallerID="Europcar Brazil">
+      <checkin date="20260617" stationID="GRUO02" time="1000" />
+      <checkout date="20260615" stationID="GRUO02" time="1000" />
+      <equipmentList>
+        <equipment code="ADD" per="D" price="19.95" priceInBookingCurrency="19.95" qty="1" rentalMax="99999.00" rentalMaxAI="114998.85" rentalMaxInBookingCurrencyAI="114998.85" rentalPriceAI="45.89" rentalPriceInBookingCurrencyAI="45.89" statusCode="F" tax="15.00" type="O" />
+        <equipment code="CBS" per="D" price="35.00" priceInBookingCurrency="35.00" qty="1" rentalMax="500.00" rentalMaxAI="575.00" rentalMaxInBookingCurrencyAI="575.00" rentalPriceAI="80.50" rentalPriceInBookingCurrencyAI="80.50" statusCode="F" tax="15.00" type="O" />
+        <equipment code="CSB" per="D" price="35.00" priceInBookingCurrency="35.00" qty="1" rentalMax="500.00" rentalMaxAI="575.00" rentalMaxInBookingCurrencyAI="575.00" rentalPriceAI="80.50" rentalPriceInBookingCurrencyAI="80.50" statusCode="F" tax="15.00" type="O" />
+        <equipment code="CSI" per="D" price="35.00" priceInBookingCurrency="35.00" qty="1" rentalMax="500.00" rentalMaxAI="575.00" rentalMaxInBookingCurrencyAI="575.00" rentalPriceAI="80.50" rentalPriceInBookingCurrencyAI="80.50" statusCode="F" tax="15.00" type="O" />
+        <equipment code="CST" per="D" price="35.00" priceInBookingCurrency="35.00" qty="1" rentalMax="500.00" rentalMaxAI="575.00" rentalMaxInBookingCurrencyAI="575.00" rentalPriceAI="80.50" rentalPriceInBookingCurrencyAI="80.50" statusCode="F" tax="15.00" type="O" />
+        <equipment code="NAV" per="D" price="35.00" priceInBookingCurrency="35.00" qty="1" rentalMax="500.00" rentalMaxAI="575.00" rentalMaxInBookingCurrencyAI="575.00" rentalPriceAI="80.50" rentalPriceInBookingCurrencyAI="80.50" statusCode="R" tax="15.00" type="O" />
+        <equipment code="SNR" per="D" price="34.95" priceInBookingCurrency="34.95" qty="1" rentalMax="99999.00" rentalMaxAI="114998.85" rentalMaxInBookingCurrencyAI="114998.85" rentalPriceAI="80.39" rentalPriceInBookingCurrencyAI="80.39" statusCode="F" tax="15.00" type="O" />
+        <equipment code="TOL" per="D" price="20.00" priceInBookingCurrency="20.00" qty="1" rentalMax="20.00" rentalMaxAI="20.00" rentalMaxInBookingCurrencyAI="20.00" rentalPriceAI="20.00" rentalPriceInBookingCurrencyAI="20.00" statusCode="F" tax="0.00" type="O" />
+        <equipment code="YOU" per="D" price="34.95" priceInBookingCurrency="34.95" qty="1" rentalMax="99999.00" rentalMaxAI="114998.85" rentalMaxInBookingCurrencyAI="114998.85" rentalPriceAI="80.39" rentalPriceInBookingCurrencyAI="80.39" statusCode="F" tax="15.00" type="O" />
+      </equipmentList>
+    </reservation>
+    <driver countryOfResidence="BR" />
+  </serviceResponse>
+</message>
+
+
+───────────────────────────────────────────────────────────────────────
+ETO_getQuote  (HTTP 200)
+───────────────────────────────────────────────────────────────────────
+
+REQUEST:
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="getQuote">
+    <caller/>
+    <serviceParameters>
+      <reservation carCategory="EDMR" contractID="56935466" type="C"
+                   chargesDetail="TRE" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7">
+        <checkout stationID="GRUO02" date="20260615" time="1000"/>
+        <checkin stationID="GRUO02" date="20260617" time="1000"/>
+        <meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="88889999"
+                       businessAccount="73675595" voucherCarCategory="EDMR"
+                       voucherRentalDuration="2"/>
+      </reservation>
+      <driver countryOfResidence="BR"/>
+    </serviceParameters>
+  </serviceRequest>
+</message>
+
+RESPONSE:
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceResponse returnCode="OK">
+    <reservation carCategory="EDMR" carCategoryAirCond="Y" carCategoryAutomatic="N" carCategoryBaggageQuantity="1" carCategoryCO2Quantity="121" carCategoryDoors="5" carCategoryName="ECONOMY 4 DOORS,MANUAL,A/C" carCategorySample="FIAT MOBI 1.0" carCategorySeats="5" carCategoryType="Eco-responsable" contractID="56935466" countryOfReservation="BR" duration="2" fuelTypeCode="UL" productCode="BRX05BR" productFamily="TOEM" productVersion="11" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" resTimeStamp="202605191935" reservationDate="20260519" reservationTime="1935" statusCode="S" type="C" xrsPartnerCallerID="Europcar Brazil">
+      <links>
+        <link id="carvisual" value="https://static.europcar.com/carvisuals/partners/835x557/EDMR_BR.png" />
+      </links>
+      <checkin date="20260617" stationID="GRUO02" time="1000" />
+      <checkout date="20260615" stationID="GRUO02" time="1000" />
+      <quote IncludedKmUnit="K" areTaxesIncluded="Y" basePrice="163.70" baseType="D" bookingCurrencyOfTotalRateEstimate="BRL" contractCondIDUsed="11877368" currency="BRL" exchangeRate="1" includedKm="99999" includedKmType="R" isAuthorizedForPublicUse="N" isPrepaid="N" isPriceSecret="Y" rentingCurrencyOfTotalRateEstimate="BRL" totalRateEstimate="327.41" totalRateEstimateInBookingCurrency="327.41" totalRateEstimateInRentingCurrency="327.41" xrsBasePrice="327.41" xrsBasePriceInBookingCurrency="327.41">
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" descr="Third party liability" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="2500.00" code="MEDIUM" descr="Medium protection package" excessWithPOM="2500.00" price="56.95" priceInBookingCurrency="56.95" rentalPriceAI="130.99" rentalPriceInBookingCurrencyAI="130.99" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="LDW" descr="Ldw includes theft and collision damage waiver" excessWithPOM="5000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <chargeList>
+          <chargeLine act="AS" auxK="73675595" chrgPct="15.00" chrgTy="00028" chrgTyDesc="VAT" price="42.71" priceInBookingCurrency="42.71" vatRefCd="A">
+            <payer ba="73675595" />
+          </chargeLine>
+          <chargeLine act="AS" chrgPct="15.00" chrgTy="00028" chrgTyDesc="VAT" price="0.00" priceInBookingCurrency="0.00" vatRefCd="A">
+            <payer dvrName="Driver" />
+          </chargeLine>
+          <chargeLine act="AS" auxK="2" chrgPct="0.00" chrgTy="00024" chrgTyDesc="AIRPORT SURCHARGE" price="0.00" priceInBookingCurrency="0.00" vatCd="A">
+            <payer dvrName="Driver" />
+          </chargeLine>
+          <chargeLine act="AS" auxK="LDW" chrgTy="00079" chrgTyDesc="LOSS DAMAGE WAIVER" price="0.00" priceInBookingCurrency="0.00" vatCd="A">
+            <payer ba="73675595" />
+          </chargeLine>
+          <chargeLine act="AS" chrgTy="00048" chrgTyDesc="Basic Rental-Free Miles" price="0.00" priceInBookingCurrency="0.00" vatCd="A">
+            <payer dvrName="Driver" />
+          </chargeLine>
+          <chargeLine act="AN" chrgTy="00001" chrgTyDesc="Basic Rental" price="284.70" priceInBookingCurrency="284.70" vatCd="A">
+            <payer ba="73675595" />
+          </chargeLine>
+        </chargeList>
+        <payerList>
+          <payer ba="73675595" chargeAllocatedInBookingCurrency="327.41" chargeAllocatedInRentingCurrency="327.41" dueToPayInBookingCurrency="327.41" dueToPayInRentingCurrency="327.41" />
+          <payer chargeAllocatedInBookingCurrency="0.00" chargeAllocatedInRentingCurrency="0.00" dueToPayInBookingCurrency="0.00" dueToPayInRentingCurrency="0.00" dvrName="Driver" />
+        </payerList>
+      </quote>
+      <ageLimit minAgeForCategory="18" minAgeForCategoryScr="18" minAgeForCountry="19" minAgeForCountryScr="19" minLicencePeriod="12 months" youngDriverAge="22" youngDriverAgeScr="22.00" />
+    </reservation>
+    <driver addressCountry="BR" countryOfResidence="BR" />
+  </serviceResponse>
+</message>
+
+
+───────────────────────────────────────────────────────────────────────
+ETO_bookReservation  (HTTP 200)
+───────────────────────────────────────────────────────────────────────
+
+REQUEST:
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="bookReservation">
+    <serviceParameters>
+      <reservation carCategory="EDMR" rateId="272b1506f821d68b81de9dc29d60d77df9ffe6e125bdc73d33321daaa2d213f7" contractID="56935466" type="C"
+                   chargesDetail="TRE" preferredLanguage="pt_BR">
+        <checkout stationID="GRUO02" date="20260615" time="1000"/>
+        <checkin stationID="GRUO02" date="20260617" time="1000"/>
+        <equipmentList/>
+        <meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="88889999"
+                       businessAccount="73675595" voucherCarCategory="EDMR"
+                       voucherRentalDuration="2"/>
+      </reservation>
+      <driver countryOfResidence="BR"
+              firstName="Teste"
+              lastName="Homologacao"
+              title="MR"
+              driverID="12345678900"
+              email="teste@europcar.com.br"
+              phone="+5511999999999"/>
+    </serviceParameters>
+  </serviceRequest>
+</message>
+
+RESPONSE:
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceResponse returnCode="OK">
+    <reservation carCategory="EDMR" carCategoryAirCond="Y" carCategoryAutomatic="N" carCategoryBaggageQuantity="1" carCategoryDoors="5" carCategorySample="FIAT MOBI 1.0" carCategorySeats="5" contractID="56935466" countryOfReservation="BR" duration="2" fuelTypeCode="UL" preferredLanguage="en_GB" productCode="BRX05BR" productFamily="TOEM" productVersion="11" resNumber="1201264211" resTimeStamp="202605191935" reservationDate="20260519" reservationTime="1935" statusCode="S" type="C" xrsPartnerCallerID="Europcar Brazil">
+      <checkin date="20260617" stationID="GRUO02" time="1000" />
+      <checkout date="20260615" stationID="GRUO02" time="1000" />
+      <quote IncludedKmUnit="K" areTaxesIncluded="Y" basePrice="163.70" baseType="D" bookingCurrencyOfTotalRateEstimate="BRL" contractCondIDUsed="11877368" currency="BRL" exchangeRate="1" includedKm="99999" includedKmType="R" isAuthorizedForPublicUse="N" isPrepaid="N" isPriceSecret="Y" rentingCurrencyOfTotalRateEstimate="BRL" totalRateEstimate="327.41" totalRateEstimateInBookingCurrency="327.41" totalRateEstimateInRentingCurrency="327.41" xrsBasePrice="327.41" xrsBasePriceInBookingCurrency="327.41">
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="2500.00" code="MEDIUM" excessWithPOM="2500.00" price="56.95" priceInBookingCurrency="56.95" rentalPriceAI="130.99" rentalPriceInBookingCurrencyAI="130.99" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="LDW" excessWithPOM="5000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <chargeList>
+          <chargeLine act="AS" auxK="73675595" chrgPct="15.00" chrgTy="00028" chrgTyDesc="VAT" price="42.71" priceInBookingCurrency="42.71" vatRefCd="A">
+            <payer ba="73675595" />
+          </chargeLine>
+          <chargeLine act="AS" chrgPct="15.00" chrgTy="00028" chrgTyDesc="VAT" price="0.00" priceInBookingCurrency="0.00" vatRefCd="A">
+            <payer dvrName="Teste Homologacao" />
+          </chargeLine>
+          <chargeLine act="AS" auxK="2" chrgPct="0.00" chrgTy="00024" chrgTyDesc="AIRPORT SURCHARGE" price="0.00" priceInBookingCurrency="0.00" vatCd="A">
+            <payer dvrName="Teste Homologacao" />
+          </chargeLine>
+          <chargeLine act="AS" auxK="LDW" chrgTy="00079" chrgTyDesc="LOSS DAMAGE WAIVER" price="0.00" priceInBookingCurrency="0.00" vatCd="A">
+            <payer ba="73675595" />
+          </chargeLine>
+          <chargeLine act="AS" chrgTy="00048" chrgTyDesc="Basic Rental-Free Miles" price="0.00" priceInBookingCurrency="0.00" vatCd="A">
+            <payer dvrName="Teste Homologacao" />
+          </chargeLine>
+          <chargeLine act="AN" chrgTy="00001" chrgTyDesc="Basic Rental" price="284.70" priceInBookingCurrency="284.70" vatCd="A">
+            <payer ba="73675595" />
+          </chargeLine>
+        </chargeList>
+        <payerList>
+          <payer ba="73675595" chargeAllocatedInBookingCurrency="327.41" chargeAllocatedInRentingCurrency="327.41" dueToPayInBookingCurrency="327.41" dueToPayInRentingCurrency="327.41" />
+          <payer chargeAllocatedInBookingCurrency="0.00" chargeAllocatedInRentingCurrency="0.00" dueToPayInBookingCurrency="0.00" dueToPayInRentingCurrency="0.00" dvrName="Teste Homologacao" />
+        </payerList>
+      </quote>
+      <ageLimit minAgeForCategory="18" minAgeForCountry="19" minLicencePeriod="12 months" youngDriverAge="22" />
+      <meanOfPayment businessAccount="73675595" typeCode="VCH" voucherCarCategory="EDMR" voucherFullCredit="N" voucherID="88889999" voucherRentalDuration="2" voucherType="ETO" />
+    </reservation>
+    <driver countryOfResidence="BR" firstName="TESTE" lastName="HOMOLOGACAO" />
+  </serviceResponse>
+</message>
+
+RESULTADO: resNumber=1201264211 | statusCode=S

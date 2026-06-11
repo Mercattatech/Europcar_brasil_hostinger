@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceResponse returnCode="OK">
+    <reservation carCategory="EDMR" carCategoryAirCond="Y" carCategoryAutomatic="N" carCategoryBaggageQuantity="1" carCategoryDoors="5" carCategorySample="FIAT MOBI 1.0" carCategorySeats="5" countryOfReservation="BR" duration="4" fuelTypeCode="UL" preferredLanguage="en_GB" productCode="LOCALVBR" productFamily="LOPU" productVersion="5" resNumber="1201258325" resTimeStamp="202605061334" reservationDate="20260506" reservationTime="1334" statusCode="S" type="P" xrsPartnerCallerID="Europcar Brazil">
+      <checkin date="20260714" stationID="VCPT02" time="1000" />
+      <checkout date="20260710" stationID="VCPT02" time="1000" />
+      <quote IncludedKmUnit="K" areTaxesIncluded="Y" basePrice="139.61" baseType="D" bookingCurrencyOfTotalRateEstimate="BRL" currency="BRL" exchangeRate="1" includedKm="99999" includedKmType="R" isAuthorizedForPublicUse="Y" isPrepaid="N" isPriceSecret="N" rentingCurrencyOfTotalRateEstimate="BRL" totalRateEstimate="558.44" totalRateEstimateInBookingCurrency="558.44" totalRateEstimateInRentingCurrency="558.44" xrsBasePrice="558.44" xrsBasePriceInBookingCurrency="558.44">
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="68.77" rentalPriceInBookingCurrencyAI="68.77" type="O" />
+          <insurance bkExcessWithPOM="2500.00" code="MEDIUM" excessWithPOM="2500.00" price="56.95" priceInBookingCurrency="56.95" rentalPriceAI="261.97" rentalPriceInBookingCurrencyAI="261.97" type="O" />
+          <insurance bkExcessWithPOM="5000.00" code="LDW" excessWithPOM="5000.00" price="35.95" priceInBookingCurrency="35.95" rentalPriceAI="165.37" rentalPriceInBookingCurrencyAI="165.37" type="O" />
+        </insuranceList>
+        <includeList>
+          <include code="2" />
+        </includeList>
+        <taxList>
+          <tax taxCode="STD" taxRate="15.00" />
+        </taxList>
+      </quote>
+      <ageLimit minAgeForCategory="18" minAgeForCountry="19" minLicencePeriod="12 months" youngDriverAge="22" />
+    </reservation>
+    <driver countryOfResidence="BR" firstName="MATHEUS" lastName="CONTI" />
+  </serviceResponse>
+</message>
+

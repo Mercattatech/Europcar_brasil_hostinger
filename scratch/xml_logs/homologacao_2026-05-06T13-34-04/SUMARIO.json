@@ -1,0 +1,13 @@
+{
+  "getCarCategories": true,
+  "getMultipleRates_noCID": true,
+  "getMultipleRates_withCID": true,
+  "getQuote_noCID": true,
+  "getQuote_withCID": true,
+  "bookReservation_noCID": true,
+  "bookReservation_withCID": false,
+  "rateId_noCID": "9046f042c0f39c508f21aa2f53b259bfd8b379cdc4e3b64dedada2dfaf16ac0e",
+  "rateId_withCID": "43333c50a249518a7b7d5c9964d57ffed8b379cdc4e3b64dedada2dfaf16ac0e",
+  "bestCategory": "EDMR",
+  "testedAt": "2026-05-06T13:34:12.042Z"
+}

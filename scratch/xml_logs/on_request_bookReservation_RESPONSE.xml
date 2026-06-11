@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceResponse returnCode="OK">
+    <reservation carCategory="SFAR" carCategoryAirCond="Y" carCategoryAutomatic="Y" carCategoryBaggageQuantity="5" carCategoryDoors="5" carCategorySample="JEEP COMPASS 1.3" carCategorySeats="5" contractID="56935466" countryOfReservation="BR" duration="2" fuelTypeCode="UL" preferredLanguage="en_GB" productCode="BRX05BR" productFamily="TOEM" productVersion="11" resNumber="1201263810" resTimeStamp="202605181609" reservationDate="20260518" reservationTime="1609" statusCode="R" type="C" xrsPartnerCallerID="Europcar Brazil">
+      <checkin date="20260617" stationID="GRUO02" time="1000" />
+      <checkout date="20260615" stationID="GRUO02" time="1000" />
+      <quote IncludedKmUnit="K" areTaxesIncluded="Y" basePrice="489.15" baseType="D" bookingCurrencyOfTotalRateEstimate="BRL" contractCondIDUsed="11877368" currency="BRL" exchangeRate="1" includedKm="99999" includedKmType="R" isAuthorizedForPublicUse="N" isPrepaid="N" isPriceSecret="Y" rentingCurrencyOfTotalRateEstimate="BRL" totalRateEstimate="978.31" totalRateEstimateInBookingCurrency="978.31" totalRateEstimateInRentingCurrency="978.31" xrsBasePrice="978.31" xrsBasePriceInBookingCurrency="978.31">
+        <insuranceList>
+          <insurance bkExcessWithPOM="0.00" code="TPL" excessWithPOM="0.00" price="14.95" priceInBookingCurrency="14.95" rentalPriceAI="34.39" rentalPriceInBookingCurrencyAI="34.39" type="O" />
+          <insurance bkExcessWithPOM="8000.00" code="MEDIUM" excessWithPOM="8000.00" price="88.95" priceInBookingCurrency="88.95" rentalPriceAI="204.59" rentalPriceInBookingCurrencyAI="204.59" type="O" />
+          <insurance bkExcessWithPOM="16000.00" code="LDW" excessWithPOM="16000.00" price="0.00" priceInBookingCurrency="0.00" rentalPriceAI="0.00" rentalPriceInBookingCurrencyAI="0.00" type="I" />
+        </insuranceList>
+        <chargeList>
+          <chargeLine act="AS" auxK="73675595" chrgPct="15.00" chrgTy="00028" chrgTyDesc="VAT" price="127.61" priceInBookingCurrency="127.61" vatRefCd="A">
+            <payer ba="73675595" />
+          </chargeLine>
+          <chargeLine act="AS" chrgPct="15.00" chrgTy="00028" chrgTyDesc="VAT" price="0.00" priceInBookingCurrency="0.00" vatRefCd="A">
+            <payer dvrName="Teste OnRequest" />
+          </chargeLine>
+          <chargeLine act="AS" auxK="2" chrgPct="0.00" chrgTy="00024" chrgTyDesc="AIRPORT SURCHARGE" price="0.00" priceInBookingCurrency="0.00" vatCd="A">
+            <payer dvrName="Teste OnRequest" />
+          </chargeLine>
+          <chargeLine act="AS" auxK="LDW" chrgTy="00079" chrgTyDesc="LOSS DAMAGE WAIVER" price="0.00" priceInBookingCurrency="0.00" vatCd="A">
+            <payer ba="73675595" />
+          </chargeLine>
+          <chargeLine act="AS" chrgTy="00048" chrgTyDesc="Basic Rental-Free Miles" price="0.00" priceInBookingCurrency="0.00" vatCd="A">
+            <payer dvrName="Teste OnRequest" />
+          </chargeLine>
+          <chargeLine act="AN" chrgTy="00001" chrgTyDesc="Basic Rental" price="850.70" priceInBookingCurrency="850.70" vatCd="A">
+            <payer ba="73675595" />
+          </chargeLine>
+        </chargeList>
+        <payerList>
+          <payer ba="73675595" chargeAllocatedInBookingCurrency="978.31" chargeAllocatedInRentingCurrency="978.31" dueToPayInBookingCurrency="978.31" dueToPayInRentingCurrency="978.31" />
+          <payer chargeAllocatedInBookingCurrency="0.00" chargeAllocatedInRentingCurrency="0.00" dueToPayInBookingCurrency="0.00" dueToPayInRentingCurrency="0.00" dvrName="Teste OnRequest" />
+        </payerList>
+      </quote>
+      <ageLimit minAgeForCategory="21" minAgeForCountry="19" minLicencePeriod="24 months" youngDriverAge="22" />
+      <meanOfPayment businessAccount="73675595" typeCode="VCH" voucherCarCategory="SFAR" voucherFullCredit="N" voucherID="88889999" voucherRentalDuration="2" voucherType="ETO" />
+      <onRequestItemList>
+        <onRequestItem code="SFAR" description="SFAR" type="VC" />
+      </onRequestItemList>
+    </reservation>
+    <driver countryOfResidence="BR" firstName="TESTE" lastName="ONREQUEST" />
+  </serviceResponse>
+</message>
+

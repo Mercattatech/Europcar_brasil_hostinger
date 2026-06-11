@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="getQuote">
+    <caller/>
+    <serviceParameters>
+      <reservation chargesDetail="TRE" rateDetails="Y" prepaidMode="NP" carCategory="EDMR">
+        <checkout stationID="GRUO02" date="20260424" time="1000"/>
+        <checkin stationID="GRUO02" date="20260427" time="1000"/>
+      </reservation>
+      <driver countryOfResidence="BR"/>
+    </serviceParameters>
+  </serviceRequest>
+</message>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceResponse returnCode="OK">
+    <serviceContext>
+      <localisation active="true">
+        <language code="en_US" />
+      </localisation>
+    </serviceContext>
+    <station address1="CHARLES DE GAULLE APT TERMINAL 1" areaType="T" cityName="ROISSY EN FRANCE" collection="N" countryCode="FR" countryName="France" delivery="N" email="ltmprcmp09@msk.europcar.com" faxAreaCode="0" faxNumber="158602135" faxWithInternationalDialling="+33 (0)  158602135" latitude="49.0144" leadTime="0" longitude="2.5409" phoneAreaCode="0" phoneCountryCode="33" phoneNumber="422573092" phoneWithInternationalDialling="+33 (0)  422573092" postalCode="95700" prestige="Y" stationCode="CDGT01" stationName="Paris Roissy CDG Airport T1" truckAvailable="N">
+      <serviceList>
+        <service code="CIOOH" description="Yes" value="Y" />
+        <service code="FUN" description="Yes" value="Y" />
+        <service code="GUARANTEED" description="YES" value="Y" />
+        <service code="IKC" description="Yes" value="Y" />
+        <service code="KEYBOX" description="Yes" value="Y" />
+        <service code="READY" description="Yes" value="Y" />
+        <service code="SELECTION" description="Yes" value="Y" />
+        <service code="SHUTTLE" description="Counter and car in terminal" value="T" />
+        <service code="WEBDISPLAY" description="Yes" value="Y" />
+      </serviceList>
+    </station>
+  </serviceResponse>
+</message>
+

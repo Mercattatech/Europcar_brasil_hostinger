@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Valid Europcar Stations - France & Germany
+  Source: https://microsite.europcar.com/locations/stations_EN.xml
+  Extracted: 2026-05-28
+  Purpose: Valid station codes for API integration testing (CallerCode 1132581 / CID 56935495)
+-->
+
+<stations>
+
+  <!-- ==================== FRANCE ==================== -->
+
+  <station stationCode="CDGT01" stationName="Paris Roissy CDG Airport T1" countryCode="FR" countryName="France" areaType="T" cityName="ROISSY EN FRANCE" address1="CHARLES DE GAULLE APT TERMINAL 1" address2="" postalCode="95700" phoneCountryCode="33" phoneAreaCode="0" phoneNumber="977403257" faxNumber="148627134" leadTime="0" longitude="2,5409" latitude="49,0144" delivery="N" collection="N" flag_prestige="Y" isTruckAvailable="N" email="frstcdgt02@europcar.com">
+    <serviceList>
+      <service code="FUN" value="Y" description="Yes"/>
+      <service code="CIOOH" value="Y" description="Yes"/>
+      <service code="SHUTTLE" value="T" description="Counter and car in terminal"/>
+      <service code="KEYBOX" value="Y" description="Yes"/>
+      <service code="SELECTION" value="Y" description="Yes"/>
+      <service code="IKC" value="Y" description="Yes"/>
+      <service code="WEBDISPLAY" value="Y" description="Yes"/>
+      <service code="GUARANTEED" value="Y" description="YES"/>
+      <service code="ELECTRIC" value="Y" description="Yes"/>
+      <service code="READY" value="Y" description="Yes"/>
+    </serviceList>
+  </station>
+
+  <station stationCode="CDGT02" stationName="Paris Roissy CDG Airport T2D" countryCode="FR" countryName="France" areaType="T" cityName="ROISSY EN FRANCE" address1="TERMINAL 2 D" address2="" postalCode="95700" phoneCountryCode="33" phoneAreaCode="0" phoneNumber="977403257" faxNumber="148627134" leadTime="0" longitude="2,5667" latitude="49,0037" delivery="N" collection="N" flag_prestige="Y" isTruckAvailable="N" email="frstcdgt02@europcar.com">
+    <serviceList>
+      <service code="SELECTION" value="Y" description="Yes"/>
+      <service code="SHUTTLE" value="T" description="Counter and car in terminal"/>
+      <service code="WEBDISPLAY" value="Y" description="Yes"/>
+      <service code="GREENSTN" value="Y" description="Yes"/>
+      <service code="FUN" value="Y" description="Yes"/>
+      <service code="IKC" value="Y" description="Yes"/>
+      <service code="KEYBOX" value="Y" description="Yes"/>
+      <service code="READY" value="Y" description="Yes"/>
+      <service code="CIOOH" value="Y" description="Yes"/>
+      <service code="GUARANTEED" value="Y" description="YES"/>
+    </serviceList>
+  </station>
+
+  <station stationCode="ORYT01" stationName="Paris Orly Airport" countryCode="FR" countryName="France" areaType="T" cityName="ORLY" address1="AEROPORT D ORLY PARKING P2" address2="NIVEAU -1" postalCode="94546" phoneCountryCode="33" phoneAreaCode="0" phoneNumber="977403254" faxNumber="149754844" leadTime="0" longitude="2,3624" latitude="48,7287" delivery="N" collection="N" flag_prestige="Y" isTruckAvailable="Y" email="frstORYT01@europcar.com">
+    <serviceList>
+      <service code="SHUTTLE" value="T" description="Counter and car in terminal"/>
+      <service code="IKC" value="Y" description="Yes"/>
+      <service code="GREENSTN" value="Y" description="Yes"/>
+      <service code="READY" value="Y" description="Yes"/>
+      <service code="WEBDISPLAY" value="Y" description="Yes"/>
+      <service code="FUN" value="Y" description="Yes"/>
+      <service code="TRUCKS" value="Y" description="Yes"/>
+      <service code="KEYBOX" value="Y" description="Yes"/>
+      <service code="GUARANTEED" value="Y" description="YES"/>
+      <service code="DESKLESS" value="Y" description="Yes"/>
+      <service code="SELECTION" value="Y" description="Yes"/>
+      <service code="CIOOH" value="Y" description="Yes"/>
+    </serviceList>
+  </station>
+
+  <station stationCode="LYST01" stationName="Lyon Airport Saint Exupery" countryCode="FR" countryName="France" areaType="T" cityName="LYON" address1="AEROPORT LYON SAINT EXUPERY" address2="" postalCode="69125" phoneCountryCode="33" phoneAreaCode="0" phoneNumber="977403268" faxNumber="" leadTime="0" longitude="5,0724" latitude="45,7272" delivery="R" collection="F" flag_prestige="Y" isTruckAvailable="Y" email="frstlyst05@europcar.com">
+    <serviceList>
+      <service code="READY" value="Y" description="Yes"/>
+      <service code="COLLECTION" value="F" description="Free sell"/>
+      <service code="FUN" value="Y" description="Yes"/>
+      <service code="SHUTTLE" value="C" description="Counter in terminal, shuttle to car"/>
+      <service code="TRUCKS" value="Y" description="Yes"/>
+      <service code="KEYBOX" value="Y" description="Yes"/>
+      <service code="GREENSTN" value="Y" description="Yes"/>
+      <service code="SELECTION" value="Y" description="Yes"/>
+      <service code="WEBDISPLAY" value="Y" description="Yes"/>
+      <service code="CIOOH" value="Y" description="Yes"/>
+      <service code="IKC" value="Y" description="Yes"/>
+      <service code="DELIVERY" value="R" description="Request"/>
+      <service code="GUARANTEED" value="Y" description="YES"/>
+    </serviceList>
+  </station>
+
+  <station stationCode="NCET02" stationName="Nice Cote d&apos;Azur Airport" countryCode="FR" countryName="France" areaType="T" cityName="NICE" address1="NICE COTE D AZUR AIRPORT - T2" address2="CAR RENTAL CENTER T2 AV D.DAURAT" postalCode="06281" phoneCountryCode="33" phoneAreaCode="0" phoneNumber="977403253" faxNumber="493285936" leadTime="0" longitude="7,2033" latitude="43,6605" delivery="N" collection="N" flag_prestige="Y" isTruckAvailable="Y" email="frsmncet02@europcar.com">
+    <serviceList>
+      <service code="WEBDISPLAY" value="Y" description="Yes"/>
+      <service code="TRUCKS" value="Y" description="Yes"/>
+      <service code="READY" value="Y" description="Yes"/>
+      <service code="FUN" value="Y" description="Yes"/>
+      <service code="SHUTTLE" value="T" description="Counter and car in terminal"/>
+      <service code="SELECTION" value="Y" description="Yes"/>
+      <service code="KEYBOX" value="Y" description="Yes"/>
+      <service code="IKC" value="Y" description="Yes"/>
+      <service code="GREENSTN" value="Y" description="Yes"/>
+      <service code="CIOOH" value="Y" description="Yes"/>
+      <service code="GUARANTEED" value="Y" description="YES"/>
+    </serviceList>
+  </station>
+
+  <!-- ==================== GERMANY ==================== -->
+
+  <station stationCode="FRAT01" stationName="Frankfurt Airport" countryCode="DE" countryName="Germany" areaType="T" cityName="FRANKFURT AM MAIN" address1="AIRPORT CITY MALL, BEREICH A" address2="AA,AZ,DE,HF,LH,SK,UA,AC,OS" postalCode="60549" phoneCountryCode="49" phoneAreaCode="69" phoneNumber="697970" faxNumber="69797110" leadTime="0" longitude="8,5687" latitude="50,0507" delivery="N" collection="N" flag_prestige="Y" isTruckAvailable="N" email="destFRAT01@europcar.com">
+    <serviceList>
+      <service code="WEBDISPLAY" value="Y" description="Yes"/>
+      <service code="READY" value="Y" description="Yes"/>
+      <service code="IKC" value="Y" description="Yes"/>
+      <service code="CIOOH" value="Y" description="Yes"/>
+      <service code="SELECTION" value="Y" description="Yes"/>
+      <service code="GREENSTN" value="Y" description="Yes"/>
+    </serviceList>
+  </station>
+
+  <station stationCode="FRAT03" stationName="Frankfurt Ap T3" countryCode="DE" countryName="Germany" areaType="T" cityName="FRANKFURT AM MAIN" address1="FLUGHAFEN VORPLATZ" address2="" postalCode="60549" phoneCountryCode="49" phoneAreaCode="69" phoneNumber="697970" faxNumber="69797110" leadTime="2" longitude="8,58" latitude="50,0413" delivery="N" collection="N" flag_prestige="N" isTruckAvailable="N" email="destfrat03@europcar.com">
+    <serviceList>
+      <service code="ELECTRIC" value="Y" description="Yes"/>
+      <service code="WEBDISPLAY" value="Y" description="Yes"/>
+      <service code="CIOOH" value="Y" description="Yes"/>
+      <service code="IKC" value="Y" description="Yes"/>
+      <service code="KEYBOX" value="Y" description="Yes"/>
+    </serviceList>
+  </station>
+
+  <station stationCode="MUCT01" stationName="Munich Airport" countryCode="DE" countryName="Germany" areaType="T" cityName="MUENCHEN FLUGHAFEN" address1="TERMINALSTR. MITTE" address2="AIRPORTCENTER EBENE 3" postalCode="85356" phoneCountryCode="49" phoneAreaCode="89" phoneNumber="9735020" faxNumber="97350266" leadTime="0" longitude="11,7851" latitude="48,3537" delivery="N" collection="N" flag_prestige="Y" isTruckAvailable="N" email="destMUCT01@europcar.com">
+    <serviceList>
+      <service code="IKC" value="Y" description="Yes"/>
+      <service code="WEBDISPLAY" value="Y" description="Yes"/>
+      <service code="READY" value="Y" description="Yes"/>
+      <service code="SELECTION" value="Y" description="Yes"/>
+      <service code="GREENSTN" value="Y" description="Yes"/>
+      <service code="CIOOH" value="Y" description="Yes"/>
+    </serviceList>
+  </station>
+
+  <station stationCode="BERT01" stationName="Berlin Airport" countryCode="DE" countryName="Germany" areaType="T" cityName="BERLIN" address1="FLUGHAFEN BERLIN BRANDENBURG" address2="MELLI-BEESE-RING 1" postalCode="12529" phoneCountryCode="49" phoneAreaCode="30" phoneNumber="6349160" faxNumber="63491667" leadTime="0" longitude="13,5083" latitude="52,364" delivery="N" collection="N" flag_prestige="N" isTruckAvailable="N" email="destBERT01@europcar.com">
+    <serviceList>
+      <service code="WEBDISPLAY" value="Y" description="Yes"/>
+      <service code="IKC" value="Y" description="Yes"/>
+      <service code="CIOOH" value="Y" description="Yes"/>
+      <service code="GREENSTN" value="Y" description="Yes"/>
+    </serviceList>
+  </station>
+
+  <station stationCode="HAMT01" stationName="Hamburg Airport" countryCode="DE" countryName="Germany" areaType="T" cityName="HAMBURG" address1="FLUGHAFENSTR. 1" address2="ARRIVAL HALL TERMINAL 2" postalCode="22335" phoneCountryCode="49" phoneAreaCode="40" phoneNumber="5002170" faxNumber="50021766" leadTime="0" longitude="10,006" latitude="53,6309" delivery="R" collection="R" flag_prestige="Y" isTruckAvailable="N" email="destHAMT01@europcar.com">
+    <serviceList>
+      <service code="WEBDISPLAY" value="Y" description="Yes"/>
+      <service code="DELIVERY" value="R" description="Request"/>
+      <service code="CIOOH" value="Y" description="Yes"/>
+      <service code="IKC" value="Y" description="Yes"/>
+      <service code="GREENSTN" value="Y" description="Yes"/>
+      <service code="READY" value="Y" description="Yes"/>
+      <service code="COLLECTION" value="R" description="Request"/>
+      <service code="SELECTION" value="Y" description="Yes"/>
+    </serviceList>
+  </station>
+
+</stations>

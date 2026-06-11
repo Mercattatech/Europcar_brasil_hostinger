@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="bookReservation">
+    <serviceParameters>
+      <reservation carCategory="EDMR" rateId="9046f042c0f39c508f21aa2f53b259bfd8b379cdc4e3b64dedada2dfaf16ac0e">
+        <checkout stationID="VCPT02" date="20260710" time="1000"/>
+        <checkin  stationID="VCPT02" date="20260714" time="1000"/>
+      </reservation>
+      <driver countryOfResidence="BR" firstName="MATHEUS" lastName="CONTI"/>
+    </serviceParameters>
+  </serviceRequest>
+</message>

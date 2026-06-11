@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="getQuote">
+    <caller/>
+    <serviceParameters>
+      <reservation chargesDetail="TRE" rateDetails="Y" prepaidMode="NP"
+                   carCategory="EDMR" rateId="43333c50a249518a7b7d5c9964d57ffed8b379cdc4e3b64dedada2dfaf16ac0e"
+                   contractID="56935466" type="C">
+        <checkout stationID="VCPT02" date="20260710" time="1000"/>
+        <checkin  stationID="VCPT02" date="20260714" time="1000"/>
+      </reservation>
+      <driver countryOfResidence="BR"/>
+    </serviceParameters>
+  </serviceRequest>
+</message>

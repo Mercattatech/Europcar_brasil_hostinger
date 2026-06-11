@@ -1,0 +1,117 @@
+Scenario: 3_WithExtras | Cost: N/A
+
+
+
+=== [ETO_getCarCategories] REQUEST ===
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="getCarCategories">
+    <serviceContext>
+      <localisation active="true">
+        <language code="en_US"/>
+      </localisation>
+    </serviceContext>
+    <serviceParameters>
+      <reservation contractID="56935495" type="C">
+        <checkout stationID="AAHC01" date="20260615" time="1000"/>
+        <checkin stationID="AAHC01" date="20260617" time="1000"/>
+      </reservation>
+    </serviceParameters>
+  </serviceRequest>
+</message>
+=== [ETO_getCarCategories] RESPONSE ===
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceResponse errorCode="xrs.invalidrequest" returnCode="KO">
+    <serviceContext>
+      <localisation active="true">
+        <language code="en_US" />
+      </localisation>
+    </serviceContext>
+  </serviceResponse>
+</message>
+
+
+// ACRISS codes extracted: 
+// WARNING: rateId not extracted from getMultipleRates
+
+=== [ETO_getQuote] REQUEST ===
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="getQuote">
+    <serviceContext>
+      <localisation active="true">
+        <language code="en_US"/>
+      </localisation>
+    </serviceContext>
+    <caller/>
+    <serviceParameters>
+      <reservation carCategory="undefined" contractID="56935495" type="C" chargesDetail="TRE" email="teste@europcar.com.br">
+        <checkout stationID="AAHC01" date="20260615" time="1000"/>
+        <checkin stationID="AAHC01" date="20260617" time="1000"/>
+        <meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="88889999"
+                       businessAccount="73804373" voucherCarCategory="undefined"
+                       voucherRentalDuration="2"/>
+        <equipmentList>
+          <equipment type="O" code="NVS" qty="1"/>
+        </equipmentList>
+      </reservation>
+      <driver countryOfResidence="BR"/>
+    </serviceParameters>
+  </serviceRequest>
+</message>
+=== [ETO_getQuote] RESPONSE ===
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceResponse errorCode="xrs.invalidrequest" returnCode="KO">
+    <serviceContext>
+      <localisation active="true">
+        <language code="en_US" />
+      </localisation>
+    </serviceContext>
+  </serviceResponse>
+</message>
+
+
+
+=== [ETO_bookReservation] REQUEST ===
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="bookReservation">
+    <serviceContext>
+      <localisation active="true">
+        <language code="en_US"/>
+      </localisation>
+    </serviceContext>
+    <serviceParameters>
+      <reservation carCategory="undefined" contractID="56935495" type="C"
+                   chargesDetail="TRE" preferredLanguage="pt_BR" email="teste@europcar.com.br">
+        <checkout stationID="AAHC01" date="20260615" time="1000"/>
+        <checkin stationID="AAHC01" date="20260617" time="1000"/>
+        <equipmentList>
+          <equipment type="O" code="NVS" qty="1"/>
+        </equipmentList>
+        <meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="88889999"
+                       businessAccount="73804373" voucherCarCategory="undefined"
+                       voucherRentalDuration="2"/>
+      </reservation>
+      <driver countryOfResidence="BR"
+              firstName="Teste"
+              lastName="Homologacao"
+              title="MR"
+              phoneNumber="+5511999999999"/>
+    </serviceParameters>
+  </serviceRequest>
+</message>
+=== [ETO_bookReservation] RESPONSE ===
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceResponse errorCode="rental.invalidcontractid" returnCode="KO">
+    <serviceContext>
+      <localisation active="true">
+        <language code="en_US" />
+      </localisation>
+    </serviceContext>
+  </serviceResponse>
+</message>
+
