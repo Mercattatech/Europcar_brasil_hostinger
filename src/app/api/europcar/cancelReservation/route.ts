@@ -42,11 +42,21 @@ export async function POST(request: Request) {
 
     let errorMsg = 'Erro desconhecido na Europcar';
     if (hasError) {
-      const errors = xrsResponse?.message?.serviceResponse?.errors?.error;
+      const errors = xrsResponse?.message?.serviceResponse?.errors?.error || xrsResponse?.serviceResponse?.errors?.error;
       if (Array.isArray(errors)) {
         errorMsg = errors.map((e: any) => e.errorText || e.$?.errorText || '').join(' | ');
       } else if (errors) {
         errorMsg = errors.errorText || errors.$?.errorText || errorMsg;
+      }
+      
+      // If we still don't have a good error message, serialize the response for debugging
+      if (errorMsg === 'Erro desconhecido na Europcar' || !errorMsg.trim()) {
+        try {
+          const rawErr = xrsResponse?.message?.serviceResponse?.errors || xrsResponse?.serviceResponse?.errors || xrsResponse;
+          errorMsg = `Erro XRS (KO): ${JSON.stringify(rawErr).slice(0, 150)}`;
+        } catch(e) {
+          errorMsg = "Erro desconhecido na Europcar (XRS KO)";
+        }
       }
 
       // Se a Europcar já tiver cancelado previamente, a string de erro costuma ter "cancel" ou "already"

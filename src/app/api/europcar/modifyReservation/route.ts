@@ -41,11 +41,29 @@ export async function POST(request: Request) {
       xrsResponse?.message?.serviceResponse?.returnCode ||
       null;
 
+    let errorMsg = 'Erro desconhecido na Europcar';
+    const errors = xrsResponse?.message?.serviceResponse?.errors?.error || xrsResponse?.serviceResponse?.errors?.error;
+    if (Array.isArray(errors)) {
+      errorMsg = errors.map((e: any) => e.errorText || e.$?.errorText || '').join(' | ');
+    } else if (errors) {
+      errorMsg = errors.errorText || errors.$?.errorText || errorMsg;
+    }
+    
+    if (errorMsg === 'Erro desconhecido na Europcar' || !errorMsg.trim()) {
+      try {
+        const rawErr = xrsResponse?.message?.serviceResponse?.errors || xrsResponse?.serviceResponse?.errors || xrsResponse;
+        errorMsg = `Erro XRS (KO): ${JSON.stringify(rawErr).slice(0, 150)}`;
+      } catch(e) {
+        errorMsg = "Erro desconhecido na Europcar (XRS KO)";
+      }
+    }
+
     const hasError = returnCode && returnCode !== 'OK';
 
     return NextResponse.json({
       success: !hasError,
       returnCode,
+      error: hasError ? errorMsg : undefined,
       raw: xrsResponse
     });
 
