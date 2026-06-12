@@ -225,7 +225,7 @@ export default function MeuPerfil() {
         setModifyMsg('✅ Reserva modificada com sucesso!');
         setTimeout(() => { setModifyTarget(null); setModifyMsg(''); loadReservas(); }, 2000);
       } else {
-        setModifyMsg(`❌ Erro: ${data.returnCode || data.error}`);
+        setModifyMsg(`❌ Erro: ${data.error || data.returnCode || 'Falha ao modificar'}`);
       }
     } catch (e: any) {
       setModifyMsg(`❌ ${e.message}`);
@@ -254,7 +254,7 @@ export default function MeuPerfil() {
         ));
         setTimeout(() => { setCancelTarget(null); setCancelMsg(''); }, 2000);
       } else {
-        setCancelMsg(`❌ Erro: ${data.returnCode || data.error}`);
+        setCancelMsg(`❌ Erro: ${data.error || data.returnCode || 'Falha ao cancelar'}`);
       }
     } catch (e: any) {
       setCancelMsg(`❌ ${e.message}`);
