@@ -47,6 +47,7 @@ export default function Home() {
             ) : session?.user ? (
                <div className="flex items-center gap-4">
                   <span className="text-[#008d36]">Olá, {session.user.name || session.user.email?.split('@')[0]}</span>
+                  <a href="/reservas" className="text-xs text-white hover:text-[#008d36] font-normal">Meu Perfil</a>
                   <button onClick={() => signOut()} className="text-xs text-gray-300 hover:text-red-500 font-normal">Sair</button>
                </div>
             ) : (

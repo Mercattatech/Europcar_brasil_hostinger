@@ -12,7 +12,9 @@ interface Reserva {
   createdAt: string;
   email?: string;
   pickupDate?: string;
+  pickupTime?: string;
   returnDate?: string;
+  returnTime?: string;
   pickupStation?: string;
   returnStation?: string;
   car?: string;
@@ -25,6 +27,17 @@ interface Reserva {
 function formatDate(d?: string) {
   if (!d || d.length < 8) return d || '—';
   return `${d.slice(6, 8)}/${d.slice(4, 6)}/${d.slice(0, 4)}`;
+}
+
+function formatTime(t?: string) {
+  if (!t || t.length < 4) return t || '—';
+  return `${t.slice(0, 2)}:${t.slice(2, 4)}`;
+}
+
+function formatIsoDate(iso?: string) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR');
 }
 
 function formatCurrency(v?: number) {
@@ -61,7 +74,7 @@ function ModalOverlay({ children, onClose }: { children: React.ReactNode; onClos
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
-export default function MinhasReservas() {
+export default function MeuPerfil() {
   const { data: session, status: sessionStatus } = useSession();
 
   // My reservations (logged in)
@@ -88,6 +101,64 @@ export default function MinhasReservas() {
 
   // Voucher modal
   const [voucherTarget, setVoucherTarget] = useState<Reserva | null>(null);
+
+  // User profile
+  const [activeTab, setActiveTab] = useState<'reservas'|'dados'>('reservas');
+  const [profileData, setProfileData] = useState({ name: '', phone: '', city: '', cpf: '', password: '' });
+  const [loadingProfile, setLoadingProfile] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileMsg, setProfileMsg] = useState('');
+
+  // ── Load user profile ──
+  const loadProfile = useCallback(async () => {
+    if (!session?.user) return;
+    setLoadingProfile(true);
+    try {
+      const res = await fetch('/api/auth/me');
+      if (res.ok) {
+        const data = await res.json();
+        setProfileData({
+          name: data.name || '',
+          phone: data.phone || '',
+          city: data.city || '',
+          cpf: data.cpf || '',
+          password: ''
+        });
+      }
+    } catch (e: any) {
+      console.error('Error loading profile', e);
+    } finally {
+      setLoadingProfile(false);
+    }
+  }, [session]);
+
+  useEffect(() => {
+    if (activeTab === 'dados') loadProfile();
+  }, [activeTab, loadProfile]);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingProfile(true);
+    setProfileMsg('');
+    try {
+      const res = await fetch('/api/auth/me', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData)
+      });
+      if (res.ok) {
+        setProfileMsg('✅ Dados atualizados com sucesso!');
+        setProfileData(prev => ({ ...prev, password: '' }));
+      } else {
+        const data = await res.json();
+        setProfileMsg(`❌ Erro: ${data.error || 'Falha ao atualizar dados'}`);
+      }
+    } catch (e: any) {
+      setProfileMsg(`❌ ${e.message}`);
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   // ── Load user reservations ──
   const loadReservas = useCallback(async () => {
@@ -403,27 +474,47 @@ export default function MinhasReservas() {
       <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' }}>
         {/* Header */}
         <div className="border-b border-white/10 bg-white/5 backdrop-blur-xl">
-          <div className="max-w-5xl mx-auto px-4 py-5 flex items-center gap-4">
-            <Link href="/" className="text-gray-400 hover:text-white transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </Link>
-            <div>
-              <h1 className="text-2xl font-black text-white">Minhas Reservas</h1>
-              <p className="text-gray-400 text-sm">Consulte, altere ou cancele suas reservas Europcar</p>
+          <div className="max-w-5xl mx-auto px-4 py-5">
+            <div className="flex items-center gap-4 mb-6">
+              <Link href="/" className="text-gray-400 hover:text-white transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </Link>
+              <div>
+                <h1 className="text-2xl font-black text-white">Meu Perfil</h1>
+                <p className="text-gray-400 text-sm">Consulte seu histórico, altere reservas e edite seus dados</p>
+              </div>
             </div>
+
+            {/* Tabs */}
+            {sessionStatus === 'authenticated' && (
+              <div className="flex gap-6">
+                <button
+                  onClick={() => setActiveTab('reservas')}
+                  className={`pb-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'reservas' ? 'border-[#008d36] text-[#008d36]' : 'border-transparent text-gray-400 hover:text-white'}`}
+                >
+                  Histórico de Compras
+                </button>
+                <button
+                  onClick={() => setActiveTab('dados')}
+                  className={`pb-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'dados' ? 'border-[#008d36] text-[#008d36]' : 'border-transparent text-gray-400 hover:text-white'}`}
+                >
+                  Meus Dados
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
         <div className="max-w-5xl mx-auto px-4 py-8 space-y-10">
 
           {/* ── Section 1: User reservations ─────────────────────────────── */}
-          {sessionStatus === 'authenticated' && (
+          {sessionStatus === 'authenticated' && activeTab === 'reservas' && (
             <section>
               <div className="flex items-center justify-between mb-5">
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  <span className="text-xl">📋</span> Reservas da minha conta
+                  <span className="text-xl">📋</span> Meu Histórico de Compras
                 </h2>
                 <button onClick={loadReservas} className="text-xs text-gray-400 hover:text-white flex items-center gap-1.5 transition-colors">
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -474,24 +565,20 @@ export default function MinhasReservas() {
                             </div>
 
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                              {r.car && (
-                                <div>
-                                  <p className="text-gray-500 text-xs mb-0.5">Veículo</p>
-                                  <p className="text-gray-200 font-medium truncate">{r.car}</p>
-                                </div>
-                              )}
-                              {r.pickupDate && (
-                                <div>
-                                  <p className="text-gray-500 text-xs mb-0.5">Retirada</p>
-                                  <p className="text-gray-200 font-medium">{formatDate(r.pickupDate)}</p>
-                                </div>
-                              )}
-                              {r.returnDate && (
-                                <div>
-                                  <p className="text-gray-500 text-xs mb-0.5">Devolução</p>
-                                  <p className="text-gray-200 font-medium">{formatDate(r.returnDate)}</p>
-                                </div>
-                              )}
+                              <div>
+                                <p className="text-gray-500 text-xs mb-0.5">Data da Reserva</p>
+                                <p className="text-gray-200 font-medium">{formatIsoDate(r.createdAt)}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500 text-xs mb-0.5">Retirada (Data e Hora)</p>
+                                <p className="text-gray-200 font-medium">{r.pickupDate ? formatDate(r.pickupDate) : '—'} {r.pickupTime ? formatTime(r.pickupTime) : ''}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500 text-xs mb-0.5">Trecho</p>
+                                <p className="text-gray-200 font-medium truncate" title={`${r.pickupStation || '—'} → ${r.returnStation || '—'}`}>
+                                  {r.pickupStation || '—'} → {r.returnStation || '—'}
+                                </p>
+                              </div>
                               {r.total != null && (
                                 <div>
                                   <p className="text-gray-500 text-xs mb-0.5">Total</p>
@@ -532,8 +619,63 @@ export default function MinhasReservas() {
             </section>
           )}
 
+          {sessionStatus === 'authenticated' && activeTab === 'dados' && (
+            <section className="bg-white/5 border border-white/10 rounded-2xl p-6">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2 mb-5">
+                <span className="text-xl">👤</span> Atualizar Meus Dados
+              </h2>
+              {loadingProfile ? (
+                 <div className="flex items-center justify-center py-10">
+                   <div className="w-6 h-6 border-2 border-[#008d36] border-t-transparent rounded-full animate-spin" />
+                 </div>
+              ) : (
+                <form onSubmit={handleSaveProfile} className="space-y-4 max-w-2xl">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1.5">Nome Completo</label>
+                      <input type="text" value={profileData.name} onChange={e => setProfileData({...profileData, name: e.target.value})} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm focus:border-[#008d36] focus:outline-none transition-colors" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1.5">E-mail</label>
+                      <input type="email" value={session?.user?.email || ''} disabled className="w-full bg-gray-900 border border-gray-800 rounded-lg px-4 py-2.5 text-gray-500 text-sm cursor-not-allowed" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1.5">Telefone</label>
+                      <input type="text" value={profileData.phone} onChange={e => setProfileData({...profileData, phone: e.target.value})} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm focus:border-[#008d36] focus:outline-none transition-colors" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1.5">CPF</label>
+                      <input type="text" value={profileData.cpf} onChange={e => setProfileData({...profileData, cpf: e.target.value})} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm focus:border-[#008d36] focus:outline-none transition-colors" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-300 mb-1.5">Cidade</label>
+                      <input type="text" value={profileData.city} onChange={e => setProfileData({...profileData, city: e.target.value})} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm focus:border-[#008d36] focus:outline-none transition-colors" />
+                    </div>
+                    <div className="md:col-span-2 mt-4 pt-4 border-t border-white/10">
+                      <label className="block text-sm font-medium text-gray-300 mb-1.5">Nova Senha <span className="text-gray-500 font-normal">(deixe em branco para não alterar)</span></label>
+                      <input type="password" placeholder="••••••••" value={profileData.password} onChange={e => setProfileData({...profileData, password: e.target.value})} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm focus:border-[#008d36] focus:outline-none transition-colors" />
+                    </div>
+                  </div>
+
+                  {profileMsg && (
+                    <p className={`mt-4 text-sm font-medium ${profileMsg.startsWith('✅') ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {profileMsg}
+                    </p>
+                  )}
+
+                  <div className="pt-4">
+                    <button type="submit" disabled={savingProfile} className="bg-[#008d36] hover:bg-[#007a2d] disabled:opacity-50 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors flex items-center gap-2">
+                      {savingProfile ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : 'Salvar Alterações'}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </section>
+          )}
+
           {/* ── Section 2: Manual search ──────────────────────────────────── */}
-          <section>
+          {activeTab === 'reservas' && (
+            <section>
             <h2 className="text-lg font-bold text-white flex items-center gap-2 mb-5">
               <span className="text-xl">🔍</span> Buscar reserva por número
             </h2>

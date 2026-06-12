@@ -29,14 +29,15 @@ export async function GET(req: Request) {
              createdAt: r.createdAt,
              email: cd?.email,
              pickupDate: cd?.booking?.pickupDate,
+             pickupTime: cd?.booking?.pickupTime,
              returnDate: cd?.booking?.returnDate,
+             returnTime: cd?.booking?.returnTime,
              pickupStation: cd?.booking?.pickupStation,
              returnStation: cd?.booking?.returnStation,
              car: cd?.booking?.car?.carCategoryName || cd?.booking?.car?.name,
              total: cd?.booking?.car?.totalRateEstimateInBookingCurrency || cd?.booking?.totalDay,
-             paymentMethod: cd?.booking?.paymentMethod, // Assuming we save payment method somewhere, actually let's check
-             // Let's pass the whole customerData just in case, but keep it clean
-             paymentData: cd?.booking?.paymentData || r.status, // We didn't save paymentData method directly, but status gives a hint
+             paymentMethod: cd?.booking?.paymentMethod,
+             paymentData: cd?.booking?.paymentData || r.status,
          };
       }).filter(r => r.email?.toLowerCase() === session.user?.email?.toLowerCase());
 
