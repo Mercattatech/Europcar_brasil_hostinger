@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { callXRS } from '@/lib/europcar/xrsClient';
+import prisma from '@/lib/prisma';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
