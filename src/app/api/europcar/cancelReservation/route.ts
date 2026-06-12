@@ -38,6 +38,41 @@ export async function POST(request: Request) {
 
     const hasError = returnCode && returnCode !== 'OK';
 
+    let errorMsg = 'Erro desconhecido na Europcar';
+    if (hasError) {
+      const errors = xrsResponse?.message?.serviceResponse?.errors?.error;
+      if (Array.isArray(errors)) {
+        errorMsg = errors.map((e: any) => e.errorText || e.$?.errorText || '').join(' | ');
+      } else if (errors) {
+        errorMsg = errors.errorText || errors.$?.errorText || errorMsg;
+      }
+
+      // Se a Europcar já tiver cancelado previamente, a string de erro costuma ter "cancel" ou "already"
+      const isAlreadyCancelled = errorMsg.toLowerCase().includes('cancel') || errorMsg.toLowerCase().includes('already');
+      if (isAlreadyCancelled) {
+        try {
+          await prisma.localReservation.update({
+            where: { resNumber },
+            data: { status: 'CANCELLED' }
+          });
+        } catch (dbErr) {}
+        
+        return NextResponse.json({
+          success: true,
+          returnCode,
+          error: "Reserva já estava cancelada na Europcar.",
+          raw: xrsResponse
+        });
+      }
+
+      return NextResponse.json({
+        success: false,
+        returnCode,
+        error: errorMsg,
+        raw: xrsResponse
+      }, { status: 400 });
+    }
+
     // Se cancelou com sucesso na Europcar, atualiza o status local para CANCELLED
     if (!hasError) {
       try {
@@ -47,12 +82,11 @@ export async function POST(request: Request) {
         });
       } catch (dbErr) {
         console.error("Erro ao atualizar status local para CANCELLED:", dbErr);
-        // Não falha o retorno pois na Europcar já foi cancelado
       }
     }
 
     return NextResponse.json({
-      success: !hasError,
+      success: true,
       returnCode,
       raw: xrsResponse
     });
