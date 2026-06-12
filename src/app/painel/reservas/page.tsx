@@ -135,7 +135,7 @@ export default function PainelReservas() {
                      <p className="text-xs text-yellow-200/80">• Mais de 48h de antecedência: <strong className="text-yellow-200">sem cobrança.</strong></p>
                      <p className="text-xs text-yellow-200/80">• Entre 24h e 48h antes: <strong className="text-yellow-200">50% do valor da primeira diária.</strong></p>
                      <p className="text-xs text-yellow-200/80">• Menos de 24h ou no-show: <strong className="text-yellow-200">100% da primeira diária.</strong></p>
-                     <p className="text-xs text-yellow-200/80">• Modalidade "Pagar no Balcão" (NP): <strong className="text-yellow-200">cancelamento gratuito.</strong></p>
+                     <p className="text-xs text-yellow-200/80">• Modalidade &quot;Pagar no Balcão&quot; (NP): <strong className="text-yellow-200">cancelamento gratuito.</strong></p>
                   </div>
 
                   <div className="flex gap-3">

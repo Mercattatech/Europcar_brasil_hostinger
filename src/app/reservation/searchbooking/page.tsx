@@ -255,13 +255,13 @@ export default function SearchBookingPage() {
                   <span className="text-[10px] text-green-700 font-bold uppercase mt-1">Trip</span>
                   <span className="text-[10px] text-green-700 font-bold">Advisor</span>
                </div>
-               <p className="text-[11px] font-bold text-gray-800 leading-tight">TripAdvisor Travelers' Favourites 2019 (for Germany, France and Spain)</p>
+               <p className="text-[11px] font-bold text-gray-800 leading-tight">TripAdvisor Travelers&apos; Favourites 2019 (for Germany, France and Spain)</p>
             </div>
             <div className="flex items-center gap-4 max-w-[220px]">
                <div className="w-12 h-12 rounded-full border border-yellow-500 overflow-hidden shrink-0 bg-yellow-50 flex items-center justify-center shadow-sm">
                   <span className="text-yellow-600 text-xs font-black italic">WTA</span>
                </div>
-               <p className="text-[11px] font-bold text-gray-800 leading-tight">World's Leading Car Rental Company Website</p>
+               <p className="text-[11px] font-bold text-gray-800 leading-tight">World&apos;s Leading Car Rental Company Website</p>
             </div>
             <div className="flex items-center gap-4 max-w-[200px]">
                <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 bg-[#ff690f] flex items-center justify-center shadow-sm">
