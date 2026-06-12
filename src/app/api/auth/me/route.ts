@@ -62,6 +62,15 @@ export async function PUT(req: Request) {
       where: { email: session.user.email },
       data: updateData,
     });
+    
+    // Trigger Email
+    if (updatedUser.email) {
+      import('@/lib/emailService').then(({ sendTransactionalEmail }) => {
+         sendTransactionalEmail(updatedUser.email!, 'ATUALIZA_DADOS', {
+            NOME: updatedUser.name || '',
+         }).catch(console.error);
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

@@ -16,6 +16,7 @@ const sidebarLinks = [
    { href: "/painel/promocoes", label: "Promoções", icon: "🏷️" },
    { href: "/painel/extras", label: "Extras & Proteções", icon: "🛡️" },
    { href: "/painel/config", label: "Config Pagamento", icon: "💳" },
+   { href: "/painel/config-email", label: "E-mails Automáticos", icon: "✉️" },
    { href: "/painel/logs-xrs", label: "XRS Debugger", icon: "🔍" },
    { href: "/painel/logs", label: "Logs Cielo", icon: "📄" },
 ];

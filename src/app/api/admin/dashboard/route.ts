@@ -55,7 +55,8 @@ export async function GET(request: Request) {
          pendingReservations,
          cancelledReservations,
          recentUsers,
-         recentReservations
+         recentReservations,
+         emailBlock
       ] = await Promise.all([
          prisma.user.count(),
          prisma.user.count({ where: { status: 'BLOCKED' } }),
@@ -66,15 +67,28 @@ export async function GET(request: Request) {
          prisma.localReservation.count({ where: { ...resWhere, status: 'CANCELLED' } }),
          prisma.user.findMany({ orderBy: { createdAt: 'desc' }, take: 5, select: { id: true, name: true, email: true, createdAt: true } }),
          prisma.localReservation.findMany({ where: resWhere, orderBy: { createdAt: 'desc' }, take: 5 }),
+         prisma.contentBlock.findUnique({ where: { key: 'RESEND_MONTHLY_COUNT' } })
       ]);
 
       const activeUsers = totalUsers - blockedUsers;
+      
+      let emailMonthlyCount = 0;
+      if (emailBlock?.value_ptBR) {
+         try {
+            const data = JSON.parse(emailBlock.value_ptBR);
+            const currentMonth = new Date().toISOString().slice(0, 7);
+            if (data.month === currentMonth) {
+               emailMonthlyCount = data.count || 0;
+            }
+         } catch(e){}
+      }
 
       return NextResponse.json({
          users: { total: totalUsers, active: activeUsers, blocked: blockedUsers, admins: adminUsers },
          reservations: { total: totalReservations, paid: paidReservations, pending: pendingReservations, cancelled: cancelledReservations },
          recentUsers,
-         recentReservations
+         recentReservations,
+         emailCount: emailMonthlyCount
       });
    } catch (error: any) {
       console.error('Dashboard error:', error);

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { callXRS } from '@/lib/europcar/xrsClient';
 import prisma from '@/lib/prisma';
+import { sendTransactionalEmail } from '@/lib/emailService';
+
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
@@ -51,10 +53,21 @@ export async function POST(request: Request) {
       const isAlreadyCancelled = errorMsg.toLowerCase().includes('cancel') || errorMsg.toLowerCase().includes('already');
       if (isAlreadyCancelled) {
         try {
-          await prisma.localReservation.update({
+          const localRes = await prisma.localReservation.update({
             where: { resNumber },
             data: { status: 'CANCELLED' }
           });
+          
+          if (localRes?.customerData) {
+             const cd: any = localRes.customerData;
+             if (cd.email) {
+                await sendTransactionalEmail(cd.email, 'CANCELAMENTO', {
+                   NOME: cd.nome || '',
+                   SOBRENOME: cd.sobrenome || '',
+                   NUMERO_RESERVA: resNumber
+                });
+             }
+          }
         } catch (dbErr) {}
         
         return NextResponse.json({
@@ -76,10 +89,22 @@ export async function POST(request: Request) {
     // Se cancelou com sucesso na Europcar, atualiza o status local para CANCELLED
     if (!hasError) {
       try {
-        await prisma.localReservation.update({
+        const localRes = await prisma.localReservation.update({
           where: { resNumber },
           data: { status: 'CANCELLED' }
         });
+        
+        // Trigger Email
+        if (localRes?.customerData) {
+           const cd: any = localRes.customerData;
+           if (cd.email) {
+              await sendTransactionalEmail(cd.email, 'CANCELAMENTO', {
+                 NOME: cd.nome || '',
+                 SOBRENOME: cd.sobrenome || '',
+                 NUMERO_RESERVA: resNumber
+              });
+           }
+        }
       } catch (dbErr) {
         console.error("Erro ao atualizar status local para CANCELLED:", dbErr);
       }

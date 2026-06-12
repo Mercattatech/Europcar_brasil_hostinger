@@ -64,6 +64,21 @@ export async function GET(request: Request) {
                          status: 'CONFIRMED_PREPAID'
                      }
                  });
+                 
+                 // Trigger Email PIX Sucesso
+                 try {
+                    if (parsedData?.email) {
+                       import('@/lib/emailService').then(({ sendTransactionalEmail }) => {
+                          sendTransactionalEmail(parsedData.email, 'RESERVA_SUCESSO', {
+                             NOME: parsedData.nome || '',
+                             NUMERO_RESERVA: resNumber,
+                             VALOR: String(cieloJson.Payment.Amount / 100) || '',
+                             DATA_RETIRADA: parsedData.booking?.pickupDate || '',
+                             CARRO: parsedData.booking?.car?.carCategoryName || parsedData.booking?.car?.name || ''
+                          }).catch(console.error);
+                       });
+                    }
+                 } catch(e){}
                  return NextResponse.json({ status: 'PAID', resNumber });
              } else {
                  return NextResponse.json({ status: 'PENDING' });

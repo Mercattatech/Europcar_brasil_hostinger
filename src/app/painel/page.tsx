@@ -88,6 +88,14 @@ export default function PainelDashboard() {
             </div>
          ) : data && (
             <>
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                 <div className={`bg-gradient-to-br from-fuchsia-600 to-fuchsia-800 rounded-xl p-5 shadow-lg relative overflow-hidden`}>
+                   <div className="absolute top-3 right-3 text-2xl opacity-30">✉️</div>
+                   <p className="text-white/70 text-xs font-bold uppercase tracking-wide">E-mails (Mês Atual)</p>
+                   <p className="text-3xl font-black text-white mt-2">{data.emailCount || 0}</p>
+                 </div>
+               </div>
+
                {/* User Metrics */}
                <div>
                   <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Usuários</h2>

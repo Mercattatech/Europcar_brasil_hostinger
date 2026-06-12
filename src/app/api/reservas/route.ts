@@ -14,8 +14,12 @@ const CID_TO_BA: Record<string, string> = {
 };
 
 export async function POST(request: Request) {
+   let customerEmail = '';
+   let customerName = '';
    try {
       const { bookingData, customerData, paymentData, voucherData } = await request.json();
+      customerEmail = customerData?.email || '';
+      customerName = customerData?.nome || '';
 
       const forwardedFor = request.headers.get("x-forwarded-for");
       const ip = forwardedFor ? forwardedFor.split(',')[0] : 'Desconhecido';
@@ -296,23 +300,17 @@ export async function POST(request: Request) {
       if (finalResNumber && paymentData.method !== 'PIX') {
         // Only send if it's not PIX (PIX sends after payment confirmation)
         try {
-          await sendBookingConfirmation({
-            toEmail: customerData.email,
-            customerName: customerData.nome,
-            resNumber: finalResNumber,
-            carName: bookingData.car?.carCategoryName || bookingData.car?.name || "Veículo não identificado",
-            pickupStation: bookingData.pickupStation,
-            returnStation: bookingData.returnStation || bookingData.pickupStation,
-            pickupDate: bookingData.pickupDate,
-            returnDate: bookingData.returnDate,
-            paymentMethod: paymentData.method,
-            totalBRL: bookingData.car?.totalRateEstimateInBookingCurrency 
-              ? parseFloat(bookingData.car.totalRateEstimateInBookingCurrency) 
-              : undefined,
-            isOnRequest: isOnRequest
+          import('@/lib/emailService').then(({ sendTransactionalEmail }) => {
+             sendTransactionalEmail(customerData.email, 'RESERVA_SUCESSO', {
+               NOME: customerData.nome || '',
+               NUMERO_RESERVA: finalResNumber || '',
+               VALOR: bookingData.car?.totalRateEstimateInBookingCurrency || '',
+               DATA_RETIRADA: bookingData.pickupDate || '',
+               CARRO: bookingData.car?.carCategoryName || bookingData.car?.name || ''
+             }).catch(console.error);
           });
         } catch (emailErr) {
-          console.error('[reservas] Error calling sendBookingConfirmation:', emailErr);
+          console.error('[reservas] Error calling sendTransactionalEmail:', emailErr);
         }
       }
 
@@ -328,6 +326,18 @@ export async function POST(request: Request) {
 
    } catch (error: any) {
       console.error(error);
+      const isPaymentError = error.message && (error.message.includes('Cielo') || error.message.includes('Pagamento Recusado'));
+      
+      // Trigger Falha Pagamento
+      if (isPaymentError && customerEmail) {
+        try {
+           import('@/lib/emailService').then(({ sendTransactionalEmail }) => {
+              sendTransactionalEmail(customerEmail, 'FALHA_PAGAMENTO', {
+                NOME: customerName
+              }).catch(console.error);
+           });
+        } catch(e){}
+      }
       return NextResponse.json({ error: 'Erro ao processar reserva: ' + error.message }, { status: 500 });
    }
 }
