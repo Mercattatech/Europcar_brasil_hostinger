@@ -729,6 +729,7 @@ export default function MeuPerfil() {
               )}
             </div>
           </section>
+          )}
 
           {/* ── Not logged in CTA ─────────────────────────────────────────── */}
           {sessionStatus === 'unauthenticated' && (
