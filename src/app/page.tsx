@@ -157,7 +157,7 @@ export default function Home() {
             href="https://www.europcar.com/en-us/loyalty-program" target="_blank" rel="noopener noreferrer"
             className="text-white text-sm font-bold hover:text-europcar-green flex items-center justify-center gap-2"
           >
-            Member's Discount <span>→</span>
+            Member&apos;s Discount <span>→</span>
           </a>
           <a
             href="#"
