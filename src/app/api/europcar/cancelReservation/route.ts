@@ -37,6 +37,19 @@ export async function POST(request: Request) {
 
     const hasError = returnCode && returnCode !== 'OK';
 
+    // Se cancelou com sucesso na Europcar, atualiza o status local para CANCELLED
+    if (!hasError) {
+      try {
+        await prisma.localReservation.update({
+          where: { resNumber },
+          data: { status: 'CANCELLED' }
+        });
+      } catch (dbErr) {
+        console.error("Erro ao atualizar status local para CANCELLED:", dbErr);
+        // Não falha o retorno pois na Europcar já foi cancelado
+      }
+    }
+
     return NextResponse.json({
       success: !hasError,
       returnCode,

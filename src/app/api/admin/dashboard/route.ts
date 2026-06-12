@@ -14,12 +14,38 @@ async function checkAdmin() {
    return dbUser?.role === 'ADMIN';
 }
 
-export async function GET() {
+export async function GET(request: Request) {
    if (!(await checkAdmin())) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
    }
 
    try {
+      const { searchParams } = new URL(request.url);
+      const startDate = searchParams.get('startDate');
+      const endDate = searchParams.get('endDate');
+      const search = searchParams.get('search');
+
+      const dateFilter: any = {};
+      if (startDate) dateFilter.gte = new Date(startDate);
+      if (endDate) {
+         const end = new Date(endDate);
+         end.setHours(23, 59, 59, 999);
+         dateFilter.lte = end;
+      }
+
+      // Base query for reservations
+      const resWhere: any = {};
+      if (Object.keys(dateFilter).length > 0) {
+         resWhere.createdAt = dateFilter;
+      }
+      
+      if (search) {
+         resWhere.OR = [
+            { resNumber: { contains: search, mode: 'insensitive' } },
+            { merchantOrderId: { contains: search, mode: 'insensitive' } },
+         ];
+      }
+
       const [
          totalUsers,
          blockedUsers,
@@ -34,12 +60,12 @@ export async function GET() {
          prisma.user.count(),
          prisma.user.count({ where: { status: 'BLOCKED' } }),
          prisma.user.count({ where: { role: 'ADMIN' } }),
-         prisma.localReservation.count(),
-         prisma.localReservation.count({ where: { status: 'CONFIRMED_PREPAID' } }),
-         prisma.localReservation.count({ where: { status: { in: ['PENDING_PIX', 'CONFIRMED_NON_PREPAID'] } } }),
-         prisma.localReservation.count({ where: { status: 'CANCELLED' } }),
+         prisma.localReservation.count({ where: resWhere }),
+         prisma.localReservation.count({ where: { ...resWhere, status: 'CONFIRMED_PREPAID' } }),
+         prisma.localReservation.count({ where: { ...resWhere, status: { in: ['PENDING_PIX', 'CONFIRMED_NON_PREPAID'] } } }),
+         prisma.localReservation.count({ where: { ...resWhere, status: 'CANCELLED' } }),
          prisma.user.findMany({ orderBy: { createdAt: 'desc' }, take: 5, select: { id: true, name: true, email: true, createdAt: true } }),
-         prisma.localReservation.findMany({ orderBy: { createdAt: 'desc' }, take: 5 }),
+         prisma.localReservation.findMany({ where: resWhere, orderBy: { createdAt: 'desc' }, take: 5 }),
       ]);
 
       const activeUsers = totalUsers - blockedUsers;
