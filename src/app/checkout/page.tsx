@@ -17,6 +17,8 @@ export default function CheckoutPage() {
   const [emailError, setEmailError] = useState("");
   const [telefone, setTelefone] = useState("");
   const [cpf, setCpf] = useState("");
+  const [loyaltyProgramId, setLoyaltyProgramId] = useState("");
+  const [loyaltyId, setLoyaltyId] = useState("");
 
   // Mascaras e Validações
   const maskPhone = (value: string) => {
@@ -303,7 +305,7 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           bookingData: booking,
-          customerData: { nome, sobrenome, email, telefone, cpf },
+          customerData: { nome, sobrenome, email, telefone, cpf, loyaltyProgramId, loyaltyId },
           paymentData: {
             method: paymentMethod,
             amountInCents,
@@ -635,6 +637,18 @@ export default function CheckoutPage() {
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">CPF</label>
                   <input required value={cpf} onChange={e => setCpf(e.target.value)} className="w-full border rounded p-3 outline-none focus:border-[#008d36]" placeholder="000.000.000-00" />
+                </div>
+              </div>
+              
+              {/* Programa de Fidelidade */}
+              <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Programa de Fidelidade (ID) <span className="text-gray-400 font-normal">(Opcional)</span></label>
+                  <input value={loyaltyProgramId} onChange={e => setLoyaltyProgramId(e.target.value.toUpperCase())} className="w-full border rounded p-3 outline-none focus:border-[#008d36]" placeholder="Ex: PRIV" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Número Fidelidade <span className="text-gray-400 font-normal">(Opcional)</span></label>
+                  <input value={loyaltyId} onChange={e => setLoyaltyId(e.target.value)} className="w-full border rounded p-3 outline-none focus:border-[#008d36]" placeholder="Ex: 12345678" />
                 </div>
               </div>
             </div>

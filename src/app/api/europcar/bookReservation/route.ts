@@ -44,6 +44,11 @@ export async function POST(request: Request) {
         </meanOfPayment>`;
     }
 
+    let loyaltyXml = '';
+    if (driverData?.loyaltyProgramId && driverData?.loyaltyId) {
+      loyaltyXml = `\n        <loyaltyProgram programId="${driverData.loyaltyProgramId}" loyaltyID="${driverData.loyaltyId}"/>`;
+    }
+
     const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
 <message>
   <serviceRequest serviceCode="bookReservation">
@@ -51,7 +56,7 @@ export async function POST(request: Request) {
       <reservation carCategory="${carCategory}" rateId="${rateId}" chargesDetail="TRE" prepaidMode="NP"${contractAttr}>
         <checkout stationID="${pickupStation}" date="${pickupDate}" time="${pickupTime || '1000'}"/>
         <checkin stationID="${returnStation || pickupStation}" date="${returnDate}" time="${returnTime || '1000'}"/>
-        <equipmentList/>${meanOfPaymentXml}
+        <equipmentList/>${meanOfPaymentXml}${loyaltyXml}
       </reservation>
       <driver countryOfResidence="BR"
               firstName="${driverData?.firstName || 'Test'}"
