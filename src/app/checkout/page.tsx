@@ -19,6 +19,7 @@ export default function CheckoutPage() {
   const [cpf, setCpf] = useState("");
   const [loyaltyProgramId, setLoyaltyProgramId] = useState("");
   const [loyaltyId, setLoyaltyId] = useState("");
+  const [flightNumber, setFlightNumber] = useState("");
 
   // Mascaras e Validações
   const maskPhone = (value: string) => {
@@ -305,7 +306,7 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           bookingData: booking,
-          customerData: { nome, sobrenome, email, telefone, cpf, loyaltyProgramId, loyaltyId },
+          customerData: { nome, sobrenome, email, telefone, cpf, loyaltyProgramId, loyaltyId, flightNumber },
           paymentData: {
             method: paymentMethod,
             amountInCents,
@@ -640,7 +641,7 @@ export default function CheckoutPage() {
                 </div>
               </div>
               
-              {/* Programa de Fidelidade */}
+              {/* Programa de Fidelidade e Voo */}
               <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Programa de Fidelidade (ID) <span className="text-gray-400 font-normal">(Opcional)</span></label>
@@ -650,6 +651,10 @@ export default function CheckoutPage() {
                   <label className="block text-xs font-bold text-gray-700 mb-1">Número Fidelidade <span className="text-gray-400 font-normal">(Opcional)</span></label>
                   <input value={loyaltyId} onChange={e => setLoyaltyId(e.target.value)} className="w-full border rounded p-3 outline-none focus:border-[#008d36]" placeholder="Ex: 12345678" />
                 </div>
+              </div>
+              <div className="mt-4">
+                <label className="block text-xs font-bold text-gray-700 mb-1">Número do Voo <span className="text-gray-400 font-normal">(Opcional)</span></label>
+                <input value={flightNumber} onChange={e => setFlightNumber(e.target.value.toUpperCase())} className="w-full border rounded p-3 outline-none focus:border-[#008d36]" placeholder="Ex: LA3212" />
               </div>
             </div>
 
