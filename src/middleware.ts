@@ -24,14 +24,19 @@ export async function middleware(request: NextRequest) {
       // Construir URL absoluta para a API de status
       const protocol = request.headers.get('x-forwarded-proto') || 'https';
       const host = request.headers.get('host') || request.nextUrl.host;
-      const statusUrl = `${protocol}://${host}/api/maintenance/status`;
+      // Cache-bust: adicionar timestamp para garantir que nunca use cache
+      const statusUrl = `${protocol}://${host}/api/maintenance/status?_t=${Date.now()}`;
 
       const res = await fetch(statusUrl, {
          method: 'GET',
+         cache: 'no-store',
          headers: {
             'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache, no-store',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
          },
+         // @ts-ignore - Next.js extended fetch options
+         next: { revalidate: 0 },
       });
 
       if (res.ok) {

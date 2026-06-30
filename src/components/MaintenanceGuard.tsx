@@ -22,9 +22,9 @@ export default function MaintenanceGuard() {
 
       const checkMaintenance = async () => {
          try {
-            const res = await fetch("/api/maintenance/status", {
+            const res = await fetch(`/api/maintenance/status?_t=${Date.now()}`, {
                cache: "no-store",
-               headers: { "Cache-Control": "no-cache" },
+               headers: { "Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache" },
             });
             const data = await res.json();
 
