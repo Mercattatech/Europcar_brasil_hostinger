@@ -28,6 +28,8 @@ export default function PainelReservas() {
    const [loading, setLoading] = useState(true);
    const [statusFilter, setStatusFilter] = useState("ALL");
    const [search, setSearch] = useState("");
+   const [startDate, setStartDate] = useState("");
+   const [endDate, setEndDate] = useState("");
    const [expandedRow, setExpandedRow] = useState<string | null>(null);
    const [changingStatus, setChangingStatus] = useState<string | null>(null);
    const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -45,6 +47,8 @@ export default function PainelReservas() {
          const params = new URLSearchParams();
          if (statusFilter !== "ALL") params.set("status", statusFilter);
          if (search) params.set("search", search);
+         if (startDate) params.set("startDate", startDate);
+         if (endDate) params.set("endDate", endDate);
          const res = await fetch(`/api/admin/reservations?${params}`);
          const data = await res.json();
          setReservations(Array.isArray(data) ? data : []);
@@ -55,7 +59,7 @@ export default function PainelReservas() {
       }
    };
 
-   useEffect(() => { fetchReservations(); }, [statusFilter]);
+   useEffect(() => { fetchReservations(); }, [statusFilter, startDate, endDate]);
 
    const handleSearch = (e: React.FormEvent) => {
       e.preventDefault();
@@ -187,6 +191,37 @@ export default function PainelReservas() {
             ))}
          </div>
 
+         {/* Date Filter */}
+         <div className="flex flex-wrap items-end gap-3">
+            <div>
+               <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Data Início</label>
+               <input
+                  type="date"
+                  value={startDate}
+                  onChange={e => setStartDate(e.target.value)}
+                  className="bg-gray-900 border border-gray-800 rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-green-600 transition-colors [color-scheme:dark]"
+               />
+            </div>
+            <div>
+               <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Data Fim</label>
+               <input
+                  type="date"
+                  value={endDate}
+                  onChange={e => setEndDate(e.target.value)}
+                  className="bg-gray-900 border border-gray-800 rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-green-600 transition-colors [color-scheme:dark]"
+               />
+            </div>
+            {(startDate || endDate) && (
+               <button
+                  onClick={() => { setStartDate(""); setEndDate(""); }}
+                  className="bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white px-3 py-2.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5"
+               >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                  Limpar datas
+               </button>
+            )}
+         </div>
+
          {/* Search */}
          <form onSubmit={handleSearch} className="flex gap-3">
             <div className="relative flex-1">
@@ -195,7 +230,7 @@ export default function PainelReservas() {
                </svg>
                <input
                   type="text"
-                  placeholder="Buscar por código de reserva ou ID..."
+                  placeholder="Buscar por reserva, nome, email ou CPF..."
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   className="w-full bg-gray-900 border border-gray-800 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 outline-none focus:border-green-600 transition-colors"

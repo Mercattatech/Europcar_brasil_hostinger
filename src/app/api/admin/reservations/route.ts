@@ -23,16 +23,81 @@ export async function GET(req: Request) {
       const { searchParams } = new URL(req.url);
       const statusFilter = searchParams.get('status');
       const search = searchParams.get('search');
+      const startDate = searchParams.get('startDate');
+      const endDate = searchParams.get('endDate');
 
+      // Se tem busca de texto, usar raw query para ILIKE no JSON (case-insensitive)
+      if (search) {
+         const conditions: string[] = [];
+         const params: any[] = [];
+         let paramIndex = 1;
+
+         // Busca no resNumber
+         conditions.push(`"resNumber" ILIKE $${paramIndex}`);
+         params.push(`%${search}%`);
+         paramIndex++;
+
+         // Busca no merchantOrderId
+         conditions.push(`"merchantOrderId" ILIKE $${paramIndex}`);
+         params.push(`%${search}%`);
+         paramIndex++;
+
+         // Busca dentro do JSON customerData (cast para texto para ILIKE)
+         conditions.push(`CAST("customerData" AS TEXT) ILIKE $${paramIndex}`);
+         params.push(`%${search}%`);
+         paramIndex++;
+
+         let sql = `SELECT * FROM "LocalReservation" WHERE (${conditions.join(' OR ')})`;
+
+         // Filtro por status
+         if (statusFilter && statusFilter !== 'ALL') {
+            sql += ` AND "status" = $${paramIndex}`;
+            params.push(statusFilter);
+            paramIndex++;
+         }
+
+         // Filtro por data
+         if (startDate) {
+            sql += ` AND "createdAt" >= $${paramIndex}`;
+            params.push(new Date(startDate));
+            paramIndex++;
+         }
+         if (endDate) {
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+            sql += ` AND "createdAt" <= $${paramIndex}`;
+            params.push(end);
+            paramIndex++;
+         }
+
+         sql += ` ORDER BY "createdAt" DESC`;
+
+         const rawReservations: any[] = await prisma.$queryRawUnsafe(sql, ...params);
+         // Raw queries retornam BigInt para Int — converter para Number para serialização JSON
+         const reservations = rawReservations.map((r: any) => ({
+            ...r,
+            amountInCents: r.amountInCents ? Number(r.amountInCents) : null,
+         }));
+         return NextResponse.json(reservations);
+      }
+
+      // Sem busca de texto — usar Prisma padrão
       const where: any = {};
+
       if (statusFilter && statusFilter !== 'ALL') {
          where.status = statusFilter;
       }
-      if (search) {
-         where.OR = [
-            { resNumber: { contains: search } },
-            { merchantOrderId: { contains: search } },
-         ];
+
+      if (startDate || endDate) {
+         where.createdAt = {};
+         if (startDate) {
+            where.createdAt.gte = new Date(startDate);
+         }
+         if (endDate) {
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+            where.createdAt.lte = end;
+         }
       }
 
       const reservations = await prisma.localReservation.findMany({
@@ -46,3 +111,4 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Erro ao buscar reservas' }, { status: 500 });
    }
 }
+
