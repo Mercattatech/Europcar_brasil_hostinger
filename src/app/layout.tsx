@@ -11,6 +11,7 @@ export const metadata: Metadata = {
 
 import AuthProvider from "@/components/auth/AuthProvider";
 import Footer from "@/components/Footer";
+import MaintenanceGuard from "@/components/MaintenanceGuard";
 
 export default function RootLayout({
   children,
@@ -21,6 +22,7 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body className={inter.className}>
         <AuthProvider>
+          <MaintenanceGuard />
           {children}
           <Footer />
         </AuthProvider>

@@ -169,3 +169,14 @@ model Promotion {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
+
+// Maintenance Mode Configuration
+model MaintenanceConfig {
+  id          String    @id @default(cuid())
+  redirectUrl String    // URL de redirecionamento durante manutenção
+  isActive    Boolean   @default(false)
+  returnDate  DateTime? // Data para retorno automático
+  reason      String?   // Motivo da manutenção (opcional)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
