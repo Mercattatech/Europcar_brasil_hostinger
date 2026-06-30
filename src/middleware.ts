@@ -35,8 +35,6 @@ export async function middleware(request: NextRequest) {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
             'Pragma': 'no-cache',
          },
-         // @ts-ignore - Next.js extended fetch options
-         next: { revalidate: 0 },
       });
 
       if (res.ok) {
