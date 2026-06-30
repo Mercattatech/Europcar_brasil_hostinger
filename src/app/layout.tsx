@@ -12,6 +12,7 @@ export const metadata: Metadata = {
 import AuthProvider from "@/components/auth/AuthProvider";
 import Footer from "@/components/Footer";
 import MaintenanceGuard from "@/components/MaintenanceGuard";
+import GoogleTags from "@/components/GoogleTags";
 
 export default function RootLayout({
   children,
@@ -23,6 +24,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <AuthProvider>
           <MaintenanceGuard />
+          <GoogleTags />
           {children}
           <Footer />
         </AuthProvider>
