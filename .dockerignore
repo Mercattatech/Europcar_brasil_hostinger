@@ -31,6 +31,11 @@ build
 # Arquivos de teste / scripts pontuais
 prisma_*.ts
 prisma_*.js
+scratch/
+
+# AI / IDE configs
+.claude/
+.agents/
 
 # Zips e artifacts
 *.zip

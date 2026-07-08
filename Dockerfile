@@ -31,29 +31,20 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Variáveis de build necessárias (valores reais são injetados em runtime pelo Coolify)
-ARG DATABASE_URL
 ARG NEXTAUTH_URL
 ARG NEXTAUTH_SECRET
-ARG XRS_ENDPOINT_URL
-ARG XRS_CALLER_CODE
-ARG XRS_PASSWORD
-ARG CIELO_MERCHANT_ID
-ARG CIELO_MERCHANT_KEY
-ARG CIELO_SANDBOX
 
-ENV DATABASE_URL=$DATABASE_URL \
-    NEXTAUTH_URL=$NEXTAUTH_URL \
+ENV NEXTAUTH_URL=$NEXTAUTH_URL \
     NEXTAUTH_SECRET=$NEXTAUTH_SECRET \
-    XRS_ENDPOINT_URL=$XRS_ENDPOINT_URL \
-    XRS_CALLER_CODE=$XRS_CALLER_CODE \
-    XRS_PASSWORD=$XRS_PASSWORD \
-    CIELO_MERCHANT_ID=$CIELO_MERCHANT_ID \
-    CIELO_MERCHANT_KEY=$CIELO_MERCHANT_KEY \
-    CIELO_SANDBOX=$CIELO_SANDBOX \
     NEXT_TELEMETRY_DISABLED=1
 
-# Roda o push do schema para o banco de dados (sincroniza as tabelas)
-RUN npx prisma db push --accept-data-loss
+# DATABASE_URL fictício para o build — Prisma precisa da variável para compilar,
+# mas NÃO acessa o banco durante o build. A URL real é injetada em runtime.
+ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
+
+# NÃO rodar prisma db push aqui! Migrações devem ser feitas manualmente ou
+# via job separado no Coolify. Rodar no build é perigoso (--accept-data-loss)
+# e requer acesso ao banco durante o build.
 
 # Roda o build do Next.js (gera .next/standalone)
 # NODE_OPTIONS limita o heap para evitar OOM no "Collecting build traces" em servidores com pouca RAM

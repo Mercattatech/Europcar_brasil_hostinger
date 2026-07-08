@@ -211,7 +211,7 @@ export async function POST(request: Request) {
                        voucherRentalDuration="${duration}"/>`;
         }
 
-        const prepaidAttr = paymentData.method === 'VOUCHER' ? '' : ' prepaidMode="NP"';
+        const prepaidAttr = (paymentData.method === 'VOUCHER' && voucherData?.type === 'ETO') ? '' : ' prepaidMode="NP"';
 
         const { loyaltyProgramId, loyaltyId } = customerData;
         let loyaltyXml = '';
@@ -223,7 +223,7 @@ export async function POST(request: Request) {
 <message>
   <serviceRequest serviceCode="bookReservation">
     <serviceParameters>
-      <reservation carCategory="${carCategory}" rateId="${rateId}"${prepaidAttr}${contractAttr}${productDataAttr} preferredLanguage="pt_BR">
+      <reservation carCategory="${carCategory}" rateId="${rateId}"${prepaidAttr}${contractAttr}${productDataAttr} preferredLanguage="pt_BR" email="${customerData.email.trim()}">
         <checkout stationID="${pickupStation}" date="${pickupDate}" time="${bookingData.pickupTime || '1000'}"/>
         <checkin stationID="${returnStation}" date="${returnDate}" time="${bookingData.returnTime || '1000'}"/>
         <equipmentList/>${meanOfPaymentXml}${loyaltyXml}
@@ -231,10 +231,7 @@ export async function POST(request: Request) {
       <driver countryOfResidence="BR"
               firstName="${customerData.nome.trim()}"
               lastName="${customerData.sobrenome.trim()}"
-              title="MR"
-              driverID="${customerData.cpf.replace(/\D/g, '').slice(0, 11)}"
-              email="${customerData.email.trim()}"
-              phone="${customerData.telefone}"/>
+              title="MR"/>
     </serviceParameters>
   </serviceRequest>
 </message>`;
@@ -264,6 +261,81 @@ export async function POST(request: Request) {
             onRequestItems = [raw.$ || raw];
           }
         }
+
+        if (resNumber) {
+          try {
+            const dFirstName = customerData.nome.trim();
+            const dLastName = customerData.sobrenome.trim();
+            const dEmail = customerData.email.trim();
+            const dPhone = customerData.telefone || '';
+            const dCpf = customerData.cpf.replace(/\D/g, '').slice(0, 11);
+
+            const createDriverXml = `<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="createDriver">
+    <serviceParameters>
+      <reservation resNumber="${resNumber}"/>
+      <driver isoLanguage="pt_BR" firstName="${dFirstName}" lastName="${dLastName}" title="MR">
+        <addressList>
+          <address addressType="P" addressKind="D" addressCountry="BR">
+            <emails>
+              <email emailAddress="${dEmail}" type="M"/>
+            </emails>
+            <phones>
+              <phone phoneNumber="${dPhone}" phoneType="M"/>
+            </phones>
+          </address>
+        </addressList>
+        <legalIdList>
+          <legalId idTy="P" docNumber="${dCpf}" country="BR"/>
+        </legalIdList>
+      </driver>
+    </serviceParameters>
+  </serviceRequest>
+</message>`;
+
+            await callXRS(createDriverXml, {
+              callerCode: process.env.XRS_CALLER_CODE || 'DEMO',
+              password: process.env.XRS_PASSWORD || 'DEMO',
+              action: 'createDriver',
+              sourceFile: 'reservas/route.ts'
+            });
+            console.log(`[reservas] createDriver enviado com sucesso para a reserva ${resNumber}`);
+          } catch (driverErr: any) {
+            console.error(`[reservas] Erro ao criar driver para ${resNumber}:`, driverErr.message);
+          }
+        }
+
+        // Se for EXO Voucher, envia requisição adicional createVoucher após criar reserva como POA
+        if (resNumber && paymentData.method === 'VOUCHER' && voucherData?.type === 'EXO') {
+          try {
+            const voucherAmount = car.totalRateEstimate || car.total || '0';
+            const voucherCurrency = car.bookingCurrencyOfTotalRateEstimate || car.currency || 'EUR';
+            const iataNumber = voucherData.iataNumber || '02170722';
+
+            const createVoucherXml = `<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="createVoucher">
+    <serviceParameters>
+      <reservation resNumber="${resNumber}">
+        <meanOfPayment typeCode="VCH" voucherType="EXO" IATANumber="${iataNumber}" voucherAmount="${voucherAmount}" voucherCurrency="${voucherCurrency}"/>
+      </reservation>
+    </serviceParameters>
+  </serviceRequest>
+</message>`;
+
+            await callXRS(createVoucherXml, {
+              callerCode: process.env.XRS_CALLER_CODE || 'DEMO',
+              password: process.env.XRS_PASSWORD || 'DEMO',
+              action: 'createVoucher',
+              sourceFile: 'reservas/route.ts'
+            });
+            console.log(`[reservas] createVoucher (EXO) enviado com sucesso para a reserva ${resNumber}`);
+          } catch (voucherErr: any) {
+            console.error(`[reservas] Erro ao criar voucher EXO para ${resNumber}:`, voucherErr.message);
+          }
+        }
+
       }
 
       // 3. Salvar no Banco de Dados local

@@ -23,12 +23,16 @@ export async function POST(request: Request) {
     const contractAttr = contractID ? ` contractID="${contractID}" type="C"` : '';
 
     // CID to BA mapping for ETO vouchers provided by Ewa
+    // CID to BA mapping for ETO vouchers provided by Ewa / Antonio
     const cidToBa: Record<string, string> = {
       '56935466': '73675595',
-      '56935495': '73804373'
+      '56935495': '73804373',
+      '57257103': '81230770'  // New CID/BA — Antonio 02/07/2026 (Test Environment)
     };
 
     let meanOfPaymentXml = '';
+    let isVoucherEXO = false;
+    
     if (voucherData && voucherData.type === 'ETO') {
       const ba = cidToBa[contractID] || voucherData.businessAccount || '';
       const d1 = new Date(parseInt(pickupDate.slice(0,4)), parseInt(pickupDate.slice(4,6))-1, parseInt(pickupDate.slice(6,8)));
@@ -37,23 +41,26 @@ export async function POST(request: Request) {
 
       const numericVoucherID = (voucherData?.id && /^\d+$/.test(voucherData.id)) ? voucherData.id : '1234';
       meanOfPaymentXml = `
-        <meanOfPayment meanOfPaymentCode="VOUCHER">
-          <voucher voucherNumber="${numericVoucherID}" voucherType="F" 
-                   billingAccount="${ba}" voucherCarCategory="${carCategory}" 
-                   voucherRentalDuration="${duration}"/>
-        </meanOfPayment>`;
+        <meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="${numericVoucherID}" 
+                       businessAccount="${ba}" voucherCarCategory="${carCategory}" 
+                       voucherRentalDuration="${duration}"/>`;
+    } else if (voucherData && voucherData.type === 'EXO') {
+      isVoucherEXO = true;
     }
+
 
     let loyaltyXml = '';
     if (driverData?.loyaltyProgramId && driverData?.loyaltyId) {
       loyaltyXml = `\n        <loyaltyProgram programId="${driverData.loyaltyProgramId}" loyaltyID="${driverData.loyaltyId}"/>`;
     }
 
+    const prepaidModeAttr = (voucherData && voucherData.type === 'ETO') ? '' : ' prepaidMode="NP"';
+
     const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
 <message>
   <serviceRequest serviceCode="bookReservation">
     <serviceParameters>
-      <reservation carCategory="${carCategory}" rateId="${rateId}" chargesDetail="TRE" prepaidMode="NP"${contractAttr}>
+      <reservation carCategory="${carCategory}" rateId="${rateId}" chargesDetail="TRE"${prepaidModeAttr}${contractAttr} email="${driverData?.email || ''}">
         <checkout stationID="${pickupStation}" date="${pickupDate}" time="${pickupTime || '1000'}"/>
         <checkin stationID="${returnStation || pickupStation}" date="${returnDate}" time="${returnTime || '1000'}"/>
         <equipmentList/>${meanOfPaymentXml}${loyaltyXml}
@@ -61,10 +68,7 @@ export async function POST(request: Request) {
       <driver countryOfResidence="BR"
               firstName="${driverData?.firstName || 'Test'}"
               lastName="${driverData?.lastName || 'Client'}"
-              title="${driverData?.title || 'MR'}"
-              driverID="${driverData?.cpf?.replace(/\D/g, '') || driverData?.document?.replace(/\D/g, '')}"
-              email="${driverData?.email}"
-              phone="${driverData?.telefone || driverData?.phone}"/>
+              title="${driverData?.title || 'MR'}"/>
     </serviceParameters>
   </serviceRequest>
 </message>`;
@@ -83,6 +87,77 @@ export async function POST(request: Request) {
       xrsResponse?.message?.serviceResponse?.reservation?.$?.resNumber ||
       xrsResponse?.serviceResponse?.reservation?.$?.resNumber ||
       null;
+
+    if (resNumber) {
+      try {
+        const dFirstName = driverData?.firstName || 'Test';
+        const dLastName = driverData?.lastName || 'Client';
+        const dEmail = driverData?.email || '';
+        const dPhone = driverData?.telefone || driverData?.phone || '';
+        const dCpf = (driverData?.cpf || driverData?.document || '').replace(/\D/g, '').slice(0, 11);
+
+        const createDriverXml = `<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="createDriver">
+    <serviceParameters>
+      <reservation resNumber="${resNumber}"/>
+      <driver isoLanguage="pt_BR" firstName="${dFirstName}" lastName="${dLastName}" title="${driverData?.title || 'MR'}">
+        <addressList>
+          <address addressType="P" addressKind="D" addressCountry="BR">
+            <emails>
+              <email emailAddress="${dEmail}" type="M"/>
+            </emails>
+            <phones>
+              <phone phoneNumber="${dPhone}" phoneType="M"/>
+            </phones>
+          </address>
+        </addressList>
+        <legalIdList>
+          <legalId idTy="P" docNumber="${dCpf}" country="BR"/>
+        </legalIdList>
+      </driver>
+    </serviceParameters>
+  </serviceRequest>
+</message>`;
+        await callXRS(createDriverXml, {
+          callerCode: process.env.XRS_CALLER_CODE || 'DEMO',
+          password: process.env.XRS_PASSWORD || 'DEMO',
+          action: 'createDriver',
+          sourceFile: 'bookReservation/route.ts'
+        });
+        console.log(`[bookReservation] createDriver enviado com sucesso para a reserva ${resNumber}`);
+      } catch (driverErr: any) {
+        console.error(`[bookReservation] Erro ao criar driver para ${resNumber}:`, driverErr.message);
+      }
+    }
+
+    if (resNumber && isVoucherEXO) {
+      try {
+        const voucherAmount = body.car?.totalRateEstimate || body.car?.total || '0';
+        const voucherCurrency = body.car?.bookingCurrencyOfTotalRateEstimate || body.car?.currency || 'EUR';
+        const iataNumber = voucherData.iataNumber || '02170722';
+
+        const createVoucherXml = `<?xml version="1.0" encoding="UTF-8"?>
+<message>
+  <serviceRequest serviceCode="createVoucher">
+    <serviceParameters>
+      <reservation resNumber="${resNumber}">
+        <meanOfPayment typeCode="VCH" voucherType="EXO" IATANumber="${iataNumber}" voucherAmount="${voucherAmount}" voucherCurrency="${voucherCurrency}"/>
+      </reservation>
+    </serviceParameters>
+  </serviceRequest>
+</message>`;
+        await callXRS(createVoucherXml, {
+          callerCode: process.env.XRS_CALLER_CODE || 'DEMO',
+          password: process.env.XRS_PASSWORD || 'DEMO',
+          action: 'createVoucher',
+          sourceFile: 'bookReservation/route.ts'
+        });
+        console.log(`[bookReservation] createVoucher (EXO) enviado com sucesso para a reserva ${resNumber}`);
+      } catch (voucherErr: any) {
+        console.error(`[bookReservation] Erro ao criar voucher EXO para ${resNumber}:`, voucherErr.message);
+      }
+    }
 
     // Save local reservation record
     if (paymentData) {
