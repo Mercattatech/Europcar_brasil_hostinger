@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { callXRS } from '@/lib/europcar/xrsClient';
+import prisma from '@/lib/prisma';
+import { sendTransactionalEmail } from '@/lib/emailService';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
@@ -59,6 +61,32 @@ export async function POST(request: Request) {
     }
 
     const hasError = returnCode && returnCode !== 'OK';
+
+    // Send email on successful modification
+    if (!hasError) {
+      try {
+        const localRes = await prisma.localReservation.findFirst({
+          where: { resNumber }
+        });
+
+        if (localRes?.customerData) {
+          const cd: any = typeof localRes.customerData === 'string'
+            ? JSON.parse(localRes.customerData)
+            : localRes.customerData;
+
+          if (cd.email) {
+            await sendTransactionalEmail(cd.email, 'RESERVA_ALTERADA', {
+              NOME: cd.nome || cd.firstName || '',
+              SOBRENOME: cd.sobrenome || cd.lastName || '',
+              NUMERO_RESERVA: resNumber,
+              DATA_RETIRADA: pickupDate || ''
+            });
+          }
+        }
+      } catch (emailErr: any) {
+        console.error(`[modifyReservation] Erro ao enviar e-mail de alteração para ${resNumber}:`, emailErr.message);
+      }
+    }
 
     return NextResponse.json({
       success: !hasError,

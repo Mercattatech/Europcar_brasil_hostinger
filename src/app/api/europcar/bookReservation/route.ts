@@ -95,6 +95,25 @@ export async function POST(request: Request) {
         const dEmail = driverData?.email || '';
         const dPhone = driverData?.telefone || driverData?.phone || '';
         const dCpf = (driverData?.cpf || driverData?.document || '').replace(/\D/g, '').slice(0, 11);
+        const dCountry = driverData?.paisEmissao || 'BR';
+
+        // Build licenseList XML if CNH data is available
+        let licenseListXml = '';
+        if (driverData?.cnhNumero || driverData?.cnhValidade) {
+          let expirationDate = '';
+          if (driverData?.cnhValidade) {
+            const parts = driverData.cnhValidade.replace(/\D/g, '/').split('/');
+            if (parts.length === 2) {
+              const [mm, yyyy] = parts;
+              const year = yyyy.length === 2 ? `20${yyyy}` : yyyy;
+              expirationDate = `${year}${mm.padStart(2, '0')}01`;
+            }
+          }
+          licenseListXml = `
+        <licenseList>
+          <license licenseNumber="${driverData.cnhNumero || ''}"${expirationDate ? ` expirationDate="${expirationDate}"` : ''}${driverData.cnhCidade ? ` cityOfIssuance="${driverData.cnhCidade}"` : ''} countryOfIssuance="${dCountry}"/>
+        </licenseList>`;
+        }
 
         const createDriverXml = `<?xml version="1.0" encoding="UTF-8"?>
 <message>
@@ -103,7 +122,7 @@ export async function POST(request: Request) {
       <reservation resNumber="${resNumber}"/>
       <driver isoLanguage="pt_BR" firstName="${dFirstName}" lastName="${dLastName}" title="${driverData?.title || 'MR'}">
         <addressList>
-          <address addressType="P" addressKind="D" addressCountry="BR">
+          <address addressType="P" addressKind="D" addressCountry="${dCountry}">
             <emails>
               <email emailAddress="${dEmail}" type="M"/>
             </emails>
@@ -113,8 +132,8 @@ export async function POST(request: Request) {
           </address>
         </addressList>
         <legalIdList>
-          <legalId idTy="P" docNumber="${dCpf}" country="BR"/>
-        </legalIdList>
+          <legalId idTy="P" docNumber="${dCpf}" country="${dCountry}"/>
+        </legalIdList>${licenseListXml}
       </driver>
     </serviceParameters>
   </serviceRequest>

@@ -95,6 +95,9 @@ export default function MeuPerfil() {
   const [modifying, setModifying]         = useState(false);
   const [modifyMsg, setModifyMsg]         = useState('');
 
+  // Confirmation popup before modify
+  const [confirmModifyTarget, setConfirmModifyTarget] = useState<Reserva | null>(null);
+
   const [cancelTarget, setCancelTarget]   = useState<Reserva | null>(null);
   const [cancelling, setCancelling]       = useState(false);
   const [cancelMsg, setCancelMsg]         = useState('');
@@ -337,6 +340,84 @@ export default function MeuPerfil() {
                 className="flex-1 bg-[#008d36] hover:bg-[#007a2d] text-white font-bold py-2.5 rounded-xl transition-colors text-sm flex items-center justify-center gap-2"
               >
                 🖨️ Imprimir PDF
+              </button>
+            </div>
+          </div>
+        </ModalOverlay>
+      )}
+
+      {/* ── Confirm Modify Popup ──────────────────────────────────────────── */}
+      {confirmModifyTarget && (
+        <ModalOverlay onClose={() => setConfirmModifyTarget(null)}>
+          <div className="p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                <svg className="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-white font-bold text-lg">Atenção — Alteração de Reserva</h3>
+                <p className="text-gray-400 text-sm">Nº {confirmModifyTarget.resNumber}</p>
+              </div>
+            </div>
+
+            <div className="bg-amber-900/20 border border-amber-600/30 rounded-xl p-4 mb-5 space-y-3">
+              <p className="text-amber-200 text-sm leading-relaxed">
+                <strong>⚠️ Ao confirmar a alteração:</strong>
+              </p>
+              <ul className="text-amber-200/90 text-sm space-y-2 list-none">
+                <li className="flex items-start gap-2">
+                  <span className="text-amber-400 mt-0.5">•</span>
+                  <span>Seu ticket atual será <strong>automaticamente cancelado</strong> e <strong>100% renovado</strong> com as novas informações da alteração.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-amber-400 mt-0.5">•</span>
+                  <span>Caso já tenha realizado o pagamento, o valor pago será <strong>reembolsado em até 30 dias</strong> — prazo solicitado pela operadora de crédito para processar o estorno.</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="bg-gray-800/60 rounded-xl p-4 mb-5 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">Nº da Reserva</span>
+                <span className="text-white font-mono font-bold">{confirmModifyTarget.resNumber}</span>
+              </div>
+              {confirmModifyTarget.car && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Veículo</span>
+                  <span className="text-white">{confirmModifyTarget.car}</span>
+                </div>
+              )}
+              {confirmModifyTarget.pickupDate && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Retirada atual</span>
+                  <span className="text-white">{formatDate(confirmModifyTarget.pickupDate)}</span>
+                </div>
+              )}
+              {confirmModifyTarget.total != null && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Valor pago</span>
+                  <span className="text-emerald-400 font-bold">{formatCurrency(confirmModifyTarget.total)}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmModifyTarget(null)}
+                className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium py-2.5 rounded-xl transition-colors text-sm"
+              >
+                Voltar
+              </button>
+              <button
+                onClick={() => {
+                  setConfirmModifyTarget(null);
+                  window.location.href = '/';
+                }}
+                className="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2.5 rounded-xl transition-colors text-sm flex items-center justify-center gap-2"
+              >
+                Entendi, fazer nova reserva
               </button>
             </div>
           </div>
@@ -597,7 +678,7 @@ export default function MeuPerfil() {
                                 📄 Comprovante
                               </button>
                               <button
-                                onClick={() => { setModifyTarget(r); setModifyDate(''); setModifyTime('1000'); setModifyMsg(''); }}
+                                onClick={() => setConfirmModifyTarget(r)}
                                 className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-400 text-xs font-bold rounded-lg transition-all"
                               >
                                 ✏️ Modificar

@@ -269,6 +269,25 @@ export async function POST(request: Request) {
             const dEmail = customerData.email.trim();
             const dPhone = customerData.telefone || '';
             const dCpf = customerData.cpf.replace(/\D/g, '').slice(0, 11);
+            const dCountry = customerData.paisEmissao || bookingData?.country || 'BR';
+
+            // Build licenseList XML if CNH data is available
+            let licenseListXml = '';
+            if (customerData.cnhNumero || customerData.cnhValidade) {
+              let expirationDate = '';
+              if (customerData.cnhValidade) {
+                const parts = customerData.cnhValidade.replace(/\D/g, '/').split('/');
+                if (parts.length === 2) {
+                  const [mm, yyyy] = parts;
+                  const year = yyyy.length === 2 ? `20${yyyy}` : yyyy;
+                  expirationDate = `${year}${mm.padStart(2, '0')}01`;
+                }
+              }
+              licenseListXml = `
+        <licenseList>
+          <license licenseNumber="${customerData.cnhNumero || ''}"${expirationDate ? ` expirationDate="${expirationDate}"` : ''}${customerData.cnhCidade ? ` cityOfIssuance="${customerData.cnhCidade}"` : ''} countryOfIssuance="${dCountry}"/>
+        </licenseList>`;
+            }
 
             const createDriverXml = `<?xml version="1.0" encoding="UTF-8"?>
 <message>
@@ -277,7 +296,7 @@ export async function POST(request: Request) {
       <reservation resNumber="${resNumber}"/>
       <driver isoLanguage="pt_BR" firstName="${dFirstName}" lastName="${dLastName}" title="MR">
         <addressList>
-          <address addressType="P" addressKind="D" addressCountry="BR">
+          <address addressType="P" addressKind="D" addressCountry="${dCountry}">
             <emails>
               <email emailAddress="${dEmail}" type="M"/>
             </emails>
@@ -287,8 +306,8 @@ export async function POST(request: Request) {
           </address>
         </addressList>
         <legalIdList>
-          <legalId idTy="P" docNumber="${dCpf}" country="BR"/>
-        </legalIdList>
+          <legalId idTy="P" docNumber="${dCpf}" country="${dCountry}"/>
+        </legalIdList>${licenseListXml}
       </driver>
     </serviceParameters>
   </serviceRequest>
@@ -404,14 +423,15 @@ export async function POST(request: Request) {
 
    } catch (error: any) {
       console.error(error);
-      const isPaymentError = error.message && (error.message.includes('Cielo') || error.message.includes('Pagamento Recusado'));
       
-      // Trigger Falha Pagamento
-      if (isPaymentError && customerEmail) {
+      // Trigger Falha Pagamento — envia para QUALQUER erro no processamento
+      if (customerEmail) {
         try {
            import('@/lib/emailService').then(({ sendTransactionalEmail }) => {
               sendTransactionalEmail(customerEmail, 'FALHA_PAGAMENTO', {
-                NOME: customerName
+                NOME: customerName,
+                NUMERO_RESERVA: '',
+                ERRO: (error.message || 'Erro desconhecido').slice(0, 200)
               }).catch(console.error);
            });
         } catch(e){}
