@@ -114,13 +114,34 @@ async function sendViaSmtp(fromEmail: string, to: string, subject: string, html:
     return { success: false, error: 'SMTP não configurado' };
   }
 
+  // SMTP servers (Zoho, Gmail, etc.) require From to match the authenticated user
+  const smtpFrom = smtpConfig.auth.user || fromEmail;
+
   try {
-    const transporter = nodemailer.createTransport(smtpConfig);
+    const transporter = nodemailer.createTransport({
+      host: smtpConfig.host,
+      port: smtpConfig.port,
+      secure: smtpConfig.secure, // true for 465 (SSL), false for 587 (STARTTLS)
+      auth: {
+        user: smtpConfig.auth.user,
+        pass: smtpConfig.auth.pass,
+      },
+      tls: {
+        // Allow connections even if cert is self-signed (Hostinger/server environments)
+        rejectUnauthorized: false,
+      },
+    });
+
     await transporter.sendMail({
-      from: `Europcar Brasil <${fromEmail}>`,
+      from: `Europcar Brasil <${smtpFrom}>`,
       to,
       subject,
       html,
+      // Explicit envelope ensures MAIL FROM uses the plain email (avoids relay issues)
+      envelope: {
+        from: smtpFrom,
+        to: to,
+      },
     });
     return { success: true };
   } catch (error: any) {
