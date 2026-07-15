@@ -109,7 +109,8 @@ function VehiclesContent() {
 
   // XRS cars state
   const [cars, setCars] = useState<any[]>([]);
-  const [etoCars, setEtoCars] = useState<any[]>([]);  // ETO rates for comparison
+  const [etoCars, setEtoCars] = useState<any[]>([]);      // ETO Com Excesso rates
+  const [etoZeroCars, setEtoZeroCars] = useState<any[]>([]); // ETO Zero Excesso rates
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -118,6 +119,9 @@ function VehiclesContent() {
 
   // Selected tariff type per car
   const [selectedTariffType, setSelectedTariffType] = useState<'POA' | 'ETO'>('POA');
+
+  // Zero Excess upgrade (upsell on Step 3)
+  const [zeroExcessUpgrade, setZeroExcessUpgrade] = useState(false);
 
   // Extras
   const [dbExtras, setDbExtras] = useState<any[]>([]);
@@ -144,7 +148,7 @@ function VehiclesContent() {
     try {
       // Step 1: getCarCategories → get ACRISS codes (use POA CID)
       const poaCID = '57269673';
-      const etoCID = '56935495'; // ETO Internacional (Excesso Zero)
+      const etoCID = '56935466'; // ETO Líquido (Com Excesso) — desconto maior
 
       const catRes = await fetch("/api/europcar/getCarCategories", {
         method: "POST",
@@ -202,7 +206,7 @@ function VehiclesContent() {
         contractID: cid,
       });
 
-      const [poaRatesRes, etoRatesRes] = await Promise.all([
+      const [poaRatesRes, etoRatesRes, etoZeroRatesRes] = await Promise.all([
         fetch("/api/europcar/getMultipleRates", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -212,7 +216,12 @@ function VehiclesContent() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(ratesBody(etoCID)),
-        }).catch(() => null), // ETO may fail for some stations — don't block
+        }).catch(() => null),
+        fetch("/api/europcar/getMultipleRates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(ratesBody('56935495')), // ETO Zero Excesso
+        }).catch(() => null),
       ]);
 
       const parseRates = (ratesData: any) => {
@@ -253,6 +262,15 @@ function VehiclesContent() {
         } catch { /* ETO unavailable for this station */ }
       }
 
+      // Parse ETO Zero Excess rates
+      let etoZeroRates: any[] = [];
+      if (etoZeroRatesRes) {
+        try {
+          const etoZeroRatesData = await etoZeroRatesRes.json();
+          etoZeroRates = parseRates(etoZeroRatesData);
+        } catch { /* ETO Zero unavailable */ }
+      }
+
       if (poaRates.length === 0) {
         setError("Sem tarifas disponíveis para o período selecionado. Tente outras datas.");
         setLoading(false);
@@ -261,6 +279,7 @@ function VehiclesContent() {
 
       setCars(poaRates);
       setEtoCars(etoRates);
+      setEtoZeroCars(etoZeroRates);
     } catch (e: any) {
       setError("Erro ao buscar veículos: " + (e.message || "Tente novamente."));
     } finally {
@@ -330,6 +349,7 @@ function VehiclesContent() {
 
   const handleSelectCar = (car: any) => {
     setSelectedCar(car);
+    setZeroExcessUpgrade(false); // reset upgrade when changing car
     setCurrentStep(3);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -595,7 +615,7 @@ function VehiclesContent() {
                               </div>
                               {totalBRL_ETO > 0 && <span className="text-[10px] text-gray-400">Base: {currency} {fmtPrice(totalPriceETO)}</span>}
                               <button
-                                onClick={() => { setSelectedTariffType('ETO'); handleSelectCar({ ...car, ...etoCar, optionalInsurances: car.optionalInsurances, _etoCID: '56935495' }); }}
+                                onClick={() => { setSelectedTariffType('ETO'); handleSelectCar({ ...car, ...etoCar, optionalInsurances: car.optionalInsurances, _etoCID: '56935466' }); }}
                                 className={`w-full mt-2 font-bold py-2 rounded text-xs transition-colors ${
                                   isSelected && selectedTariffType === 'ETO' ? "bg-[#e67e00] text-white" : "bg-[#e67e00] hover:bg-[#cc6f00] text-white"
                                 }`}
@@ -629,8 +649,10 @@ function VehiclesContent() {
                 </div>
                 <button
                   onClick={() => {
-                    const cidForTariff = selectedTariffType === 'ETO' ? (selectedCar?._etoCID || '56935495') : (effectiveContractID || '57269673');
-                    const payload = { car: selectedCar, extras: selectedExtrasMap, pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, contractID: cidForTariff, tariffType: selectedTariffType, driverCountry, driverCountryName };
+                    const cidForTariff = selectedTariffType === 'ETO'
+                      ? (zeroExcessUpgrade ? '56935495' : (selectedCar?._etoCID || '56935466'))
+                      : (effectiveContractID || '57269673');
+                    const payload = { car: selectedCar, extras: selectedExtrasMap, pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, contractID: cidForTariff, tariffType: selectedTariffType, zeroExcess: zeroExcessUpgrade, driverCountry, driverCountryName };
                     sessionStorage.setItem("europcar_booking", JSON.stringify(payload));
                     window.location.href = "/checkout";
                   }}
@@ -639,6 +661,85 @@ function VehiclesContent() {
                   Ir para revisão →
                 </button>
               </div>
+
+              {/* 🛡️ Zero Excess Upsell — only for ETO tariff */}
+              {selectedTariffType === 'ETO' && (() => {
+                const code = selectedCar?.carCategoryCode;
+                const etoZeroCar = etoZeroCars.find(e => e.carCategoryCode === code);
+                if (!etoZeroCar) return null;
+                const currentTotal = parseFloat(selectedCar?.totalRateEstimate || 0);
+                const zeroTotal = parseFloat(etoZeroCar.totalRateEstimate || 0);
+                const upgradeCost = zeroTotal - currentTotal;
+                const currency = selectedCar?.currency || 'EUR';
+                const currentBRL = parseFloat(selectedCar?.totalRateEstimateInBookingCurrency || 0);
+                const zeroBRL = parseFloat(etoZeroCar.totalRateEstimateInBookingCurrency || 0);
+                const upgradeBRL = zeroBRL - currentBRL;
+                if (upgradeCost <= 0) return null;
+                return (
+                  <div className={`border-2 rounded-xl p-6 mb-8 transition-all ${
+                    zeroExcessUpgrade
+                      ? 'border-[#008d36] bg-green-50 shadow-lg shadow-green-100'
+                      : 'border-[#e67e00] bg-gradient-to-r from-orange-50 to-amber-50 hover:shadow-md'
+                  }`}>
+                    <div className="flex items-start gap-5">
+                      <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#e67e00] to-[#ff9800] flex items-center justify-center text-white text-2xl shrink-0 shadow-lg">
+                        🛡️
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-black text-gray-900 text-lg">Proteção Premium — Franquia Zero</h3>
+                          <span className="text-[9px] bg-[#e67e00] text-white px-2 py-0.5 rounded-full font-black uppercase">Recomendado</span>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-3">
+                          Elimine completamente a franquia em caso de dano ou roubo. Viaje com tranquilidade total — você não paga <strong>nenhum valor adicional</strong> em caso de sinistro.
+                        </p>
+                        <div className="flex items-center gap-6">
+                          <div>
+                            <span className="text-[10px] text-gray-400 uppercase font-bold block">Upgrade por apenas</span>
+                            <span className="text-2xl font-black text-[#e67e00]">
+                              + {currency} {fmtPrice(upgradeCost)}
+                            </span>
+                            {upgradeBRL > 0 && (
+                              <span className="text-xs text-gray-500 ml-2">(+ R$ {fmtPrice(upgradeBRL)})</span>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (zeroExcessUpgrade) {
+                                setZeroExcessUpgrade(false);
+                              } else {
+                                setZeroExcessUpgrade(true);
+                                // Update the selected car with zero excess data
+                                setSelectedCar((prev: any) => ({
+                                  ...prev,
+                                  ...etoZeroCar,
+                                  optionalInsurances: prev?.optionalInsurances,
+                                  imageUrl: prev?.imageUrl,
+                                  _etoCID: '56935495',
+                                }));
+                              }
+                            }}
+                            className={`font-bold py-3 px-8 rounded-lg text-sm transition-all ${
+                              zeroExcessUpgrade
+                                ? 'bg-[#008d36] text-white shadow-lg'
+                                : 'bg-[#e67e00] hover:bg-[#cc6f00] text-white shadow-lg shadow-[#e67e00]/25'
+                            }`}
+                          >
+                            {zeroExcessUpgrade ? '✓ Adicionado' : 'Adicionar Proteção'}
+                          </button>
+                        </div>
+                        {zeroExcessUpgrade && (
+                          <div className="mt-3 text-sm text-[#008d36] font-bold flex items-center gap-2">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                            Franquia zero ativada! Novo total: {currency} {fmtPrice(zeroTotal)}
+                            {zeroBRL > 0 && <span className="text-gray-500 font-normal">(R$ {fmtPrice(zeroBRL)})</span>}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Proteções da API Europcar XRS */}
               {selectedCar?.optionalInsurances?.length > 0 ? (
