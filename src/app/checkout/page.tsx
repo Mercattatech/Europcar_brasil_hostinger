@@ -717,25 +717,27 @@ export default function CheckoutPage() {
                 {/* ETO Voucher */}
                 <label className={`block border-2 rounded-lg p-5 cursor-pointer flex items-center gap-4 transition-colors ${paymentMethod === "VOUCHER_ETO" ? "border-[#e67e00] bg-orange-50" : "border-gray-200 hover:border-gray-300"}`}>
                   <input type="radio" checked={paymentMethod === "VOUCHER_ETO"} onChange={() => setPaymentMethod("VOUCHER_ETO" as any)} className="w-5 h-5 accent-[#e67e00]" />
-                  <div>
+                  <div className="flex-1">
                     <span className="font-bold text-gray-900 flex items-center gap-2">
                       Tarifa ETO Voucher
                       <span className="bg-[#e67e00] text-white text-[10px] px-2 py-0.5 rounded font-bold">CORPORATIVO</span>
                     </span>
                     <span className="text-xs text-gray-500">Pagamento via voucher corporativo pré-pago (ETO).</span>
                   </div>
+                  <button type="button" className="bg-[#e67e00] hover:bg-[#cc6f00] text-white font-bold text-sm px-6 py-2.5 rounded-lg transition-colors shrink-0">retirar</button>
                 </label>
 
                 {/* EXO Voucher */}
-                <label className={`block border-2 rounded-lg p-5 cursor-pointer flex items-center gap-4 transition-colors ${paymentMethod === "VOUCHER_EXO" ? "border-[#7c3aed] bg-purple-50" : "border-gray-200 hover:border-gray-300"}`}>
-                  <input type="radio" checked={paymentMethod === "VOUCHER_EXO"} onChange={() => setPaymentMethod("VOUCHER_EXO" as any)} className="w-5 h-5 accent-[#7c3aed]" />
-                  <div>
+                <label className={`block border-2 rounded-lg p-5 cursor-pointer flex items-center gap-4 transition-colors ${paymentMethod === "VOUCHER_EXO" ? "border-[#e67e00] bg-orange-50" : "border-gray-200 hover:border-gray-300"}`}>
+                  <input type="radio" checked={paymentMethod === "VOUCHER_EXO"} onChange={() => setPaymentMethod("VOUCHER_EXO" as any)} className="w-5 h-5 accent-[#e67e00]" />
+                  <div className="flex-1">
                     <span className="font-bold text-gray-900 flex items-center gap-2">
                       Tarifa EXO Voucher
-                      <span className="bg-[#7c3aed] text-white text-[10px] px-2 py-0.5 rounded font-bold">AGÊNCIA</span>
+                      <span className="bg-[#e67e00] text-white text-[10px] px-2 py-0.5 rounded font-bold">AGÊNCIA</span>
                     </span>
                     <span className="text-xs text-gray-500">Pagamento via voucher de agência (EXO — pós-pago).</span>
                   </div>
+                  <button type="button" className="bg-[#e67e00] hover:bg-[#cc6f00] text-white font-bold text-sm px-6 py-2.5 rounded-lg transition-colors shrink-0">retirar</button>
                 </label>
               </div>
 
@@ -818,6 +820,12 @@ export default function CheckoutPage() {
                     {driverCountryName}
                   </span>
                 </div>
+              </div>
+
+              {/* ETO/EXO Taxas pré-pagas */}
+              <div className="space-y-1 mb-3 pt-2">
+                <p className="text-xs text-[#e67e00] font-bold">Taxa Pré paga ( Exo ) Agência: R$ xx,xx</p>
+                <p className="text-xs text-[#e67e00] font-bold">Taxa Pré paga ( Eto ) Corp: R$ xx,xx</p>
               </div>
 
               {/* Price breakdown */}
