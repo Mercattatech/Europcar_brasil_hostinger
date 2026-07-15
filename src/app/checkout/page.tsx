@@ -74,7 +74,14 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     const data = sessionStorage.getItem("europcar_booking");
-    if (data) setBooking(JSON.parse(data));
+    if (data) {
+      const parsed = JSON.parse(data);
+      setBooking(parsed);
+      // ETO tariff: force payment method to CREDIT (no Balcão allowed)
+      if (parsed.tariffType === 'ETO' && paymentMethod === 'BALCAO') {
+        setPaymentMethod('CREDIT');
+      }
+    }
   }, []);
 
   // When booking loads, resolve selected extras from XRS optionalInsurances (no DB needed)
@@ -103,6 +110,9 @@ export default function CheckoutPage() {
 
   // ETO CIDs have their own separate flow — no price-comparison getQuote
   const ETO_CIDS = ['56935466', '56935495'];
+
+  // Tariff type from booking (POA or ETO)
+  const tariffType: string = booking?.tariffType || 'POA';
 
   // ✅ Buscar preço SEM contrato via getQuote para calcular economia real
   // O preço COM contrato já está em booking.car (veio do getMultipleRates com contractID)
@@ -662,6 +672,8 @@ export default function CheckoutPage() {
             <div className="bg-white rounded-lg border border-gray-200 p-8 shadow-sm">
               <h2 className="text-xl font-black text-gray-900 mb-6">2. Forma de Pagamento</h2>
               <div className="space-y-4">
+                {/* Balcão — only for POA tariff */}
+                {tariffType !== 'ETO' && (
                 <label className={`block border-2 rounded-lg p-5 cursor-pointer flex items-center gap-4 transition-colors ${paymentMethod === "BALCAO" ? "border-[#008d36] bg-green-50" : "border-gray-200 hover:border-gray-300"}`}>
                   <input type="radio" checked={paymentMethod === "BALCAO"} onChange={() => setPaymentMethod("BALCAO")} className="w-5 h-5 accent-[#008d36]" />
                   <div>
@@ -669,6 +681,18 @@ export default function CheckoutPage() {
                     <span className="text-xs text-gray-500">Pague apenas no momento de retirada do veículo.</span>
                   </div>
                 </label>
+                )}
+
+                {/* Tariff type indicator */}
+                {tariffType === 'ETO' && (
+                  <div className="bg-orange-50 border border-[#e67e00] rounded-lg p-4 flex items-center gap-3">
+                    <span className="text-[#e67e00] text-lg">🏷️</span>
+                    <div>
+                      <span className="text-sm font-bold text-[#e67e00]">Tarifa ETO Corporativa</span>
+                      <span className="text-xs text-gray-500 block">Pagamento disponível apenas via PIX ou Cartão de Crédito.</span>
+                    </div>
+                  </div>
+                )}
 
                 <label className={`block border-2 rounded-lg p-5 cursor-pointer flex items-center gap-4 transition-colors ${paymentMethod === "PIX" ? "border-[#008d36] bg-green-50" : "border-gray-200 hover:border-gray-300"}`}>
                   <input type="radio" checked={paymentMethod === "PIX"} onChange={() => setPaymentMethod("PIX")} className="w-5 h-5 accent-[#008d36]" />
@@ -714,7 +738,8 @@ export default function CheckoutPage() {
                   )}
                 </div>
 
-                {/* ETO Voucher */}
+                {/* ETO Voucher — hide when tariff is ETO (already ETO pricing) */}
+                {tariffType !== 'ETO' && (
                 <label className={`block border-2 rounded-lg p-5 cursor-pointer flex items-center gap-4 transition-colors ${paymentMethod === "VOUCHER_ETO" ? "border-[#e67e00] bg-orange-50" : "border-gray-200 hover:border-gray-300"}`}>
                   <input type="radio" checked={paymentMethod === "VOUCHER_ETO"} onChange={() => setPaymentMethod("VOUCHER_ETO" as any)} className="w-5 h-5 accent-[#e67e00]" />
                   <div className="flex-1">
@@ -726,8 +751,10 @@ export default function CheckoutPage() {
                   </div>
                   <button type="button" className="bg-[#e67e00] hover:bg-[#cc6f00] text-white font-bold text-sm px-6 py-2.5 rounded-lg transition-colors shrink-0">retirar</button>
                 </label>
+                )}
 
-                {/* EXO Voucher */}
+                {/* EXO Voucher — hide when tariff is ETO */}
+                {tariffType !== 'ETO' && (
                 <label className={`block border-2 rounded-lg p-5 cursor-pointer flex items-center gap-4 transition-colors ${paymentMethod === "VOUCHER_EXO" ? "border-[#e67e00] bg-orange-50" : "border-gray-200 hover:border-gray-300"}`}>
                   <input type="radio" checked={paymentMethod === "VOUCHER_EXO"} onChange={() => setPaymentMethod("VOUCHER_EXO" as any)} className="w-5 h-5 accent-[#e67e00]" />
                   <div className="flex-1">
@@ -739,6 +766,7 @@ export default function CheckoutPage() {
                   </div>
                   <button type="button" className="bg-[#e67e00] hover:bg-[#cc6f00] text-white font-bold text-sm px-6 py-2.5 rounded-lg transition-colors shrink-0">retirar</button>
                 </label>
+                )}
               </div>
 
               {/* IOF Banner */}

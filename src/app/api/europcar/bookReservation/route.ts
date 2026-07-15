@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { callXRS } from '@/lib/europcar/xrsClient';
+import { callXRS, DEFAULT_POA_CID } from '@/lib/europcar/xrsClient';
 import prisma from '@/lib/prisma';
 export const dynamic = 'force-dynamic';
 
@@ -19,22 +19,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'carCategory e rateId são obrigatórios' }, { status: 400 });
     }
 
-    // Build contractID attribute if promotion is active
-    const contractAttr = contractID ? ` contractID="${contractID}" type="C"` : '';
+    // Use POA CID as default when no contractID is provided
+    const effectiveCID = contractID || DEFAULT_POA_CID;
+    const contractAttr = ` contractID="${effectiveCID}" type="C"`;
 
-    // CID to BA mapping for ETO vouchers provided by Ewa
-    // CID to BA mapping for ETO vouchers provided by Ewa / Antonio
+    // CID to BA mapping for ETO vouchers (provided by Europcar)
     const cidToBa: Record<string, string> = {
-      '56935466': '73675595',
-      '56935495': '73804373',
-      '57257103': '81230770'  // New CID/BA — Antonio 02/07/2026 (Test Environment)
+      '56935466': '73675595',  // ETO Líquido (Excesso)
+      '56935495': '73804373',  // ETO Internacional (Excesso Zero)
     };
 
     let meanOfPaymentXml = '';
     let isVoucherEXO = false;
     
     if (voucherData && voucherData.type === 'ETO') {
-      const ba = cidToBa[contractID] || voucherData.businessAccount || '';
+      const ba = cidToBa[effectiveCID] || voucherData.businessAccount || '';
       const d1 = new Date(parseInt(pickupDate.slice(0,4)), parseInt(pickupDate.slice(4,6))-1, parseInt(pickupDate.slice(6,8)));
       const d2 = new Date(parseInt(returnDate.slice(0,4)), parseInt(returnDate.slice(4,6))-1, parseInt(returnDate.slice(6,8)));
       const duration = Math.max(1, Math.round((d2.getTime() - d1.getTime()) / 86400000));

@@ -13,6 +13,7 @@ const sidebarLinks = [
    { href: "/painel/usuarios", label: "Gestão de Usuários", icon: "👥" },
    { href: "/painel/reservas", label: "Reservas", icon: "📋" },
    { href: "/painel/comissoes", label: "Comissões", icon: "💰" },
+   { href: "/painel/margem", label: "Margem ETO", icon: "💹" },
    { href: "/painel/promocoes", label: "Promoções", icon: "🏷️" },
    { href: "/painel/extras", label: "Extras & Proteções", icon: "🛡️" },
    { href: "/painel/config", label: "Config Pagamento", icon: "💳" },

@@ -2,6 +2,15 @@ import axios from 'axios';
 import { parseStringPromise } from 'xml2js';
 import prisma from '@/lib/prisma';
 
+// ── CID Constants (Contract IDs) ──────────────────────────────
+// POA = tarifa pública padrão (mesmo preço que sem CID, usado para rastreamento)
+export const DEFAULT_POA_CID = '57269673';
+// ETO = tarifas corporativas com desconto
+export const ETO_CID_LIQUIDO = '56935466';       // Líquido (Excesso) — BA 73675595
+export const ETO_CID_INTERNACIONAL = '56935495';  // Internacional (Excesso Zero) — BA 73804373
+// EXO = voucher de agência
+export const EXO_CID = '57269673';                // Mesmo CID da POA, IATA: 02170722
+
 export interface XRSConfig {
   callerCode: string;
   password: string;

@@ -2,15 +2,15 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import prisma from '@/lib/prisma';
-import { callXRS } from '@/lib/europcar/xrsClient';
+import { callXRS, DEFAULT_POA_CID } from '@/lib/europcar/xrsClient';
 import { sendBookingConfirmation } from '@/lib/email/sendBookingConfirmation';
 
 export const dynamic = 'force-dynamic';
 
 // Helper to map CID to BA for ETO vouchers
 const CID_TO_BA: Record<string, string> = {
-  '56935466': '73675595',
-  '56935495': '73804373'
+  '56935466': '73675595',  // ETO Líquido (Excesso)
+  '56935495': '73804373',  // ETO Internacional (Excesso Zero)
 };
 
 export async function POST(request: Request) {
@@ -137,7 +137,7 @@ export async function POST(request: Request) {
         const returnDate = bookingData.returnDate;
         const pickupStation = bookingData.pickupStation;
         const returnStation = bookingData.returnStation || pickupStation;
-        const contractID = bookingData.contractID || "";
+        const contractID = bookingData.contractID || DEFAULT_POA_CID;
         const carCategory = car.carCategoryCode;
         let rateId = car.rateId;
         let productDataAttr = '';

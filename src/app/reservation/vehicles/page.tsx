@@ -109,8 +109,15 @@ function VehiclesContent() {
 
   // XRS cars state
   const [cars, setCars] = useState<any[]>([]);
+  const [etoCars, setEtoCars] = useState<any[]>([]);  // ETO rates for comparison
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // ETO margin from admin panel
+  const [etoMargin, setEtoMargin] = useState(0);
+
+  // Selected tariff type per car
+  const [selectedTariffType, setSelectedTariffType] = useState<'POA' | 'ETO'>('POA');
 
   // Extras
   const [dbExtras, setDbExtras] = useState<any[]>([]);
@@ -125,7 +132,7 @@ function VehiclesContent() {
 
   const formatDate = (d: string) => d ? `${d.slice(6, 8)}/${d.slice(4, 6)}/${d.slice(0, 4)}` : "";
 
-  // ---- Fetch vehicles from XRS ----
+  // ---- Fetch vehicles from XRS (POA + ETO in parallel) ----
   const fetchCars = useCallback(async () => {
     if (!pickupStation || !pickupDate) {
       setError("Dados de pesquisa incompletos. Volte e tente novamente.");
@@ -135,7 +142,10 @@ function VehiclesContent() {
     setLoading(true);
     setError("");
     try {
-      // Step 1: getCarCategories → get ACRISS codes
+      // Step 1: getCarCategories → get ACRISS codes (use POA CID)
+      const poaCID = '57269673';
+      const etoCID = '56935495'; // ETO Internacional (Excesso Zero)
+
       const catRes = await fetch("/api/europcar/getCarCategories", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -146,7 +156,7 @@ function VehiclesContent() {
           returnDate, 
           pickupTime, 
           returnTime,
-          contractID: effectiveContractID 
+          contractID: effectiveContractID || poaCID
         }),
       });
       const catData = await catRes.json();
@@ -170,7 +180,6 @@ function VehiclesContent() {
         .filter(Boolean);
 
       if (acrissCodes.length === 0) {
-        // Check if XRS returned KO with an error
         const returnCode = serviceResponse?.$?.returnCode || serviceResponse?.returnCode || '';
         if (returnCode === 'KO') {
           setError('Não foi possível buscar veículos para este trajeto. Verifique as estações selecionadas e tente novamente.');
@@ -181,60 +190,77 @@ function VehiclesContent() {
         return;
       }
 
-      // Step 2: getMultipleRates → response is reservationRateList/reservationRate
-      const ratesRes = await fetch("/api/europcar/getMultipleRates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          pickupStation,
-          returnStation: returnStation || pickupStation,
-          pickupDate,
-          returnDate,
-          pickupTime,
-          returnTime,
-          acrissCodes,
-          contractID: effectiveContractID,
-        }),
+      // Step 2: getMultipleRates — POA + ETO em paralelo
+      const ratesBody = (cid: string) => ({
+        pickupStation,
+        returnStation: returnStation || pickupStation,
+        pickupDate,
+        returnDate,
+        pickupTime,
+        returnTime,
+        acrissCodes,
+        contractID: cid,
       });
-      const ratesData = await ratesRes.json();
 
-      const allRates: any[] = [];
-      const chunks = Array.isArray(ratesData.results) ? ratesData.results : [ratesData];
+      const [poaRatesRes, etoRatesRes] = await Promise.all([
+        fetch("/api/europcar/getMultipleRates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(ratesBody(effectiveContractID || poaCID)),
+        }),
+        fetch("/api/europcar/getMultipleRates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(ratesBody(etoCID)),
+        }).catch(() => null), // ETO may fail for some stations — don't block
+      ]);
 
-      for (const chunk of chunks) {
-        const rawList =
-          chunk?.message?.serviceResponse?.reservationRateList?.reservationRate ||
-          chunk?.serviceResponse?.reservationRateList?.reservationRate || [];
-        const rateArr: any[] = Array.isArray(rawList) ? rawList : rawList ? [rawList] : [];
-        for (const r of rateArr) {
-          const attrs = r.$ || r;
-          if (!attrs.carCategoryCode || !attrs.totalRateEstimate) continue;
-
-          // Extract official car image from <links><link id="carvisual" .../></links>
-          const linksRaw = r.links?.link || [];
-          const linksArr: any[] = Array.isArray(linksRaw) ? linksRaw : [linksRaw];
-          const carvisual = linksArr.find((l: any) => (l.$ || l).id === "carvisual");
-          const imageUrl: string = (carvisual?.$ || carvisual)?.value || "";
-
-          // Extract optional insurances (type="O", price > 0) from <insuranceList>
-          const rawIns = r.insuranceList?.insurance || [];
-          const insArr: any[] = Array.isArray(rawIns) ? rawIns : [rawIns];
-          const optionalInsurances = insArr
-            .map((ins: any) => ins.$ || ins)
-            .filter((ins: any) => ins.type === "O" && parseFloat(ins.price || "0") > 0);
-
-          allRates.push({ ...attrs, imageUrl, optionalInsurances });
+      const parseRates = (ratesData: any) => {
+        const allRates: any[] = [];
+        const chunks = Array.isArray(ratesData.results) ? ratesData.results : [ratesData];
+        for (const chunk of chunks) {
+          const rawList =
+            chunk?.message?.serviceResponse?.reservationRateList?.reservationRate ||
+            chunk?.serviceResponse?.reservationRateList?.reservationRate || [];
+          const rateArr: any[] = Array.isArray(rawList) ? rawList : rawList ? [rawList] : [];
+          for (const r of rateArr) {
+            const attrs = r.$ || r;
+            if (!attrs.carCategoryCode || !attrs.totalRateEstimate) continue;
+            const linksRaw = r.links?.link || [];
+            const linksArr: any[] = Array.isArray(linksRaw) ? linksRaw : [linksRaw];
+            const carvisual = linksArr.find((l: any) => (l.$ || l).id === "carvisual");
+            const imageUrl: string = (carvisual?.$ || carvisual)?.value || "";
+            const rawIns = r.insuranceList?.insurance || [];
+            const insArr: any[] = Array.isArray(rawIns) ? rawIns : [rawIns];
+            const optionalInsurances = insArr
+              .map((ins: any) => ins.$ || ins)
+              .filter((ins: any) => ins.type === "O" && parseFloat(ins.price || "0") > 0);
+            allRates.push({ ...attrs, imageUrl, optionalInsurances });
+          }
         }
+        return allRates;
+      };
+
+      const poaRatesData = await poaRatesRes.json();
+      const poaRates = parseRates(poaRatesData);
+
+      // Parse ETO rates (may fail for some stations)
+      let etoRates: any[] = [];
+      if (etoRatesRes) {
+        try {
+          const etoRatesData = await etoRatesRes.json();
+          etoRates = parseRates(etoRatesData);
+        } catch { /* ETO unavailable for this station */ }
       }
 
-
-      if (allRates.length === 0) {
+      if (poaRates.length === 0) {
         setError("Sem tarifas disponíveis para o período selecionado. Tente outras datas.");
         setLoading(false);
         return;
       }
 
-      setCars(allRates);
+      setCars(poaRates);
+      setEtoCars(etoRates);
     } catch (e: any) {
       setError("Erro ao buscar veículos: " + (e.message || "Tente novamente."));
     } finally {
@@ -243,6 +269,14 @@ function VehiclesContent() {
   }, [pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, effectiveContractID]);
 
   useEffect(() => { fetchCars(); }, [fetchCars]);
+
+  // Load ETO margin from admin panel
+  useEffect(() => {
+    fetch('/api/admin/margin')
+      .then(r => r.json())
+      .then(d => setEtoMargin(d.percent || 0))
+      .catch(() => {});
+  }, []);
 
   // Load extras when advancing to step 3
   useEffect(() => {
@@ -478,9 +512,21 @@ function VehiclesContent() {
                     const name = car.carCategoryName || code;
                     const sample = car.carCategorySample || "";
                     const currency = car.currency || "EUR";
-                    const totalPrice = parseFloat(car.totalRateEstimate || 0);
+                    const totalPricePOA = parseFloat(car.totalRateEstimate || 0);
+                    const totalBRL_POA = parseFloat(car.totalRateEstimateInBookingCurrency || 0);
                     const basePrice = parseFloat(car.basePrice || 0);
                     const isSelected = selectedCar?.carCategoryCode === code && selectedCar?.rateId === car.rateId;
+
+                    // Find matching ETO rate for this car
+                    const etoCar = etoCars.find(e => e.carCategoryCode === code);
+                    const totalPriceETO_raw = etoCar ? parseFloat(etoCar.totalRateEstimate || 0) : 0;
+                    const totalBRL_ETO_raw = etoCar ? parseFloat(etoCar.totalRateEstimateInBookingCurrency || 0) : 0;
+                    // Apply admin margin to ETO
+                    const totalPriceETO = totalPriceETO_raw * (1 + etoMargin / 100);
+                    const totalBRL_ETO = totalBRL_ETO_raw * (1 + etoMargin / 100);
+                    const hasETO = etoCar && totalPriceETO_raw > 0;
+                    // Calculate discount % ETO vs POA
+                    const discountPct = hasETO && totalPricePOA > 0 ? Math.round((1 - totalPriceETO / totalPricePOA) * 100) : 0;
 
                     return (
                       <div key={`${code}-${idx}`} className={`bg-white rounded-lg border p-5 flex items-center gap-6 transition-shadow ${isSelected ? "border-[#008d36] shadow-lg" : "border-gray-200 hover:shadow-md"}`}>
@@ -512,22 +558,52 @@ function VehiclesContent() {
                           </div>
                         </div>
 
-                        {/* Price + CTA */}
-                        <div className="w-[175px] shrink-0 flex flex-col items-end border-l border-gray-100 pl-5">
-                          <span className="text-[10px] uppercase font-bold text-gray-400 mb-1">TOTAL DO PERÍODO</span>
-                          <div className="flex items-baseline gap-1 mb-1">
-                            <span className="text-2xl font-black text-gray-900">{currency} {fmtPrice(totalPrice)}</span>
+                        {/* Price + CTA — POA vs ETO */}
+                        <div className="w-[220px] shrink-0 flex flex-col items-stretch border-l border-gray-100 pl-5 gap-2">
+                          {/* POA Tariff */}
+                          <div className="border border-gray-200 rounded-lg p-3 hover:border-[#008d36] transition-colors">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[9px] uppercase font-black text-gray-500 tracking-wider">Tarifa POA</span>
+                              <span className="text-[9px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-bold">Pública</span>
+                            </div>
+                            <div className="text-lg font-black text-gray-900">
+                              {totalBRL_POA > 0 ? `BRL ${fmtPrice(totalBRL_POA)}` : `${currency} ${fmtPrice(totalPricePOA)}`}
+                            </div>
+                            {totalBRL_POA > 0 && <span className="text-[10px] text-gray-400">Base: {currency} {fmtPrice(totalPricePOA)}</span>}
+                            <button
+                              onClick={() => { setSelectedTariffType('POA'); handleSelectCar(car); }}
+                              className={`w-full mt-2 font-bold py-2 rounded text-xs transition-colors ${
+                                isSelected && selectedTariffType === 'POA' ? "bg-[#008d36] text-white" : "bg-[#ffcc00] hover:bg-[#e6b800] text-gray-900"
+                              }`}
+                            >
+                              {isSelected && selectedTariffType === 'POA' ? "POA ✓" : "Selecionar POA"}
+                            </button>
                           </div>
-                          <span className="text-xs text-gray-400 mb-3">Base: {currency} {fmtPrice(basePrice)}</span>
-                          {car.bookingCurrencyOfTotalRateEstimate && car.bookingCurrencyOfTotalRateEstimate !== currency && (
-                            <span className="text-xs text-gray-500 mb-2">≈ R$ {fmtPrice(car.totalRateEstimateInBookingCurrency)}</span>
+
+                          {/* ETO Tariff */}
+                          {hasETO && (
+                            <div className="border-2 border-[#e67e00] rounded-lg p-3 bg-orange-50/50 relative">
+                              {discountPct > 0 && (
+                                <span className="absolute -top-2.5 right-2 text-[9px] bg-[#e67e00] text-white px-2 py-0.5 rounded-full font-black">-{discountPct}%</span>
+                              )}
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-[9px] uppercase font-black text-[#e67e00] tracking-wider">Tarifa ETO</span>
+                                <span className="text-[9px] bg-[#e67e00]/10 text-[#e67e00] px-1.5 py-0.5 rounded font-bold">Corporativo</span>
+                              </div>
+                              <div className="text-lg font-black text-gray-900">
+                                {totalBRL_ETO > 0 ? `BRL ${fmtPrice(totalBRL_ETO)}` : `${currency} ${fmtPrice(totalPriceETO)}`}
+                              </div>
+                              {totalBRL_ETO > 0 && <span className="text-[10px] text-gray-400">Base: {currency} {fmtPrice(totalPriceETO)}</span>}
+                              <button
+                                onClick={() => { setSelectedTariffType('ETO'); handleSelectCar({ ...car, ...etoCar, optionalInsurances: car.optionalInsurances, _etoCID: '56935495' }); }}
+                                className={`w-full mt-2 font-bold py-2 rounded text-xs transition-colors ${
+                                  isSelected && selectedTariffType === 'ETO' ? "bg-[#e67e00] text-white" : "bg-[#e67e00] hover:bg-[#cc6f00] text-white"
+                                }`}
+                              >
+                                {isSelected && selectedTariffType === 'ETO' ? "ETO ✓" : "Selecionar ETO"}
+                              </button>
+                            </div>
                           )}
-                          <button
-                            onClick={() => handleSelectCar(car)}
-                            className={`w-full font-bold py-3 rounded text-sm transition-colors ${isSelected ? "bg-[#008d36] text-white" : "bg-[#ffcc00] hover:bg-[#e6b800] text-gray-900"}`}
-                          >
-                            {isSelected ? "Selecionado ✓" : "Selecionar"}
-                          </button>
                         </div>
                       </div>
                     );
@@ -553,7 +629,8 @@ function VehiclesContent() {
                 </div>
                 <button
                   onClick={() => {
-                    const payload = { car: selectedCar, extras: selectedExtrasMap, pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, contractID: effectiveContractID, driverCountry, driverCountryName };
+                    const cidForTariff = selectedTariffType === 'ETO' ? (selectedCar?._etoCID || '56935495') : (effectiveContractID || '57269673');
+                    const payload = { car: selectedCar, extras: selectedExtrasMap, pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, contractID: cidForTariff, tariffType: selectedTariffType, driverCountry, driverCountryName };
                     sessionStorage.setItem("europcar_booking", JSON.stringify(payload));
                     window.location.href = "/checkout";
                   }}
