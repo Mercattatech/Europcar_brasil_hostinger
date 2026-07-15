@@ -327,38 +327,74 @@ export default function PainelReservas() {
                                   </button>
                                </div>
                               </td>
-                           </tr>
-                           {isExpanded && (
-                              <tr className="bg-gray-800/40 border-b border-gray-800">
-                                 <td colSpan={7} className="px-5 py-4">
-                                    <div className="flex flex-wrap gap-6 text-sm">
-                                       <div className="bg-gray-900 rounded-lg p-4 border border-gray-700/50 flex-1 min-w-[200px]">
-                                          <p className="text-[10px] text-gray-500 font-bold uppercase mb-2">Dados do Cliente</p>
-                                          <p className="text-gray-300"><strong>Nome:</strong> {parsed?.nome || "—"} {parsed?.sobrenome || ""}</p>
-                                          <p className="text-gray-300"><strong>E-mail:</strong> {parsed?.email || "—"}</p>
-                                          <p className="text-gray-300"><strong>CPF:</strong> {parsed?.cpf || "—"}</p>
-                                          <p className="text-gray-300"><strong>Telefone:</strong> {parsed?.telefone || "—"}</p>
-                                       </div>
-                                       <div className="bg-gray-900 rounded-lg p-4 border border-gray-700/50 flex-1 min-w-[200px]">
-                                          <p className="text-[10px] text-gray-500 font-bold uppercase mb-2">Fidelidade e Voo</p>
-                                          <p className="text-gray-300">
-                                             <strong>Programa:</strong> {parsed?.loyaltyProgramId || "N/A"} 
-                                             {parsed?.loyaltyId && ` - ${parsed?.loyaltyId}`}
-                                          </p>
-                                          <p className="text-gray-300 mt-2 flex items-center gap-2">
-                                             <strong>Voo:</strong> {parsed?.flightNumber || "N/A"}
-                                             {parsed?.flightNumber && (
-                                                <a href={`https://www.google.com/search?q=voo+${parsed.flightNumber}`} target="_blank" rel="noreferrer" className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded inline-flex items-center gap-1 transition-colors">
-                                                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                                                   Consultar Voo
-                                                </a>
-                                             )}
-                                          </p>
-                                       </div>
-                                    </div>
-                                 </td>
                               </tr>
-                           )}
+                              {isExpanded && (
+                               <tr className="bg-gray-800/40 border-b border-gray-800">
+                                  <td colSpan={7} className="px-5 py-4">
+                                     <div className="flex flex-wrap gap-4 text-sm">
+                                        {/* Dados do Cliente */}
+                                        <div className="bg-gray-900 rounded-lg p-4 border border-gray-700/50 flex-1 min-w-[200px]">
+                                           <p className="text-[10px] text-gray-500 font-bold uppercase mb-2">Dados do Cliente</p>
+                                           <p className="text-gray-300"><strong>Nome:</strong> {parsed?.nome || "—"} {parsed?.sobrenome || ""}</p>
+                                           <p className="text-gray-300"><strong>E-mail:</strong> {parsed?.email || "—"}</p>
+                                           <p className="text-gray-300"><strong>CPF:</strong> {parsed?.cpf || "—"}</p>
+                                           <p className="text-gray-300"><strong>Telefone:</strong> {parsed?.telefone || "—"}</p>
+                                        </div>
+                                        {/* Veículo e Período */}
+                                        <div className="bg-gray-900 rounded-lg p-4 border border-gray-700/50 flex-1 min-w-[200px]">
+                                           <p className="text-[10px] text-gray-500 font-bold uppercase mb-2">Veículo e Período</p>
+                                           <p className="text-gray-300"><strong>Categoria:</strong> {parsed?.booking?.car?.carCategoryCode || parsed?.carCategory || "—"}</p>
+                                           <p className="text-gray-300"><strong>Veículo:</strong> {parsed?.booking?.car?.carCategorySample || parsed?.booking?.car?.carCategoryName || "—"}</p>
+                                           <p className="text-gray-300"><strong>Rate ID:</strong> <span className="font-mono text-xs text-gray-500">{parsed?.booking?.car?.rateId || "—"}</span></p>
+                                           <div className="border-t border-gray-700/50 my-2"></div>
+                                           <p className="text-gray-300"><strong>Retirada:</strong> {parsed?.booking?.pickupStation || "—"} — {parsed?.booking?.pickupDate ? `${parsed.booking.pickupDate.slice(6,8)}/${parsed.booking.pickupDate.slice(4,6)}/${parsed.booking.pickupDate.slice(0,4)}` : "—"} {parsed?.booking?.pickupTime ? `${parsed.booking.pickupTime.slice(0,2)}:${parsed.booking.pickupTime.slice(2)}` : ""}</p>
+                                           <p className="text-gray-300"><strong>Devolução:</strong> {parsed?.booking?.returnStation || parsed?.booking?.pickupStation || "—"} — {parsed?.booking?.returnDate ? `${parsed.booking.returnDate.slice(6,8)}/${parsed.booking.returnDate.slice(4,6)}/${parsed.booking.returnDate.slice(0,4)}` : "—"} {parsed?.booking?.returnTime ? `${parsed.booking.returnTime.slice(0,2)}:${parsed.booking.returnTime.slice(2)}` : ""}</p>
+                                           <p className="text-gray-300"><strong>Dias:</strong> {parsed?.booking?.days || "—"}</p>
+                                           <p className="text-gray-300"><strong>País:</strong> {parsed?.booking?.country || "BR"}</p>
+                                        </div>
+                                        {/* Valores */}
+                                        <div className="bg-gray-900 rounded-lg p-4 border border-gray-700/50 flex-1 min-w-[200px]">
+                                           <p className="text-[10px] text-gray-500 font-bold uppercase mb-2">Valores e Pagamento</p>
+                                           <p className="text-gray-300"><strong>Total EUR:</strong> {parsed?.booking?.car?.totalRateEstimate ? `€ ${parseFloat(parsed.booking.car.totalRateEstimate).toFixed(2)}` : "—"}</p>
+                                           <p className="text-gray-300"><strong>Total BRL:</strong> {res.amountInCents ? `R$ ${(res.amountInCents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : parsed?.booking?.car?.totalRateInBookingCurrency ? `R$ ${parseFloat(parsed.booking.car.totalRateInBookingCurrency).toFixed(2)}` : "—"}</p>
+                                           <p className="text-gray-300"><strong>Câmbio:</strong> {parsed?.booking?.car?.exchangeRate ? `1 EUR = ${parseFloat(parsed.booking.car.exchangeRate).toFixed(4)} BRL` : "—"}</p>
+                                           <div className="border-t border-gray-700/50 my-2"></div>
+                                           <p className="text-gray-300"><strong>Método:</strong> <span className={`text-xs font-bold px-2 py-0.5 rounded ${res.status === 'CONFIRMED_PREPAID' ? 'bg-green-500/20 text-green-400' : res.status === 'PENDING_PIX' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-blue-500/20 text-blue-300'}`}>{STATUS_LABELS[res.status] || res.status}</span></p>
+                                           {parsed?.contractID && <p className="text-gray-300 mt-1"><strong>ContractID:</strong> <span className="font-mono text-xs text-orange-400">{parsed.contractID}</span></p>}
+                                           <p className="text-gray-300"><strong>Merchant Order:</strong> <span className="font-mono text-[10px] text-gray-500">{res.merchantOrderId || "—"}</span></p>
+                                        </div>
+                                        {/* Fidelidade, Voo e Extras */}
+                                        <div className="bg-gray-900 rounded-lg p-4 border border-gray-700/50 flex-1 min-w-[200px]">
+                                           <p className="text-[10px] text-gray-500 font-bold uppercase mb-2">Fidelidade, Voo e Extras</p>
+                                           <p className="text-gray-300">
+                                              <strong>Programa:</strong> {parsed?.loyaltyProgramId || "N/A"} 
+                                              {parsed?.loyaltyId && ` - ${parsed?.loyaltyId}`}
+                                           </p>
+                                           <p className="text-gray-300 flex items-center gap-2">
+                                              <strong>Voo:</strong> {parsed?.flightNumber || "N/A"}
+                                              {parsed?.flightNumber && (
+                                                 <a href={`https://www.google.com/search?q=voo+${parsed.flightNumber}`} target="_blank" rel="noreferrer" className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-2 py-0.5 rounded inline-flex items-center gap-1 transition-colors">
+                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                                    Consultar
+                                                 </a>
+                                              )}
+                                           </p>
+                                           <div className="border-t border-gray-700/50 my-2"></div>
+                                           <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Extras Selecionados</p>
+                                           {parsed?.booking?.extras && Object.keys(parsed.booking.extras).filter((k: string) => parsed.booking.extras[k] > 0).length > 0 ? (
+                                              <div className="flex flex-wrap gap-1">
+                                                 {Object.entries(parsed.booking.extras).filter(([, v]: any) => v > 0).map(([code, qty]: any) => (
+                                                    <span key={code} className="bg-gray-800 text-gray-300 text-[10px] font-bold px-2 py-1 rounded">{code} x{qty}</span>
+                                                 ))}
+                                              </div>
+                                           ) : (
+                                              <p className="text-gray-500 text-xs italic">Nenhum extra selecionado</p>
+                                           )}
+                                        </div>
+                                     </div>
+                                  </td>
+                               </tr>
+                              )}
                            </Fragment>
                         );
                      })}
