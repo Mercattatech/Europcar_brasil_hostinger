@@ -83,7 +83,9 @@ function VehiclesContent() {
   const effectiveContractID = contractID || sessionContractID;
 
   // Station name display
+  const isOneWay = returnStation !== pickupStation;
   const [stationName, setStationName] = useState(pickupStation);
+  const [returnStationName, setReturnStationName] = useState(returnStation);
   useEffect(() => {
     if (!pickupStation) return;
     fetch(`/api/europcar/getStations?q=${pickupStation}`)
@@ -93,6 +95,17 @@ function VehiclesContent() {
         if (s) setStationName(s.name);
       }).catch(() => { });
   }, [pickupStation]);
+
+  // Resolve return station name (One-Way)
+  useEffect(() => {
+    if (!isOneWay || !returnStation) return;
+    fetch(`/api/europcar/getStations?q=${returnStation}`)
+      .then(r => r.json())
+      .then(d => {
+        const s = d.stations?.find((x: any) => x.code === returnStation);
+        if (s) setReturnStationName(s.name);
+      }).catch(() => { });
+  }, [returnStation, isOneWay]);
 
   // XRS cars state
   const [cars, setCars] = useState<any[]>([]);
@@ -138,6 +151,15 @@ function VehiclesContent() {
       });
       const catData = await catRes.json();
 
+      // Check for One-Way restriction error
+      const serviceResponse = catData?.message?.serviceResponse || catData?.serviceResponse;
+      const errorCode = serviceResponse?.$.errorCode || serviceResponse?.errorCode || '';
+      if (errorCode === 'rental.onewaynotallowed') {
+        setError('Não é possível devolver neste local. A Europcar não permite devolução entre as estações selecionadas. Tente selecionar outras estações.');
+        setLoading(false);
+        return;
+      }
+
       const rawCatList =
         catData?.message?.serviceResponse?.carCategoryList?.carCategory ||
         catData?.serviceResponse?.carCategoryList?.carCategory || [];
@@ -148,7 +170,13 @@ function VehiclesContent() {
         .filter(Boolean);
 
       if (acrissCodes.length === 0) {
-        setError("Nenhum veículo disponível para esta estação e período.");
+        // Check if XRS returned KO with an error
+        const returnCode = serviceResponse?.$?.returnCode || serviceResponse?.returnCode || '';
+        if (returnCode === 'KO') {
+          setError('Não foi possível buscar veículos para este trajeto. Verifique as estações selecionadas e tente novamente.');
+        } else {
+          setError('Nenhum veículo disponível para esta estação e período.');
+        }
         setLoading(false);
         return;
       }
@@ -316,7 +344,7 @@ function VehiclesContent() {
               </div>
               <div>
                 <div className="font-bold text-gray-900 uppercase text-[10px]">Devolução</div>
-                <div className="font-bold truncate max-w-[130px]">{stationName || (returnStation || pickupStation)}</div>
+                <div className={`font-bold truncate max-w-[130px] ${isOneWay ? 'text-[#e67e00]' : ''}`}>{isOneWay ? (returnStationName || returnStation) : (stationName || pickupStation)}</div>
                 <div className="text-gray-500">{formatDate(returnDate)}</div>
               </div>
             </div>

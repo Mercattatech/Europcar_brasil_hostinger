@@ -83,7 +83,17 @@ export default function HeroSearchForm() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const detailCacheRef = useRef<Record<string, any>>({});
 
+  // Return station (One-Way)
   const [returnLocation, setReturnLocation] = useState("");
+  const [returnStationQuery, setReturnStationQuery] = useState("");
+  const [returnStations, setReturnStations] = useState<any[]>([]);
+  const [showReturnStationsList, setShowReturnStationsList] = useState(false);
+  const [hoveredReturnStation, setHoveredReturnStation] = useState<any>(null);
+  const [returnStationDetail, setReturnStationDetail] = useState<any>(null);
+  const [loadingReturnDetail, setLoadingReturnDetail] = useState(false);
+  const returnDetailCacheRef = useRef<Record<string, any>>({});
+  const returnStationRef = useRef<HTMLDivElement>(null);
+
   const [pickupDate, setPickupDate] = useState("");
   const [pickupTime, setPickupTime] = useState("10:00");
   const [returnDate, setReturnDate] = useState("");
@@ -146,6 +156,33 @@ export default function HeroSearchForm() {
     }
   }, [stationQuery]);
 
+  // Fetch return stations on type (One-Way)
+  useEffect(() => {
+    if (sameReturnLocation) return;
+    if (returnStationQuery.length > 2) {
+      const fetchStations = async () => {
+        try {
+          const res = await fetch(
+            `/api/europcar/getStations?q=${encodeURIComponent(returnStationQuery)}`,
+          );
+          const data = await res.json();
+          setReturnStations(data.stations || []);
+          setShowReturnStationsList(true);
+          if (data.stations && data.stations.length > 0) {
+            setHoveredReturnStation(data.stations[0]);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      };
+      const debounce = setTimeout(fetchStations, 400);
+      return () => clearTimeout(debounce);
+    } else {
+      setShowReturnStationsList(false);
+      setHoveredReturnStation(null);
+    }
+  }, [returnStationQuery, sameReturnLocation]);
+
   // Fetch detailed station info (opening hours) when hovering
   useEffect(() => {
     if (!hoveredStation?.code) { setStationDetail(null); return; }
@@ -171,11 +208,38 @@ export default function HeroSearchForm() {
     return () => clearTimeout(timer);
   }, [hoveredStation]);
 
+  // Fetch return station detail when hovering (One-Way)
+  useEffect(() => {
+    if (!hoveredReturnStation?.code) { setReturnStationDetail(null); return; }
+    const code = hoveredReturnStation.code;
+    if (returnDetailCacheRef.current[code]) {
+      setReturnStationDetail(returnDetailCacheRef.current[code]);
+      return;
+    }
+    setLoadingReturnDetail(true);
+    const timer = setTimeout(() => {
+      fetch(`/api/europcar/getStation?code=${code}`)
+        .then(r => r.json())
+        .then(d => {
+          if (d.station) {
+            returnDetailCacheRef.current[code] = d.station;
+            setReturnStationDetail(d.station);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setLoadingReturnDetail(false));
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [hoveredReturnStation]);
+
   // Handle outside click popovers
   useEffect(() => {
     function handleClickOutside(event: any) {
       if (popoverRef.current && !popoverRef.current.contains(event.target)) {
         setShowTariffPopover(false);
+      }
+      if (returnStationRef.current && !returnStationRef.current.contains(event.target)) {
+        setShowReturnStationsList(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -187,6 +251,10 @@ export default function HeroSearchForm() {
 
     if (!pickupLocation) {
       alert("Selecione um local de retirada válido da lista");
+      return;
+    }
+    if (!sameReturnLocation && !returnLocation) {
+      alert("Selecione um local de devolução válido da lista");
       return;
     }
     if (!pickupDate) {
@@ -252,201 +320,391 @@ export default function HeroSearchForm() {
       <form onSubmit={handleSearch}>
         {/* Main Grid Filters */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Pickup Location */}
+          {/* Pickup Location + Return Location */}
           <div className="lg:col-span-2 relative">
             <div className="flex justify-between items-center mb-2">
               <label className="text-sm font-bold text-gray-900">
-                Local de retirada e devolução
+                {sameReturnLocation ? "Local de retirada e devolução" : "Local de retirada"}
               </label>
               <label className="text-xs text-gray-400 font-bold flex items-center gap-1 cursor-pointer">
                 <input
                   type="checkbox"
                   className="accent-[#008d36] w-4 h-4 rounded text-[#008d36] focus:ring-[#008d36] opacity-80"
                   checked={sameReturnLocation}
-                  onChange={(e) => setSameReturnLocation(e.target.checked)}
+                  onChange={(e) => {
+                    setSameReturnLocation(e.target.checked);
+                    if (e.target.checked) {
+                      setReturnLocation("");
+                      setReturnStationQuery("");
+                      setReturnStations([]);
+                      setShowReturnStationsList(false);
+                    }
+                  }}
                 />{" "}
                 Mesmo local de devolução
               </label>
             </div>
 
-            <div className="relative">
-              <span className="absolute left-3 top-3.5 text-[#008d36]">
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                  ></path>
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                  ></path>
-                </svg>
-              </span>
-              <input
-                type="text"
-                placeholder="Cidade, endereço, ponto de interesse"
-                className="w-full pl-11 p-4 bg-white border border-gray-300 rounded-lg focus:ring-1 focus:ring-[#008d36] focus:border-[#008d36] outline-none text-base font-medium transition-all text-gray-900 placeholder-gray-400"
-                value={stationQuery}
-                onChange={(e) => {
-                  setStationQuery(e.target.value);
-                  if (!e.target.value) setPickupLocation("");
-                }}
-                required
-              />
+            <div className={`flex gap-3 ${sameReturnLocation ? '' : ''}`}>
+              {/* Pickup Station Field */}
+              <div className={`relative transition-all duration-300 ease-in-out ${sameReturnLocation ? 'w-full' : 'w-1/2'}`}>
+                <span className="absolute left-3 top-3.5 text-[#008d36]">
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                    ></path>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                    ></path>
+                  </svg>
+                </span>
+                <input
+                  type="text"
+                  placeholder={sameReturnLocation ? "Cidade, endereço, ponto de interesse" : "Local de retirada"}
+                  className="w-full pl-11 p-4 bg-white border border-gray-300 rounded-lg focus:ring-1 focus:ring-[#008d36] focus:border-[#008d36] outline-none text-base font-medium transition-all text-gray-900 placeholder-gray-400"
+                  value={stationQuery}
+                  onChange={(e) => {
+                    setStationQuery(e.target.value);
+                    if (!e.target.value) setPickupLocation("");
+                  }}
+                  required
+                />
 
-              {/* Dropdown Autocomplete - Detailed Panel */}
-              {showStationsList && stations.length > 0 && (
-                <div className="absolute top-full left-0 w-full md:w-[760px] mt-2 bg-white flex shadow-2xl rounded-lg z-50 h-[380px] overflow-hidden border border-gray-200">
-                  {/* List part */}
-                  <div className="w-full md:w-[380px] flex flex-col border-r border-gray-200">
-                    <div className="bg-gray-50 font-bold text-[10px] text-gray-500 px-4 py-2 border-b border-gray-200 tracking-wider">
-                      EUROPCAR STATION
-                    </div>
-                    <div className="flex-1 overflow-y-auto">
-                      {stations.map((station) => (
-                        <div
-                          key={station.code}
-                          className={`px-4 py-3 cursor-pointer text-sm border-b border-gray-100 flex items-center gap-3 transition-colors ${hoveredStation?.code === station.code ? 'bg-gray-100' : 'hover:bg-gray-50 text-gray-700'}`}
-                          onMouseEnter={() => setHoveredStation(station)}
-                          onClick={() => {
-                            setPickupLocation(station.code);
-                            setStationQuery(`${station.name}`);
-                            setShowStationsList(false);
-                          }}
-                        >
-                          {station.type === 'airport' ? (
-                            <svg className="w-5 h-5 text-gray-400 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" /></svg>
-                          ) : (
-                            <svg className="w-5 h-5 text-gray-400 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M15 11V5l-3-3-3 3v2H3v14h18V11h-6zm-8 8H5v-2h2v2zm0-4H5v-2h2v2zm0-4H5V9h2v2zm6 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V9h2v2zm0-4h-2V5h2v2zm6 12h-2v-2h2v2zm0-4h-2v-2h2v2z" /></svg>
-                          )}
-                          <div className="flex flex-col min-w-0">
-                            <span className="font-extrabold text-xs uppercase text-gray-900 leading-snug truncate">
-                              {station.name}
-                            </span>
-                            {station.country && (
-                              <span className="text-[10px] text-gray-400 font-medium">
-                                {station.country}
+                {/* Dropdown Autocomplete - Pickup Station */}
+                {showStationsList && stations.length > 0 && (
+                  <div className="absolute top-full left-0 w-full md:w-[760px] mt-2 bg-white flex shadow-2xl rounded-lg z-50 h-[380px] overflow-hidden border border-gray-200">
+                    {/* List part */}
+                    <div className="w-full md:w-[380px] flex flex-col border-r border-gray-200">
+                      <div className="bg-gray-50 font-bold text-[10px] text-gray-500 px-4 py-2 border-b border-gray-200 tracking-wider">
+                        EUROPCAR STATION
+                      </div>
+                      <div className="flex-1 overflow-y-auto">
+                        {stations.map((station) => (
+                          <div
+                            key={station.code}
+                            className={`px-4 py-3 cursor-pointer text-sm border-b border-gray-100 flex items-center gap-3 transition-colors ${hoveredStation?.code === station.code ? 'bg-gray-100' : 'hover:bg-gray-50 text-gray-700'}`}
+                            onMouseEnter={() => setHoveredStation(station)}
+                            onClick={() => {
+                              setPickupLocation(station.code);
+                              setStationQuery(`${station.name}`);
+                              setShowStationsList(false);
+                            }}
+                          >
+                            {station.type === 'airport' ? (
+                              <svg className="w-5 h-5 text-gray-400 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" /></svg>
+                            ) : (
+                              <svg className="w-5 h-5 text-gray-400 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M15 11V5l-3-3-3 3v2H3v14h18V11h-6zm-8 8H5v-2h2v2zm0-4H5v-2h2v2zm0-4H5V9h2v2zm6 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V9h2v2zm0-4h-2V5h2v2zm6 12h-2v-2h2v2zm0-4h-2v-2h2v2z" /></svg>
+                            )}
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-extrabold text-xs uppercase text-gray-900 leading-snug truncate">
+                                {station.name}
                               </span>
+                              {station.country && (
+                                <span className="text-[10px] text-gray-400 font-medium">
+                                  {station.country}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Details part */}
+                    {hoveredStation && (
+                      <div className="hidden md:flex flex-col w-[380px] bg-[#f9f9f9] overflow-y-auto relative p-6">
+                        {/* Station name */}
+                        <h3 className="font-extrabold text-sm uppercase text-black max-w-[80%] leading-tight">
+                          {stationDetail?.name || hoveredStation.name}
+                        </h3>
+                        {hoveredStation.country && (
+                          <span className="text-[10px] bg-[#008d36]/10 text-[#008d36] font-bold px-2 py-0.5 rounded-full mt-1 w-fit">
+                            {hoveredStation.country}
+                          </span>
+                        )}
+
+                        {/* Address */}
+                        {(stationDetail?.address || hoveredStation.address) && (
+                          <p className="text-[11px] font-medium text-gray-500 mt-1 whitespace-pre-wrap leading-tight">
+                            {stationDetail?.address || hoveredStation.address}
+                            {stationDetail?.postalCode ? `, ${stationDetail.postalCode}` : ''}
+                            {stationDetail?.city ? ` — ${stationDetail.city}` : ''}
+                          </p>
+                        )}
+
+                        {/* Phone & email */}
+                        {(stationDetail?.phone || stationDetail?.email) && (
+                          <div className="mt-3 flex flex-col gap-1">
+                            {stationDetail.phone && (
+                              <div className="flex items-center gap-1.5 text-[11px] text-gray-600">
+                                <svg className="w-3.5 h-3.5 text-[#008d36] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                </svg>
+                                <span className="font-bold">{stationDetail.phone}</span>
+                              </div>
+                            )}
+                            {stationDetail.email && (
+                              <div className="flex items-center gap-1.5 text-[11px] text-gray-600">
+                                <svg className="w-3.5 h-3.5 text-[#008d36] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                                <span>{stationDetail.email}</span>
+                              </div>
                             )}
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                        )}
 
-                  {/* Details part */}
-                  {hoveredStation && (
-                    <div className="hidden md:flex flex-col w-[380px] bg-[#f9f9f9] overflow-y-auto relative p-6">
-                      {/* Station name */}
-                      <h3 className="font-extrabold text-sm uppercase text-black max-w-[80%] leading-tight">
-                        {stationDetail?.name || hoveredStation.name}
-                      </h3>
-                      {hoveredStation.country && (
-                        <span className="text-[10px] bg-[#008d36]/10 text-[#008d36] font-bold px-2 py-0.5 rounded-full mt-1 w-fit">
-                          {hoveredStation.country}
-                        </span>
-                      )}
-
-                      {/* Address */}
-                      {(stationDetail?.address || hoveredStation.address) && (
-                        <p className="text-[11px] font-medium text-gray-500 mt-1 whitespace-pre-wrap leading-tight">
-                          {stationDetail?.address || hoveredStation.address}
-                          {stationDetail?.postalCode ? `, ${stationDetail.postalCode}` : ''}
-                          {stationDetail?.city ? ` — ${stationDetail.city}` : ''}
-                        </p>
-                      )}
-
-                      {/* Phone & email */}
-                      {(stationDetail?.phone || stationDetail?.email) && (
-                        <div className="mt-3 flex flex-col gap-1">
-                          {stationDetail.phone && (
-                            <div className="flex items-center gap-1.5 text-[11px] text-gray-600">
-                              <svg className="w-3.5 h-3.5 text-[#008d36] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                              </svg>
-                              <span className="font-bold">{stationDetail.phone}</span>
-                            </div>
-                          )}
-                          {stationDetail.email && (
-                            <div className="flex items-center gap-1.5 text-[11px] text-gray-600">
-                              <svg className="w-3.5 h-3.5 text-[#008d36] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                              </svg>
-                              <span>{stationDetail.email}</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Opening hours */}
-                      <div className="mt-4">
-                        <div className="flex items-center gap-1.5 mb-2">
-                          <svg className="w-3.5 h-3.5 text-[#008d36]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          <span className="text-[10px] font-black text-gray-700 uppercase tracking-wider">Horário de Funcionamento</span>
-                        </div>
-
-                        {loadingDetail ? (
-                          <div className="flex gap-1.5 items-center text-[11px] text-gray-400">
-                            <div className="w-3 h-3 border-2 border-[#008d36] border-t-transparent rounded-full animate-spin"></div>
-                            Consultando API Europcar...
+                        {/* Opening hours */}
+                        <div className="mt-4">
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <svg className="w-3.5 h-3.5 text-[#008d36]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="text-[10px] font-black text-gray-700 uppercase tracking-wider">Horário de Funcionamento</span>
                           </div>
-                        ) : stationDetail?.hours?.length > 0 ? (
-                          <div className="flex flex-col gap-0.5">
-                            {stationDetail.hours.map((h: any, i: number) => {
-                              const isClosed = !h.open || h.open === h.close || h.open === '00:00';
-                              return (
+
+                          {loadingDetail ? (
+                            <div className="flex gap-1.5 items-center text-[11px] text-gray-400">
+                              <div className="w-3 h-3 border-2 border-[#008d36] border-t-transparent rounded-full animate-spin"></div>
+                              Consultando API Europcar...
+                            </div>
+                          ) : stationDetail?.hours?.length > 0 ? (
+                            <div className="flex flex-col gap-0.5">
+                              {stationDetail.hours.map((h: any, i: number) => {
+                                const isClosed = !h.open || h.open === h.close || h.open === '00:00';
+                                return (
+                                  <div key={i} className="flex text-xs w-full justify-between py-0.5 border-b border-gray-100 last:border-0">
+                                    <span className="font-bold text-gray-800 w-8 shrink-0">{h.day}</span>
+                                    {isClosed ? (
+                                      <span className="text-red-500 font-bold">Fechado</span>
+                                    ) : (
+                                      <span className="text-gray-600 font-medium">{h.open} – {h.close}</span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : hoveredStation.hours?.length > 0 ? (
+                            // fallback to whatever getStations returned
+                            <div className="flex flex-col gap-0.5">
+                              {hoveredStation.hours.map((h: any, i: number) => (
                                 <div key={i} className="flex text-xs w-full justify-between py-0.5 border-b border-gray-100 last:border-0">
                                   <span className="font-bold text-gray-800 w-8 shrink-0">{h.day}</span>
-                                  {isClosed ? (
-                                    <span className="text-red-500 font-bold">Fechado</span>
-                                  ) : (
-                                    <span className="text-gray-600 font-medium">{h.open} – {h.close}</span>
-                                  )}
+                                  <span className="text-gray-600 font-medium">{h.hours}</span>
                                 </div>
-                              );
-                            })}
-                          </div>
-                        ) : hoveredStation.hours?.length > 0 ? (
-                          // fallback to whatever getStations returned
-                          <div className="flex flex-col gap-0.5">
-                            {hoveredStation.hours.map((h: any, i: number) => (
-                              <div key={i} className="flex text-xs w-full justify-between py-0.5 border-b border-gray-100 last:border-0">
-                                <span className="font-bold text-gray-800 w-8 shrink-0">{h.day}</span>
-                                <span className="text-gray-600 font-medium">{h.hours}</span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-[11px] text-gray-400 italic">Consulte a loja para informações de horário.</p>
-                        )}
-                      </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[11px] text-gray-400 italic">Consulte a loja para informações de horário.</p>
+                          )}
+                        </div>
 
-                      {/* Select button at bottom */}
-                      <button
-                        onClick={() => {
-                          setPickupLocation(hoveredStation.code);
-                          setStationQuery(hoveredStation.name);
-                          setShowStationsList(false);
-                        }}
-                        className="mt-4 w-full bg-[#008d36] hover:bg-[#007530] text-white font-bold text-sm py-2.5 rounded transition-colors"
-                      >
-                        Selecionar esta loja
-                      </button>
+                        {/* Select button at bottom */}
+                        <button
+                          onClick={() => {
+                            setPickupLocation(hoveredStation.code);
+                            setStationQuery(hoveredStation.name);
+                            setShowStationsList(false);
+                          }}
+                          className="mt-4 w-full bg-[#008d36] hover:bg-[#007530] text-white font-bold text-sm py-2.5 rounded transition-colors"
+                        >
+                          Selecionar esta loja
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Return Station Field (One-Way) */}
+              <div
+                ref={returnStationRef}
+                className={`relative transition-all duration-300 ease-in-out ${sameReturnLocation ? 'w-0 opacity-0 pointer-events-none overflow-hidden' : 'w-1/2 opacity-100'}`}
+              >
+                <span className="absolute left-3 top-3.5 text-[#e67e00]">
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                    ></path>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                    ></path>
+                  </svg>
+                </span>
+                <input
+                  type="text"
+                  placeholder="Local de devolução"
+                  className="w-full pl-11 p-4 bg-white border border-gray-300 rounded-lg focus:ring-1 focus:ring-[#e67e00] focus:border-[#e67e00] outline-none text-base font-medium transition-all text-gray-900 placeholder-gray-400"
+                  value={returnStationQuery}
+                  onChange={(e) => {
+                    setReturnStationQuery(e.target.value);
+                    if (!e.target.value) setReturnLocation("");
+                  }}
+                />
+
+                {/* Dropdown Autocomplete - Return Station */}
+                {showReturnStationsList && returnStations.length > 0 && (
+                  <div className="absolute top-full left-0 w-full md:w-[760px] mt-2 bg-white flex shadow-2xl rounded-lg z-50 h-[380px] overflow-hidden border border-gray-200">
+                    {/* List part */}
+                    <div className="w-full md:w-[380px] flex flex-col border-r border-gray-200">
+                      <div className="bg-orange-50 font-bold text-[10px] text-orange-600 px-4 py-2 border-b border-gray-200 tracking-wider">
+                        LOCAL DE DEVOLUÇÃO
+                      </div>
+                      <div className="flex-1 overflow-y-auto">
+                        {returnStations.map((station) => (
+                          <div
+                            key={station.code}
+                            className={`px-4 py-3 cursor-pointer text-sm border-b border-gray-100 flex items-center gap-3 transition-colors ${hoveredReturnStation?.code === station.code ? 'bg-orange-50' : 'hover:bg-gray-50 text-gray-700'}`}
+                            onMouseEnter={() => setHoveredReturnStation(station)}
+                            onClick={() => {
+                              setReturnLocation(station.code);
+                              setReturnStationQuery(`${station.name}`);
+                              setShowReturnStationsList(false);
+                            }}
+                          >
+                            {station.type === 'airport' ? (
+                              <svg className="w-5 h-5 text-gray-400 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" /></svg>
+                            ) : (
+                              <svg className="w-5 h-5 text-gray-400 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M15 11V5l-3-3-3 3v2H3v14h18V11h-6zm-8 8H5v-2h2v2zm0-4H5v-2h2v2zm0-4H5V9h2v2zm6 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V9h2v2zm0-4h-2V5h2v2zm6 12h-2v-2h2v2zm0-4h-2v-2h2v2z" /></svg>
+                            )}
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-extrabold text-xs uppercase text-gray-900 leading-snug truncate">
+                                {station.name}
+                              </span>
+                              {station.country && (
+                                <span className="text-[10px] text-gray-400 font-medium">
+                                  {station.country}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  )}
-                </div>
-              )}
+
+                    {/* Details part - Return Station */}
+                    {hoveredReturnStation && (
+                      <div className="hidden md:flex flex-col w-[380px] bg-[#fffaf5] overflow-y-auto relative p-6">
+                        <h3 className="font-extrabold text-sm uppercase text-black max-w-[80%] leading-tight">
+                          {returnStationDetail?.name || hoveredReturnStation.name}
+                        </h3>
+                        {hoveredReturnStation.country && (
+                          <span className="text-[10px] bg-[#e67e00]/10 text-[#e67e00] font-bold px-2 py-0.5 rounded-full mt-1 w-fit">
+                            {hoveredReturnStation.country}
+                          </span>
+                        )}
+
+                        {(returnStationDetail?.address || hoveredReturnStation.address) && (
+                          <p className="text-[11px] font-medium text-gray-500 mt-1 whitespace-pre-wrap leading-tight">
+                            {returnStationDetail?.address || hoveredReturnStation.address}
+                            {returnStationDetail?.postalCode ? `, ${returnStationDetail.postalCode}` : ''}
+                            {returnStationDetail?.city ? ` — ${returnStationDetail.city}` : ''}
+                          </p>
+                        )}
+
+                        {(returnStationDetail?.phone || returnStationDetail?.email) && (
+                          <div className="mt-3 flex flex-col gap-1">
+                            {returnStationDetail.phone && (
+                              <div className="flex items-center gap-1.5 text-[11px] text-gray-600">
+                                <svg className="w-3.5 h-3.5 text-[#e67e00] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                </svg>
+                                <span className="font-bold">{returnStationDetail.phone}</span>
+                              </div>
+                            )}
+                            {returnStationDetail.email && (
+                              <div className="flex items-center gap-1.5 text-[11px] text-gray-600">
+                                <svg className="w-3.5 h-3.5 text-[#e67e00] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                                <span>{returnStationDetail.email}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Opening hours */}
+                        <div className="mt-4">
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <svg className="w-3.5 h-3.5 text-[#e67e00]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="text-[10px] font-black text-gray-700 uppercase tracking-wider">Horário de Funcionamento</span>
+                          </div>
+
+                          {loadingReturnDetail ? (
+                            <div className="flex gap-1.5 items-center text-[11px] text-gray-400">
+                              <div className="w-3 h-3 border-2 border-[#e67e00] border-t-transparent rounded-full animate-spin"></div>
+                              Consultando API Europcar...
+                            </div>
+                          ) : returnStationDetail?.hours?.length > 0 ? (
+                            <div className="flex flex-col gap-0.5">
+                              {returnStationDetail.hours.map((h: any, i: number) => {
+                                const isClosed = !h.open || h.open === h.close || h.open === '00:00';
+                                return (
+                                  <div key={i} className="flex text-xs w-full justify-between py-0.5 border-b border-gray-100 last:border-0">
+                                    <span className="font-bold text-gray-800 w-8 shrink-0">{h.day}</span>
+                                    {isClosed ? (
+                                      <span className="text-red-500 font-bold">Fechado</span>
+                                    ) : (
+                                      <span className="text-gray-600 font-medium">{h.open} – {h.close}</span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : hoveredReturnStation.hours?.length > 0 ? (
+                            <div className="flex flex-col gap-0.5">
+                              {hoveredReturnStation.hours.map((h: any, i: number) => (
+                                <div key={i} className="flex text-xs w-full justify-between py-0.5 border-b border-gray-100 last:border-0">
+                                  <span className="font-bold text-gray-800 w-8 shrink-0">{h.day}</span>
+                                  <span className="text-gray-600 font-medium">{h.hours}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[11px] text-gray-400 italic">Consulte a loja para informações de horário.</p>
+                          )}
+                        </div>
+
+                        {/* Select button at bottom */}
+                        <button
+                          onClick={() => {
+                            setReturnLocation(hoveredReturnStation.code);
+                            setReturnStationQuery(hoveredReturnStation.name);
+                            setShowReturnStationsList(false);
+                          }}
+                          className="mt-4 w-full bg-[#e67e00] hover:bg-[#cc6f00] text-white font-bold text-sm py-2.5 rounded transition-colors"
+                        >
+                          Selecionar esta loja
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

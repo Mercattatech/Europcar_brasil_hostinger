@@ -194,6 +194,17 @@ export async function POST(request: Request) {
 
         const contractAttr = contractID ? ` contractID="${contractID}" type="C"` : '';
 
+        // Build equipment XML from booking extras (correct format: code/qty)
+        let equipmentXml = '';
+        const extras = bookingData.extras || {};
+        const extraKeys = Object.keys(extras).filter(k => extras[k] > 0);
+        // Only include equipment codes (not insurance codes like CDW, LDW, etc.)
+        const insuranceCodes = ['TPL','LDW','CDW','THW','SCDW','SPCDW','STHW','SPTHW','MEDIUM','PREMIUM','PREMPRE','PREMUP','RSA','APP','PAI','PEP'];
+        const equipmentKeys = extraKeys.filter(k => !insuranceCodes.includes(k));
+        if (equipmentKeys.length > 0) {
+          equipmentXml = equipmentKeys.map(k => `\n          <equipment code="${k}" qty="${extras[k]}"/>`).join('');
+        }
+
         let meanOfPaymentXml = '';
         if (paymentData.method === 'VOUCHER' && voucherData?.type === 'ETO') {
           const ba = CID_TO_BA[contractID] || voucherData.businessAccount || '';
@@ -226,7 +237,7 @@ export async function POST(request: Request) {
       <reservation carCategory="${carCategory}" rateId="${rateId}"${prepaidAttr}${contractAttr}${productDataAttr} preferredLanguage="pt_BR" email="${customerData.email.trim()}">
         <checkout stationID="${pickupStation}" date="${pickupDate}" time="${bookingData.pickupTime || '1000'}"/>
         <checkin stationID="${returnStation}" date="${returnDate}" time="${bookingData.returnTime || '1000'}"/>
-        <equipmentList/>${meanOfPaymentXml}${loyaltyXml}
+        <equipmentList>${equipmentXml}</equipmentList>${meanOfPaymentXml}${loyaltyXml}
       </reservation>
       <driver countryOfResidence="BR"
               firstName="${customerData.nome.trim()}"
