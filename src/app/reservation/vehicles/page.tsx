@@ -677,8 +677,8 @@ function VehiclesContent() {
                 </button>
               </div>
 
-              {/* ETO Skip Protections — show congrats message */}
-              {selectedTariffType === 'ETO' && protectionsSkipped ? (
+              {/* Congrats message — show when ETO skipped OR premium protection added */}
+              {(selectedTariffType === 'ETO' && protectionsSkipped) || zeroExcessUpgrade ? (
                 <div className="border-2 border-[#008d36] rounded-xl p-10 text-center bg-green-50 mb-8">
                   <div className="w-20 h-20 bg-green-100 text-[#008d36] rounded-full flex items-center justify-center mx-auto mb-6">
                     <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
@@ -687,7 +687,9 @@ function VehiclesContent() {
                   <p className="text-gray-600 mb-6">Clique abaixo para ir para revisão e finalizar o seu pagamento.</p>
                   <button
                     onClick={() => {
-                      const cidForTariff = zeroExcessUpgrade ? '56935495' : (selectedCar?._etoCID || '56935466');
+                      const cidForTariff = selectedTariffType === 'ETO'
+                        ? (zeroExcessUpgrade ? '56935495' : (selectedCar?._etoCID || '56935466'))
+                        : (zeroExcessUpgrade ? '56935495' : (effectiveContractID || '57269673'));
                       const payload = { car: selectedCar, extras: selectedExtrasMap, pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, contractID: cidForTariff, tariffType: selectedTariffType, zeroExcess: zeroExcessUpgrade, driverCountry, driverCountryName, stationCountry };
                       sessionStorage.setItem("europcar_booking", JSON.stringify(payload));
                       window.location.href = "/checkout";
