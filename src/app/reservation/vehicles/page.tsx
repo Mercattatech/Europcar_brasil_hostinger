@@ -651,6 +651,13 @@ function VehiclesContent() {
                   <div className="font-bold text-sm">{selectedCar?.carCategoryName || selectedCar?.carCategoryCode}</div>
                   <div className="text-xs text-green-700">{selectedCar?.currency} {fmtPrice(selectedCar?.totalRateEstimate)}</div>
                 </div>
+                {zeroExcessUpgrade && (
+                  <div className="flex-1 border-r border-green-200">
+                    <div className="text-[10px] uppercase text-green-700">Proteção</div>
+                    <div className="font-bold text-sm text-[#008d36]">🛡️ Franquia Zero</div>
+                    <div className="text-xs text-green-700">Incluída no total</div>
+                  </div>
+                )}
                 <div className="flex-1">
                   <div className="text-[10px] uppercase text-green-700">Extras</div>
                   <div className="font-bold text-sm">+ R$ {selectedExtrasPricePerDay.toFixed(2).replace(".", ",")} / dia</div>
@@ -744,8 +751,8 @@ function VehiclesContent() {
                     );
                   })()}
 
-                  {/* Proteções da API Europcar XRS */}
-                  {selectedCar?.optionalInsurances?.length > 0 ? (
+                  {/* Proteções da API Europcar XRS — hidden when premium protection is active */}
+                  {!zeroExcessUpgrade && selectedCar?.optionalInsurances?.length > 0 ? (
                     <>
                       <h3 className="font-bold text-lg text-gray-900 mb-4">Proteções disponíveis</h3>
                       <div className="grid grid-cols-2 gap-4 mb-8">

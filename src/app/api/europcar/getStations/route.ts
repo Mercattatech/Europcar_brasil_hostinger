@@ -167,8 +167,17 @@ export async function GET(request: Request) {
     }
   }
 
+  // Deduplicate by station code (XRS sometimes returns duplicates)
+  const seenCodes = new Set<string>();
+  const uniqueStations = allStations.filter((s) => {
+    const code = (s.stationCode ?? s.code ?? '').toUpperCase();
+    if (!code || seenCodes.has(code)) return false;
+    seenCodes.add(code);
+    return true;
+  });
+
   // Apply text filter
-  const filtered = allStations.filter((s) => {
+  const filtered = uniqueStations.filter((s) => {
     const code = (s.stationCode ?? s.code ?? '').toLowerCase();
     const name = (s.stationName ?? s.name ?? '').toLowerCase();
     const city = (s.cityName ?? s.city ?? '').toLowerCase();
