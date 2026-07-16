@@ -106,20 +106,20 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Promo Banner inside Header */}
+        {/* IOF-free International Banner */}
         <div className="relative z-10 max-w-6xl mx-auto px-4 mt-8 flex justify-center">
           <div className="w-[95%] bg-white/10 backdrop-blur-sm border border-white/20 rounded pl-0 flex items-center shadow-lg cursor-pointer hover:bg-white/20 transition-colors">
-            <div className="bg-[#e3000b] text-white font-black text-[10px] md:text-xs py-2 px-4 shadow-sm flex-shrink-0">
-              PROMOÇÃO 20%
+            <div className="bg-[#008d36] text-white font-black text-[10px] md:text-xs py-2 px-4 shadow-sm flex-shrink-0">
+              ✈️ INTERNACIONAL
             </div>
             <div className="flex-1 px-4 text-white font-bold text-sm">
-              Explore a Alemanha! :{" "}
+              Reservas Internacionais livre de IOF,{" "}
               <span className="font-normal text-gray-300">
-                Reserve diretamente para poupar
+                com pagamentos on-line.
               </span>
             </div>
             <div className="pr-4 text-white text-sm font-bold flex items-center gap-1">
-              Mais detalhes{" "}
+              Saiba mais{" "}
               <svg
                 className="w-4 h-4"
                 fill="none"

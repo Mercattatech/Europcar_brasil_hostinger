@@ -73,6 +73,38 @@ async function getCachedStations(countryCode: string): Promise<any[]> {
   }
 }
 
+// Well-known city → country mapping for eager fetching
+const CITY_COUNTRY_MAP: Record<string, string[]> = {
+  'roma': ['IT'], 'rome': ['IT'], 'milano': ['IT'], 'milan': ['IT'], 'firenze': ['IT'], 'florence': ['IT'],
+  'napoli': ['IT'], 'naples': ['IT'], 'venezia': ['IT'], 'venice': ['IT'], 'torino': ['IT'], 'turin': ['IT'], 'bologna': ['IT'],
+  'paris': ['FR'], 'lyon': ['FR'], 'marseille': ['FR'], 'nice': ['FR'], 'toulouse': ['FR'], 'bordeaux': ['FR'],
+  'madrid': ['ES'], 'barcelona': ['ES'], 'sevilla': ['ES'], 'seville': ['ES'], 'valencia': ['ES'], 'malaga': ['ES'], 'bilbao': ['ES'],
+  'london': ['GB'], 'londres': ['GB'], 'manchester': ['GB'], 'edinburgh': ['GB'], 'birmingham': ['GB'], 'glasgow': ['GB'],
+  'berlin': ['DE'], 'munich': ['DE'], 'munchen': ['DE'], 'frankfurt': ['DE'], 'hamburg': ['DE'], 'cologne': ['DE'],
+  'lisboa': ['PT'], 'lisbon': ['PT'], 'porto': ['PT'], 'faro': ['PT'],
+  'amsterdam': ['NL'], 'rotterdam': ['NL'],
+  'bruxelas': ['BE'], 'brussels': ['BE'], 'bruxelles': ['BE'],
+  'zurich': ['CH'], 'zurique': ['CH'], 'geneva': ['CH'], 'genebra': ['CH'], 'bern': ['CH'],
+  'vienna': ['AT'], 'viena': ['AT'], 'salzburg': ['AT'],
+  'dublin': ['IE'],
+  'atenas': ['GR'], 'athens': ['GR'],
+  'zagreb': ['HR'],
+  'praga': ['CZ'], 'prague': ['CZ'],
+  'copenhague': ['DK'], 'copenhagen': ['DK'],
+  'helsinki': ['FI'],
+  'budapeste': ['HU'], 'budapest': ['HU'],
+  'oslo': ['NO'],
+  'varsovia': ['PL'], 'warsaw': ['PL'], 'cracovia': ['PL'], 'krakow': ['PL'],
+  'bucareste': ['RO'], 'bucharest': ['RO'],
+  'estocolmo': ['SE'], 'stockholm': ['SE'],
+  'istambul': ['TR'], 'istanbul': ['TR'],
+  'reykjavik': ['IS'],
+  'new york': ['US'], 'los angeles': ['US'], 'miami': ['US'], 'chicago': ['US'], 'orlando': ['US'],
+  'buenos aires': ['AR'],
+  'sydney': ['AU'], 'melbourne': ['AU'],
+  'auckland': ['NZ'],
+};
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = (searchParams.get('q') ?? '').trim().toLowerCase();
@@ -91,9 +123,34 @@ export async function GET(request: Request) {
     // Priority: always include Brazil first (fast)
     allStations = await getCachedStations('BR');
 
+    // Eagerly fetch countries that match the city query
+    const priorityCountries = new Set<string>();
+    for (const [cityKey, countryCodes] of Object.entries(CITY_COUNTRY_MAP)) {
+      if (cityKey.includes(q) || q.includes(cityKey)) {
+        countryCodes.forEach(cc => priorityCountries.add(cc));
+      }
+    }
+
+    // Also check if the query matches a country name
+    for (const [cc, name] of Object.entries(COUNTRY_NAMES)) {
+      if (name.toLowerCase().includes(q)) {
+        priorityCountries.add(cc);
+      }
+    }
+
+    // Eagerly fetch priority countries (await these!)
+    if (priorityCountries.size > 0) {
+      const priorityResults = await Promise.all(
+        [...priorityCountries].filter(cc => cc !== 'BR').map(cc => getCachedStations(cc))
+      );
+      for (const stations of priorityResults) {
+        allStations.push(...stations);
+      }
+    }
+
     // Include other countries that are already cached (instant)
     for (const cc of ALL_COUNTRIES) {
-      if (cc === 'BR') continue;
+      if (cc === 'BR' || priorityCountries.has(cc)) continue;
       const cached = stationsCache[cc];
       if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
         allStations.push(...cached.stations);
@@ -106,7 +163,6 @@ export async function GET(request: Request) {
       return !c || Date.now() - c.ts >= CACHE_TTL_MS;
     });
     if (uncached.length > 0) {
-      // Don't await — populate cache for next searches
       Promise.all(uncached.slice(0, 10).map(c => getCachedStations(c))).catch(() => {});
     }
   }
@@ -118,6 +174,26 @@ export async function GET(request: Request) {
     const city = (s.cityName ?? s.city ?? '').toLowerCase();
     const country = (COUNTRY_NAMES[s.countryCode] ?? '').toLowerCase();
     return code.includes(q) || name.includes(q) || city.includes(q) || country.includes(q);
+  });
+
+  // Sort: exact city match first, then station name match, then others
+  filtered.sort((a, b) => {
+    const cityA = (a.cityName ?? a.city ?? '').toLowerCase();
+    const cityB = (b.cityName ?? b.city ?? '').toLowerCase();
+    const nameA = (a.stationName ?? a.name ?? '').toLowerCase();
+    const nameB = (b.stationName ?? b.name ?? '').toLowerCase();
+
+    // Exact city match gets priority
+    const aCityExact = cityA === q ? 0 : cityA.startsWith(q) ? 1 : 2;
+    const bCityExact = cityB === q ? 0 : cityB.startsWith(q) ? 1 : 2;
+    if (aCityExact !== bCityExact) return aCityExact - bCityExact;
+
+    // Then station name match
+    const aNameMatch = nameA.includes(q) ? 0 : 1;
+    const bNameMatch = nameB.includes(q) ? 0 : 1;
+    if (aNameMatch !== bNameMatch) return aNameMatch - bNameMatch;
+
+    return nameA.localeCompare(nameB);
   });
 
   // Limit results for performance
@@ -138,3 +214,4 @@ export async function GET(request: Request) {
 
   return NextResponse.json({ stations: payload });
 }
+

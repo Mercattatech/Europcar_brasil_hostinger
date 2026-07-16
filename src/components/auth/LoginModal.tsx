@@ -88,7 +88,9 @@ export default function LoginModal({ onClose, onLoginSuccess }: LoginModalProps)
         setLoading(false);
         return;
       }
-      setSuccess("Conta criada! Fazendo login...");
+      setSuccess("✅ Conta criada com sucesso!\n\n⚠️ Este cadastro é válido apenas para Europcar Brasil.\n\nUm e-mail de confirmação foi enviado para sua caixa de entrada.");
+      // Delay auto-login so the user can read the notice
+      await new Promise(resolve => setTimeout(resolve, 3500));
       const result = await signIn("credentials", { email, password, redirect: false });
       if (!result?.error) {
         onLoginSuccess ? onLoginSuccess() : (onClose(), window.location.reload());
@@ -139,7 +141,7 @@ export default function LoginModal({ onClose, onLoginSuccess }: LoginModalProps)
         </h2>
 
         {error && <div className="bg-red-50 text-red-600 border border-red-200 p-3 rounded-lg text-sm mb-4 font-bold text-center">{error}</div>}
-        {success && <div className="bg-green-50 text-green-700 border border-green-200 p-3 rounded-lg text-sm mb-4 font-bold text-center">{success}</div>}
+        {success && <div className="bg-green-50 text-green-700 border border-green-200 p-3 rounded-lg text-sm mb-4 font-bold text-center whitespace-pre-line">{success}</div>}
 
         {/* ────────────────────── LOGIN ────────────────────── */}
         {view === "login" && (

@@ -113,6 +113,7 @@ export default function CheckoutPage() {
 
   // Tariff type from booking (POA or ETO)
   const tariffType: string = booking?.tariffType || 'POA';
+  const stationCountry: string = booking?.stationCountry || '';
 
   // ✅ Buscar preço SEM contrato via getQuote para calcular economia real
   // O preço COM contrato já está em booking.car (veio do getMultipleRates com contractID)
@@ -684,15 +685,7 @@ export default function CheckoutPage() {
                 )}
 
                 {/* Tariff type indicator */}
-                {tariffType === 'ETO' && (
-                  <div className="bg-orange-50 border border-[#e67e00] rounded-lg p-4 flex items-center gap-3">
-                    <span className="text-[#e67e00] text-lg">🏷️</span>
-                    <div>
-                      <span className="text-sm font-bold text-[#e67e00]">Tarifa ETO Corporativa</span>
-                      <span className="text-xs text-gray-500 block">Pagamento disponível apenas via PIX ou Cartão de Crédito.</span>
-                    </div>
-                  </div>
-                )}
+
 
                 <label className={`block border-2 rounded-lg p-5 cursor-pointer flex items-center gap-4 transition-colors ${paymentMethod === "PIX" ? "border-[#008d36] bg-green-50" : "border-gray-200 hover:border-gray-300"}`}>
                   <input type="radio" checked={paymentMethod === "PIX"} onChange={() => setPaymentMethod("PIX")} className="w-5 h-5 accent-[#008d36]" />
@@ -738,8 +731,8 @@ export default function CheckoutPage() {
                   )}
                 </div>
 
-                {/* ETO Voucher — hide when tariff is ETO (already ETO pricing) */}
-                {tariffType !== 'ETO' && (
+                {/* ETO Voucher — hide for ETO tariff AND for Brazilian stations */}
+                {tariffType !== 'ETO' && stationCountry !== 'BR' && (
                 <label className={`block border-2 rounded-lg p-5 cursor-pointer flex items-center gap-4 transition-colors ${paymentMethod === "VOUCHER_ETO" ? "border-[#e67e00] bg-orange-50" : "border-gray-200 hover:border-gray-300"}`}>
                   <input type="radio" checked={paymentMethod === "VOUCHER_ETO"} onChange={() => setPaymentMethod("VOUCHER_ETO" as any)} className="w-5 h-5 accent-[#e67e00]" />
                   <div className="flex-1">
@@ -753,8 +746,8 @@ export default function CheckoutPage() {
                 </label>
                 )}
 
-                {/* EXO Voucher — hide when tariff is ETO */}
-                {tariffType !== 'ETO' && (
+                {/* EXO Voucher — hide for ETO tariff AND for Brazilian stations */}
+                {tariffType !== 'ETO' && stationCountry !== 'BR' && (
                 <label className={`block border-2 rounded-lg p-5 cursor-pointer flex items-center gap-4 transition-colors ${paymentMethod === "VOUCHER_EXO" ? "border-[#e67e00] bg-orange-50" : "border-gray-200 hover:border-gray-300"}`}>
                   <input type="radio" checked={paymentMethod === "VOUCHER_EXO"} onChange={() => setPaymentMethod("VOUCHER_EXO" as any)} className="w-5 h-5 accent-[#e67e00]" />
                   <div className="flex-1">
@@ -769,7 +762,8 @@ export default function CheckoutPage() {
                 )}
               </div>
 
-              {/* IOF Banner */}
+              {/* IOF Banner — hide for Brazilian stations (IOF only applies to international rentals) */}
+              {stationCountry !== 'BR' && (
               <div className="mt-6 bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg p-5">
                 <div className="flex items-start gap-3">
                   <div className="bg-[#008d36] text-white rounded-full w-8 h-8 flex items-center justify-center shrink-0 mt-0.5">
@@ -786,6 +780,7 @@ export default function CheckoutPage() {
                   </div>
                 </div>
               </div>
+              )}
             </div>
 
             <div className="text-right">
@@ -944,36 +939,7 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              {/* 🏷️ Tag de economia por tarifa contratada */}
-              {hasContract && (
-                <div className="mx-0 mb-4 mt-2 rounded-xl overflow-hidden border border-yellow-400 shadow-sm">
-                  <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 px-4 py-3 flex items-center gap-3">
-                    <div className="w-9 h-9 bg-white/30 rounded-full flex items-center justify-center shrink-0">
-                      <svg className="w-5 h-5 text-yellow-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-yellow-900 text-[11px] font-bold uppercase tracking-wider">Tarifa contratada ativa</p>
-                      {hasDiscountValue ? (
-                        <p className="text-yellow-900 text-sm font-black leading-tight">
-                          Você economizou{" "}
-                          <span className="text-white text-base font-black bg-yellow-600 px-1.5 py-0.5 rounded">
-                            {discountBRL > 0
-                              ? `R$ ${discountBRL.toFixed(2).replace(".", ",")}`
-                              : `${currency} ${discountXRS.toFixed(2).replace(".", ",")}`}
-                          </span>
-                        </p>
-                      ) : (
-                        <p className="text-yellow-900 text-sm font-black leading-tight">
-                          Desconto aplicado ao valor
-                        </p>
-                      )}
-                      <p className="text-yellow-800 text-[10px] font-medium mt-0.5">por ter uma tarifa contratada</p>
-                    </div>
-                  </div>
-                </div>
-              )}
+
 
               {/* Total */}
               <div className="bg-gray-50 -mx-6 -mb-6 p-6 border-t border-gray-200">

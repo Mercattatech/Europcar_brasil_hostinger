@@ -75,6 +75,7 @@ const COUNTRIES = [
 
 export default function HeroSearchForm() {
   const [pickupLocation, setPickupLocation] = useState("");
+  const [stationCountryCode, setStationCountryCode] = useState("");
   const [stationQuery, setStationQuery] = useState("");
   const [stations, setStations] = useState<any[]>([]);
   const [showStationsList, setShowStationsList] = useState(false);
@@ -287,6 +288,7 @@ export default function HeroSearchForm() {
       country:     country,
       countryName: COUNTRIES.find(c => c.code === country)?.name ?? country,
     });
+    if (stationCountryCode) params.set("stationCountry", stationCountryCode);
     if (tarifNumber) params.set("contractID", tarifNumber);
 
     window.location.href = `/reservation/vehicles?${params.toString()}`;
@@ -373,7 +375,7 @@ export default function HeroSearchForm() {
                       <div className="bg-gray-50 font-bold text-[10px] text-gray-500 px-4 py-2 border-b border-gray-200 tracking-wider">EUROPCAR STATION</div>
                       <div className="flex-1 overflow-y-auto">
                         {stations.map((station) => (
-                          <div key={station.code} className={`px-4 py-3 cursor-pointer text-sm border-b border-gray-100 flex items-center gap-3 transition-colors ${hoveredStation?.code === station.code ? 'bg-gray-100' : 'hover:bg-gray-50 text-gray-700'}`} onMouseEnter={() => setHoveredStation(station)} onClick={() => { setPickupLocation(station.code); setStationQuery(station.name); setShowStationsList(false); }}>
+                          <div key={station.code} className={`px-4 py-3 cursor-pointer text-sm border-b border-gray-100 flex items-center gap-3 transition-colors ${hoveredStation?.code === station.code ? 'bg-gray-100' : 'hover:bg-gray-50 text-gray-700'}`} onMouseEnter={() => setHoveredStation(station)} onClick={() => { setPickupLocation(station.code); setStationCountryCode(station.countryCode || ''); setStationQuery(station.name); setShowStationsList(false); }}>
                             {station.type === 'airport' ? (<svg className="w-5 h-5 text-gray-400 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" /></svg>) : (<svg className="w-5 h-5 text-gray-400 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M15 11V5l-3-3-3 3v2H3v14h18V11h-6zm-8 8H5v-2h2v2zm0-4H5v-2h2v2zm0-4H5V9h2v2zm6 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V9h2v2zm0-4h-2V5h2v2zm6 12h-2v-2h2v2zm0-4h-2v-2h2v2z" /></svg>)}
                             <div className="flex flex-col min-w-0">
                               <span className="font-extrabold text-xs uppercase text-gray-900 leading-snug truncate">{station.name}</span>
@@ -398,7 +400,7 @@ export default function HeroSearchForm() {
                           <div className="flex items-center gap-1.5 mb-2"><svg className="w-3.5 h-3.5 text-[#008d36]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><span className="text-[10px] font-black text-gray-700 uppercase tracking-wider">Horário de Funcionamento</span></div>
                           {loadingDetail ? (<div className="flex gap-1.5 items-center text-[11px] text-gray-400"><div className="w-3 h-3 border-2 border-[#008d36] border-t-transparent rounded-full animate-spin"></div>Consultando API Europcar...</div>) : stationDetail?.hours?.length ? (<div className="flex flex-col gap-0.5">{stationDetail.hours.map((h: any, i: number) => { const isClosed = !h.open || h.open === h.close || h.open === '00:00'; return (<div key={i} className="flex text-xs w-full justify-between py-0.5 border-b border-gray-100 last:border-0"><span className="font-bold text-gray-800 w-8 shrink-0">{h.day}</span>{isClosed ? (<span className="text-red-500 font-bold">Fechado</span>) : (<span className="text-gray-600 font-medium">{h.open} – {h.close}</span>)}</div>); })}</div>) : hoveredStation.hours?.length ? (<div className="flex flex-col gap-0.5">{hoveredStation.hours.map((h: any, i: number) => (<div key={i} className="flex text-xs w-full justify-between py-0.5 border-b border-gray-100 last:border-0"><span className="font-bold text-gray-800 w-8 shrink-0">{h.day}</span><span className="text-gray-600 font-medium">{h.hours}</span></div>))}</div>) : (<p className="text-[11px] text-gray-400 italic">Consulte a loja para informações de horário.</p>)}
                         </div>
-                        <button onClick={() => { setPickupLocation(hoveredStation.code); setStationQuery(hoveredStation.name); setShowStationsList(false); }} className="mt-4 w-full bg-[#008d36] hover:bg-[#007530] text-white font-bold text-sm py-2.5 rounded transition-colors">Selecionar esta loja</button>
+                        <button onClick={() => { setPickupLocation(hoveredStation.code); setStationCountryCode(hoveredStation.countryCode || ''); setStationQuery(hoveredStation.name); setShowStationsList(false); }} className="mt-4 w-full bg-[#008d36] hover:bg-[#007530] text-white font-bold text-sm py-2.5 rounded transition-colors">Selecionar esta loja</button>
                       </div>
                     )}
                   </div>
