@@ -583,7 +583,7 @@ function VehiclesContent() {
                           {/* POA Tariff */}
                           <div className="border border-gray-200 rounded-lg p-3 hover:border-[#008d36] transition-colors">
                             <div className="flex items-center justify-between mb-1">
-                              <span className="text-[9px] uppercase font-black text-gray-500 tracking-wider">Tarifa POA</span>
+                              <span className="text-[9px] uppercase font-black text-gray-500 tracking-wider">Tarifa Pública</span>
                               <span className="text-[9px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-bold">Pública</span>
                             </div>
                             <div className="text-lg font-black text-gray-900">
@@ -596,7 +596,7 @@ function VehiclesContent() {
                                 isSelected && selectedTariffType === 'POA' ? "bg-[#008d36] text-white" : "bg-[#ffcc00] hover:bg-[#e6b800] text-gray-900"
                               }`}
                             >
-                              {isSelected && selectedTariffType === 'POA' ? "POA ✓" : "Selecionar POA"}
+                              {isSelected && selectedTariffType === 'POA' ? "Retirada ✓" : "Pagar na Retirada"}
                             </button>
                           </div>
 
@@ -607,8 +607,8 @@ function VehiclesContent() {
                                 <span className="absolute -top-2.5 right-2 text-[9px] bg-[#e67e00] text-white px-2 py-0.5 rounded-full font-black">-{discountPct}%</span>
                               )}
                               <div className="flex items-center justify-between mb-1">
-                                <span className="text-[9px] uppercase font-black text-[#e67e00] tracking-wider">Tarifa ETO</span>
-                                <span className="text-[9px] bg-[#e67e00]/10 text-[#e67e00] px-1.5 py-0.5 rounded font-bold">Corporativo</span>
+                                <span className="text-[9px] uppercase font-black text-[#e67e00] tracking-wider">Pague On-line</span>
+                                <span className="text-[9px] bg-[#e67e00]/10 text-[#e67e00] px-1.5 py-0.5 rounded font-bold">Sem IOF</span>
                               </div>
                               <div className="text-lg font-black text-gray-900">
                                 {totalBRL_ETO > 0 ? `BRL ${fmtPrice(totalBRL_ETO)}` : `${currency} ${fmtPrice(totalPriceETO)}`}
@@ -620,7 +620,7 @@ function VehiclesContent() {
                                   isSelected && selectedTariffType === 'ETO' ? "bg-[#e67e00] text-white" : "bg-[#e67e00] hover:bg-[#cc6f00] text-white"
                                 }`}
                               >
-                                {isSelected && selectedTariffType === 'ETO' ? "ETO ✓" : "Selecionar ETO"}
+                                {isSelected && selectedTariffType === 'ETO' ? "Pago ✓" : "Paga Agora"}
                               </button>
                             </div>
                           )}
