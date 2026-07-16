@@ -368,39 +368,123 @@ export default function HeroSearchForm() {
                   required
                 />
 
-                {/* Dropdown Autocomplete - Pickup Station */}
+                {/* Dropdown Autocomplete - Pickup Station (Europcar style) */}
                 {showStationsList && stations.length > 0 && (
-                  <div className="absolute top-full left-0 w-full md:w-[760px] mt-2 bg-white flex shadow-2xl rounded-lg z-50 h-[380px] overflow-hidden border border-gray-200">
-                    <div className="w-full md:w-[380px] flex flex-col border-r border-gray-200">
-                      <div className="bg-gray-50 font-bold text-[10px] text-gray-500 px-4 py-2 border-b border-gray-200 tracking-wider">EUROPCAR STATION</div>
+                  <div className="absolute top-full left-0 w-full md:w-[820px] mt-1 bg-white flex shadow-2xl rounded-lg z-50 overflow-hidden border border-gray-200" style={{ height: '420px' }}>
+                    {/* Left: Station list */}
+                    <div className="w-full md:w-[340px] flex flex-col border-r border-gray-200 shrink-0">
+                      <div className="bg-gray-50 font-bold text-[11px] text-gray-500 px-5 py-2.5 border-b border-gray-200 tracking-widest uppercase">Europcar Station</div>
                       <div className="flex-1 overflow-y-auto">
                         {stations.map((station) => (
-                          <div key={station.code} className={`px-4 py-3 cursor-pointer text-sm border-b border-gray-100 flex items-center gap-3 transition-colors ${hoveredStation?.code === station.code ? 'bg-gray-100' : 'hover:bg-gray-50 text-gray-700'}`} onMouseEnter={() => setHoveredStation(station)} onClick={() => { setPickupLocation(station.code); setStationCountryCode(station.countryCode || ''); setStationQuery(station.name); setShowStationsList(false); }}>
-                            {station.type === 'airport' ? (<svg className="w-5 h-5 text-gray-400 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" /></svg>) : (<svg className="w-5 h-5 text-gray-400 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M15 11V5l-3-3-3 3v2H3v14h18V11h-6zm-8 8H5v-2h2v2zm0-4H5v-2h2v2zm0-4H5V9h2v2zm6 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V9h2v2zm0-4h-2V5h2v2zm6 12h-2v-2h2v2zm0-4h-2v-2h2v2z" /></svg>)}
-                            <div className="flex flex-col min-w-0">
-                              <span className="font-extrabold text-xs uppercase text-gray-900 leading-snug truncate">{station.name}</span>
-                              {station.country && (<span className="text-[10px] text-gray-400 font-medium">{station.country}</span>)}
-                            </div>
+                          <div
+                            key={station.code}
+                            className={`px-5 py-3.5 cursor-pointer text-sm border-b border-gray-100 flex items-center gap-3 transition-colors ${hoveredStation?.code === station.code ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+                            onMouseEnter={() => setHoveredStation(station)}
+                            onClick={() => { setPickupLocation(station.code); setStationCountryCode(station.countryCode || ''); setStationQuery(station.name); setShowStationsList(false); }}
+                          >
+                            {/* Station type icon */}
+                            {station.type === 'airport' ? (
+                              <svg className="w-5 h-5 text-gray-400 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" /></svg>
+                            ) : (
+                              <svg className="w-5 h-5 text-gray-400 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M15 11V5l-3-3-3 3v2H3v14h18V11h-6zm-8 8H5v-2h2v2zm0-4H5v-2h2v2zm0-4H5V9h2v2zm6 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V9h2v2zm0-4h-2V5h2v2zm6 12h-2v-2h2v2zm0-4h-2v-2h2v2z" /></svg>
+                            )}
+                            {/* Station name */}
+                            <span className="flex-1 font-medium text-gray-800 text-[13px] truncate">{station.name}</span>
+                            {/* Electric vehicles indicator */}
+                            <svg className="w-4 h-4 text-[#008d36] shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z" /></svg>
                           </div>
                         ))}
                       </div>
                     </div>
+                    {/* Right: Station detail panel */}
                     {hoveredStation && (
-                      <div className="hidden md:flex flex-col w-[380px] bg-[#f9f9f9] overflow-y-auto relative p-6">
-                        <h3 className="font-extrabold text-sm uppercase text-black max-w-[80%] leading-tight">{stationDetail?.name || hoveredStation.name}</h3>
-                        {hoveredStation.country && (<span className="text-[10px] bg-[#008d36]/10 text-[#008d36] font-bold px-2 py-0.5 rounded-full mt-1 w-fit">{hoveredStation.country}</span>)}
-                        {(stationDetail?.address || hoveredStation.address) && (<p className="text-[11px] font-medium text-gray-500 mt-1 whitespace-pre-wrap leading-tight">{stationDetail?.address || hoveredStation.address}{stationDetail?.postalCode ? `, ${stationDetail.postalCode}` : ''}{stationDetail?.city ? ` — ${stationDetail.city}` : ''}</p>)}
-                        {(stationDetail?.phone || stationDetail?.email) && (
-                          <div className="mt-3 flex flex-col gap-1">
-                            {stationDetail.phone && (<div className="flex items-center gap-1.5 text-[11px] text-gray-600"><svg className="w-3.5 h-3.5 text-[#008d36] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg><span className="font-bold">{stationDetail.phone}</span></div>)}
-                            {stationDetail.email && (<div className="flex items-center gap-1.5 text-[11px] text-gray-600"><svg className="w-3.5 h-3.5 text-[#008d36] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg><span>{stationDetail.email}</span></div>)}
+                      <div className="hidden md:flex flex-col flex-1 overflow-y-auto">
+                        {/* Top: Info + Map side by side */}
+                        <div className="flex flex-1 min-h-0">
+                          {/* Station info */}
+                          <div className="w-[260px] shrink-0 p-5 flex flex-col overflow-y-auto border-r border-gray-100">
+                            {/* Station name */}
+                            <h3 className="font-black text-sm uppercase text-gray-900 leading-tight">{stationDetail?.name || hoveredStation.name}</h3>
+                            {/* Address lines */}
+                            <div className="mt-1.5 text-[11px] text-gray-500 leading-relaxed">
+                              {(stationDetail?.address || hoveredStation.address) && <div>{stationDetail?.address || hoveredStation.address}</div>}
+                              {stationDetail?.postalCode && <div>{stationDetail.postalCode} {stationDetail?.city || ''}</div>}
+                              {hoveredStation.country && <div className="uppercase font-medium text-gray-400">{hoveredStation.country}</div>}
+                            </div>
+
+                            {/* Features */}
+                            <div className="mt-4 flex flex-col gap-2">
+                              <div className="flex items-center gap-2">
+                                <svg className="w-4 h-4 text-[#008d36] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" /></svg>
+                                <span className="text-xs font-bold text-gray-700">Devolução 24/7</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-500 text-sm shrink-0">🕐</span>
+                                <span className="text-xs font-bold text-gray-700">Retirada fora do horário de funcionamento</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <svg className="w-4 h-4 text-[#008d36] shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z" /></svg>
+                                <span className="text-xs font-bold text-gray-700">Veículos elétricos</span>
+                              </div>
+                            </div>
+
+                            {/* Hours */}
+                            <div className="mt-4 flex-1">
+                              {loadingDetail ? (
+                                <div className="flex gap-1.5 items-center text-[11px] text-gray-400"><div className="w-3 h-3 border-2 border-[#008d36] border-t-transparent rounded-full animate-spin"></div>Consultando...</div>
+                              ) : stationDetail?.hours?.length ? (
+                                <div className="flex flex-col gap-0">
+                                  {stationDetail.hours.map((h: any, i: number) => {
+                                    const isClosed = !h.open || h.open === h.close || h.open === '00:00';
+                                    return (
+                                      <div key={i} className="flex text-[11px] py-1 border-b border-gray-50 last:border-0">
+                                        <span className="font-bold text-gray-700 w-10 shrink-0 uppercase">{h.day}:</span>
+                                        {isClosed ? (
+                                          <span className="text-red-500 font-bold">Fechado</span>
+                                        ) : (
+                                          <span className="text-gray-600">{h.open} - {h.close}</span>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : hoveredStation.hours?.length ? (
+                                <div className="flex flex-col gap-0">
+                                  {hoveredStation.hours.map((h: any, i: number) => (
+                                    <div key={i} className="flex text-[11px] py-1 border-b border-gray-50 last:border-0">
+                                      <span className="font-bold text-gray-700 w-10 shrink-0 uppercase">{h.day}:</span>
+                                      <span className="text-gray-600">{h.hours}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-[11px] text-gray-400 italic">Consulte a loja.</p>
+                              )}
+                            </div>
+
+                            {/* Select button */}
+                            <button onClick={() => { setPickupLocation(hoveredStation.code); setStationCountryCode(hoveredStation.countryCode || ''); setStationQuery(hoveredStation.name); setShowStationsList(false); }} className="mt-3 w-full bg-[#008d36] hover:bg-[#007530] text-white font-bold text-xs py-2.5 rounded transition-colors">Selecionar esta loja</button>
                           </div>
-                        )}
-                        <div className="mt-4">
-                          <div className="flex items-center gap-1.5 mb-2"><svg className="w-3.5 h-3.5 text-[#008d36]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><span className="text-[10px] font-black text-gray-700 uppercase tracking-wider">Horário de Funcionamento</span></div>
-                          {loadingDetail ? (<div className="flex gap-1.5 items-center text-[11px] text-gray-400"><div className="w-3 h-3 border-2 border-[#008d36] border-t-transparent rounded-full animate-spin"></div>Consultando API Europcar...</div>) : stationDetail?.hours?.length ? (<div className="flex flex-col gap-0.5">{stationDetail.hours.map((h: any, i: number) => { const isClosed = !h.open || h.open === h.close || h.open === '00:00'; return (<div key={i} className="flex text-xs w-full justify-between py-0.5 border-b border-gray-100 last:border-0"><span className="font-bold text-gray-800 w-8 shrink-0">{h.day}</span>{isClosed ? (<span className="text-red-500 font-bold">Fechado</span>) : (<span className="text-gray-600 font-medium">{h.open} – {h.close}</span>)}</div>); })}</div>) : hoveredStation.hours?.length ? (<div className="flex flex-col gap-0.5">{hoveredStation.hours.map((h: any, i: number) => (<div key={i} className="flex text-xs w-full justify-between py-0.5 border-b border-gray-100 last:border-0"><span className="font-bold text-gray-800 w-8 shrink-0">{h.day}</span><span className="text-gray-600 font-medium">{h.hours}</span></div>))}</div>) : (<p className="text-[11px] text-gray-400 italic">Consulte a loja para informações de horário.</p>)}
+
+                          {/* Google Maps */}
+                          <div className="flex-1 bg-gray-100 min-h-0">
+                            {(stationDetail?.latitude || stationDetail?.longitude) ? (
+                              <iframe
+                                className="w-full h-full border-0"
+                                loading="lazy"
+                                referrerPolicy="no-referrer-when-downgrade"
+                                src={`https://www.google.com/maps?q=${stationDetail.latitude},${stationDetail.longitude}&z=14&output=embed`}
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                                <div className="text-center">
+                                  <svg className="w-8 h-8 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                  Carregando mapa...
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <button onClick={() => { setPickupLocation(hoveredStation.code); setStationCountryCode(hoveredStation.countryCode || ''); setStationQuery(hoveredStation.name); setShowStationsList(false); }} className="mt-4 w-full bg-[#008d36] hover:bg-[#007530] text-white font-bold text-sm py-2.5 rounded transition-colors">Selecionar esta loja</button>
                       </div>
                     )}
                   </div>
