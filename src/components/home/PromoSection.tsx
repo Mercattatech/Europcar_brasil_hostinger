@@ -17,15 +17,17 @@ export default function PromoSection() {
   const [promos, setPromos] = useState<Promotion[]>([]);
 
   useEffect(() => {
-    fetch("/api/promotions")
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout
+    fetch("/api/promotions", { signal: controller.signal })
       .then((res) => res.json())
       .then((data) => {
-        // API returns array directly or { error }
         if (Array.isArray(data)) {
           setPromos(data);
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => clearTimeout(timeout));
   }, []);
 
   if (promos.length === 0) return null;

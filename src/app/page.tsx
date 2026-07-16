@@ -1,7 +1,6 @@
 "use client";
 
 import HeroSearchForm from "@/components/home/HeroSearchForm";
-import PromoSection from "@/components/home/PromoSection";
 import Image from "next/image";
 import { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
@@ -175,10 +174,115 @@ export default function Home() {
       </div>
 
 
-      {/* Promoções — seção principal */}
+      {/* Frota Section — 6 carros nacionais */}
       <div className="bg-gray-50 py-16">
         <div className="max-w-6xl mx-auto px-4">
-          <PromoSection />
+          <div className="flex items-center gap-3 mb-10">
+            <div className="w-1 h-8 bg-[#008d36] rounded-full"></div>
+            <div>
+              <h2 className="text-2xl font-black text-gray-900">Nossa Frota</h2>
+              <p className="text-sm text-gray-500 font-medium">Conheça os veículos disponíveis para aluguel</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              {
+                nome: "Fiat Mobi",
+                categoria: "Mini",
+                acriss: "MBMR",
+                assentos: 4,
+                portas: 4,
+                cambio: "Manual",
+                ar: true,
+                img: "https://images.europcar.com/Fleet/EU/MBMR--MOBI.png",
+              },
+              {
+                nome: "Fiat Argo",
+                categoria: "Econômico",
+                acriss: "EDMR",
+                assentos: 5,
+                portas: 4,
+                cambio: "Manual",
+                ar: true,
+                img: "https://images.europcar.com/Fleet/EU/EDMR--ARGO.png",
+              },
+              {
+                nome: "Volkswagen Polo",
+                categoria: "Compacto",
+                acriss: "CDMR",
+                assentos: 5,
+                portas: 4,
+                cambio: "Manual",
+                ar: true,
+                img: "https://images.europcar.com/Fleet/EU/CDMR--POLO.png",
+              },
+              {
+                nome: "Chevrolet Onix Plus",
+                categoria: "Intermediário",
+                acriss: "IDMR",
+                assentos: 5,
+                portas: 4,
+                cambio: "Manual",
+                ar: true,
+                img: "https://images.europcar.com/Fleet/EU/IDMR--ONIX-PLUS.png",
+              },
+              {
+                nome: "Jeep Renegade",
+                categoria: "SUV Compacto",
+                acriss: "CFAR",
+                assentos: 5,
+                portas: 4,
+                cambio: "Automático",
+                ar: true,
+                img: "https://images.europcar.com/Fleet/EU/CFAR--RENEGADE.png",
+              },
+              {
+                nome: "Toyota Corolla",
+                categoria: "Sedan Premium",
+                acriss: "FDAR",
+                assentos: 5,
+                portas: 4,
+                cambio: "Automático",
+                ar: true,
+                img: "https://images.europcar.com/Fleet/EU/FDAR--COROLLA.png",
+              },
+            ].map((car, idx) => (
+              <div key={idx} className="group bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-lg hover:border-[#008d36]/30 transition-all duration-300">
+                {/* Image */}
+                <div className="h-40 bg-gradient-to-b from-gray-50 to-white flex items-center justify-center p-4">
+                  <img
+                    src={car.img}
+                    alt={car.nome}
+                    className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = `https://cdn.imagin.studio/getImage?customer=europcar&make=${car.nome.split(' ')[0]}&modelFamily=${car.nome.split(' ').slice(1).join('-')}&paintId=pspc0001&angle=01&width=400`;
+                    }}
+                  />
+                </div>
+
+                {/* Info */}
+                <div className="p-5 border-t border-gray-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-black text-gray-900">{car.nome}</h3>
+                    <span className="text-[10px] bg-[#008d36]/10 text-[#008d36] font-bold px-2 py-0.5 rounded-full">{car.categoria}</span>
+                  </div>
+                  <span className="text-[10px] bg-gray-100 text-gray-500 font-bold px-2 py-0.5 rounded-full">{car.acriss}</span>
+
+                  <div className="flex items-center gap-3 mt-3 text-xs text-gray-500 font-medium">
+                    <span>👤 {car.assentos}</span>
+                    <span>🚪 {car.portas}</span>
+                    <span>⚙️ {car.cambio}</span>
+                    {car.ar && <span>❄️ A/C</span>}
+                  </div>
+
+                  <div className="mt-4 text-xs text-gray-400">
+                    {car.nome} ou similar
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
