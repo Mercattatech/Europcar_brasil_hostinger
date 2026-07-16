@@ -174,76 +174,11 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Promoções Imperdíveis Section */}
-      <PromoSection />
 
-      {/* Frota Section */}
+      {/* Promoções — seção principal */}
       <div className="bg-gray-50 py-16">
-        <div className="max-w-6xl mx-auto px-4 text-center">
-          <h2 className="text-2xl font-black text-gray-900 mb-2 text-left">
-            Frota
-          </h2>
-          <p className="text-sm font-semibold text-gray-500 text-left mb-12">
-            Conheça os nossos veículos !
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="flex flex-col items-center">
-              <h3 className="font-bold text-gray-900 mb-1">
-                Econômicos e Compactos
-              </h3>
-              <p className="text-xs text-gray-500 mb-2">
-                Descubra nossos modelos básicos
-              </p>
-              <a
-                href="/frota"
-                className="text-sm text-[#008d36] font-bold mb-4"
-              >
-                Ver mais
-              </a>
-              <img
-                src="https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?q=80&w=400&auto=format&fit=crop"
-                className="w-48 h-24 object-cover rounded-md opacity-80 mix-blend-multiply"
-                alt="Econômicos"
-              />
-            </div>
-
-            <div className="flex flex-col items-center border-x border-gray-200">
-              <h3 className="font-bold text-gray-900 mb-1">Sedan & SUV</h3>
-              <p className="text-xs text-gray-500 mb-2">
-                Excelência e Automobilistica na sua maior essência
-              </p>
-              <a
-                href="/frota"
-                className="text-sm text-[#008d36] font-bold mb-4"
-              >
-                Ver mais
-              </a>
-              <img
-                src="https://images.unsplash.com/photo-1550355291-bbee04a92027?q=80&w=400&auto=format&fit=crop"
-                className="w-48 h-24 object-cover rounded-md opacity-80 mix-blend-multiply"
-                alt="SUV"
-              />
-            </div>
-
-            <div className="flex flex-col items-center">
-              <h3 className="font-bold text-gray-900 mb-1">Luxuosos</h3>
-              <p className="text-xs text-gray-500 mb-2">
-                Premium à distinção para sua comodidade
-              </p>
-              <a
-                href="/frota"
-                className="text-sm text-[#008d36] font-bold mb-4"
-              >
-                Ver mais
-              </a>
-              <img
-                src="https://images.unsplash.com/photo-1503376760367-152e92c21255?q=80&w=400&auto=format&fit=crop"
-                className="w-48 h-24 object-cover rounded-md opacity-80 mix-blend-multiply"
-                alt="Luxo"
-              />
-            </div>
-          </div>
+        <div className="max-w-6xl mx-auto px-4">
+          <PromoSection />
         </div>
       </div>
 

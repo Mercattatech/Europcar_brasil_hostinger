@@ -850,28 +850,8 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* ETO/EXO Taxas pré-pagas */}
-              <div className="space-y-1 mb-3 pt-2">
-                <p className="text-xs text-[#e67e00] font-bold">Taxa Pré paga ( Exo ) Agência: R$ xx,xx</p>
-                <p className="text-xs text-[#e67e00] font-bold">Taxa Pré paga ( Eto ) Corp: R$ xx,xx</p>
-              </div>
-
               {/* Price breakdown */}
               <div className="space-y-2 mb-4 text-sm">
-
-                {/* Banner de tarifa contratada */}
-                {contractID && (
-                  <div className="flex items-center gap-1.5 bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-3">
-                    <svg className="w-4 h-4 text-green-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div>
-                      <span className="text-[10px] font-bold text-green-800">Tarifa contratada: </span>
-                      <span className="text-[10px] font-mono font-black text-green-900">{contractID}</span>
-                    </div>
-                    {loadingQuote && <div className="w-3 h-3 border-2 border-green-500 border-t-transparent rounded-full animate-spin ml-auto" />}
-                  </div>
-                )}
 
                 {/* Preço original riscado se houver desconto confirmado */}
                 {hasDiscountValue ? (
