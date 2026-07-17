@@ -87,6 +87,23 @@ export default function PainelReservas() {
       }
    };
 
+   const handleCheckPix = async (orderId: string) => {
+      if (!orderId) return showToast("Pedido não possui Order ID", "error");
+      try {
+         showToast("Verificando PIX na Cielo...");
+         const res = await fetch(`/api/reservas/pix-status?orderId=${orderId}`);
+         const data = await res.json();
+         if (data.status === "PAID") {
+            showToast("PIX Pago! Reserva confirmada e e-mail enviado.", "success");
+            fetchReservations();
+         } else {
+            showToast("PIX ainda não pago na Cielo.", "error");
+         }
+      } catch (e) {
+         showToast("Erro ao verificar PIX", "error");
+      }
+   };
+
    const handleDelete = async (id: string) => {
       // Chamado após confirmação no modal — não usa confirm() nativo
       try {
@@ -307,9 +324,17 @@ export default function PainelReservas() {
                                        <button onClick={() => setChangingStatus(null)} className="text-[10px] text-gray-500 hover:text-gray-300 w-full text-left px-2">Cancelar</button>
                                     </div>
                                  ) : (
-                                    <button onClick={() => setChangingStatus(res.id)} className={`text-[10px] font-bold uppercase px-2.5 py-1.5 rounded border ${STATUS_COLORS[res.status] || "bg-gray-700 text-gray-300 border-gray-600"} hover:opacity-80 transition-opacity cursor-pointer`}>
-                                       {STATUS_LABELS[res.status] || res.status}
-                                    </button>
+                                    <div className="flex flex-col gap-1 items-start">
+                                       <button onClick={() => setChangingStatus(res.id)} className={`text-[10px] font-bold uppercase px-2.5 py-1.5 rounded border ${STATUS_COLORS[res.status] || "bg-gray-700 text-gray-300 border-gray-600"} hover:opacity-80 transition-opacity cursor-pointer`}>
+                                          {STATUS_LABELS[res.status] || res.status}
+                                       </button>
+                                       {res.status === 'PENDING_PIX' && (
+                                          <button onClick={() => handleCheckPix(res.merchantOrderId)} title="Sincronizar PIX com Cielo" className="text-[9px] bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded w-full flex justify-center items-center gap-1 shadow-sm transition-colors">
+                                             <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                             Sincronizar
+                                          </button>
+                                       )}
+                                    </div>
                                  )}
                               </td>
                               <td className="px-5 py-4 text-xs text-gray-500">
