@@ -432,7 +432,7 @@ export async function POST(request: Request) {
              sendTransactionalEmail(customerData.email, 'RESERVA_SUCESSO', {
                NOME: customerData.nome || '',
                NUMERO_RESERVA: finalResNumber || '',
-               VALOR: bookingData.car?.totalRateEstimateInBookingCurrency || '',
+               VALOR: ((paymentData.amountInCents || 0) / 100).toFixed(2),
                DATA_RETIRADA: bookingData.pickupDate || '',
                CARRO: bookingData.car?.carCategoryName || bookingData.car?.name || ''
              }).catch(console.error);
@@ -463,7 +463,7 @@ export async function POST(request: Request) {
             pickupDate,
             returnDate,
             paymentMethod: paymentData.method,
-            totalBRL: parseFloat(bookingData.car?.totalRateEstimateInBookingCurrency || '0'),
+            totalBRL: (paymentData.amountInCents || 0) / 100,
             isOnRequest,
             xrsEquipment: Array.isArray(xrsEquipment) ? xrsEquipment : [],
             extras: extrasArr,

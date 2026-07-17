@@ -22,6 +22,11 @@ export async function GET(req: Request) {
       const userReservations = allReservations.map(r => {
          let cd: any = {};
          try { cd = JSON.parse(r.customerData as string); } catch(e){}
+         // Use the amountInCents from DB (grand total incl. extras) if available
+         // otherwise fall back to the car rate from the booking data
+         const grandTotalBRL = r.amountInCents && r.amountInCents > 0
+           ? r.amountInCents / 100
+           : parseFloat(cd?.booking?.car?.totalRateEstimateInBookingCurrency || cd?.booking?.totalDay || '0');
          return {
              id: r.id,
              resNumber: r.resNumber,
@@ -35,7 +40,7 @@ export async function GET(req: Request) {
              pickupStation: cd?.booking?.pickupStation,
              returnStation: cd?.booking?.returnStation,
              car: cd?.booking?.car?.carCategoryName || cd?.booking?.car?.name,
-             total: cd?.booking?.car?.totalRateEstimateInBookingCurrency || cd?.booking?.totalDay,
+             total: grandTotalBRL > 0 ? grandTotalBRL : undefined,
              paymentMethod: cd?.booking?.paymentMethod,
              paymentData: cd?.booking?.paymentData || r.status,
          };
