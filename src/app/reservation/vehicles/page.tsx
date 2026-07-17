@@ -308,7 +308,7 @@ function VehiclesContent() {
 
       setCars(poaRates);
       setEtoCars(etoRates);
-      setEtoZeroRates(etoZeroRates);
+      setEtoZeroCars(etoZeroRates);
     } catch (e: any) {
       setError("Erro ao buscar veículos: " + (e.message || "Tente novamente."));
     } finally {

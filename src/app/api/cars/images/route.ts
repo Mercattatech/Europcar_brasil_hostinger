@@ -5,13 +5,13 @@ import { join } from 'path';
 
 export const dynamic = 'force-dynamic';
 
-// GET all overrides
 export async function GET() {
   try {
     const overrides = await prisma.carImageOverride.findMany();
     return NextResponse.json(overrides);
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Car images GET error (table might not exist):", error.message);
+    return NextResponse.json([]); // return empty array as fallback
   }
 }
 
