@@ -14,8 +14,10 @@ function getVehicleType(car: any): string {
 }
 
 // Multi-source car image: official API URL → sample name → ACRISS code → placeholder
-function CarImage({ sample, code, alt, imageUrl }: { sample: string; code: string; alt: string; imageUrl?: string }) {
+function CarImage({ sample, code, alt, imageUrl, overrideUrl }: { sample: string; code: string; alt: string; imageUrl?: string, overrideUrl?: string }) {
   const sources = [
+    // 0. Custom override from admin panel
+    overrideUrl || null,
     // 1. Official image from XRS API (carvisual link — HD 835x557)
     imageUrl || null,
     // 2. By brand/model name from carCategorySample
@@ -52,6 +54,7 @@ function VehiclesContent() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [selectedCar, setSelectedCar] = useState<any>(null);
   const [currentStep, setCurrentStep] = useState(2);
+  const [carImageOverrides, setCarImageOverrides] = useState<Record<string, string>>({});
 
   // URL params
   const pickupStation = searchParams.get("pickup") || "";
@@ -63,6 +66,18 @@ function VehiclesContent() {
   const driverCountry = searchParams.get("country") || "BR";
   const driverCountryName = searchParams.get("countryName") || "Brasil";
   const stationCountry = searchParams.get("stationCountry") || "";
+
+  useEffect(() => {
+    fetch('/api/cars/images')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          const map = data.reduce((acc: any, item: any) => ({ ...acc, [item.carCode]: item.imageUrl }), {});
+          setCarImageOverrides(map);
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   // Auto-compute returnDate (+3 days) if not in URL
   const returnDate = useMemo(() => {
@@ -293,7 +308,7 @@ function VehiclesContent() {
 
       setCars(poaRates);
       setEtoCars(etoRates);
-      setEtoZeroCars(etoZeroRates);
+      setEtoZeroRates(etoZeroRates);
     } catch (e: any) {
       setError("Erro ao buscar veículos: " + (e.message || "Tente novamente."));
     } finally {
@@ -439,7 +454,10 @@ function VehiclesContent() {
   }, [filteredCars]);
 
   const handleSelectCar = (car: any) => {
-    setSelectedCar(car);
+    setSelectedCar({
+      ...car,
+      imageUrl: carImageOverrides[car.carCategoryCode] || car.imageUrl
+    });
     setZeroExcessUpgrade(false); // reset upgrade when changing car
     setCurrentStep(3);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -646,7 +664,7 @@ function VehiclesContent() {
                         {/* Image */}
                         <div className="w-[240px] shrink-0">
                           <div className="h-[150px] bg-white border border-gray-100 rounded flex items-center justify-center p-3">
-                            <CarImage sample={sample} code={code} alt={sample || name} imageUrl={car.imageUrl} />
+                            <CarImage sample={sample} code={code} alt={sample || name} imageUrl={car.imageUrl} overrideUrl={carImageOverrides[code]} />
                           </div>
                           {sample && <p className="text-[10px] text-center text-gray-400 mt-1">{sample} ou similar</p>}
                         </div>
@@ -707,7 +725,17 @@ function VehiclesContent() {
                               </div>
                               {totalBRL_ETO > 0 && <span className="text-[10px] text-gray-400">Base: {currency} {fmtPrice(totalPriceETO)}</span>}
                               <button
-                                onClick={() => { setSelectedTariffType('ETO'); handleSelectCar({ ...car, ...etoCar, optionalInsurances: car.optionalInsurances, _etoCID: '56935466' }); }}
+                                onClick={() => { 
+                                  setSelectedTariffType('ETO'); 
+                                  handleSelectCar({ 
+                                    ...car, 
+                                    ...etoCar, 
+                                    totalRateEstimate: totalPriceETO.toFixed(2),
+                                    totalRateEstimateInBookingCurrency: totalBRL_ETO.toFixed(2),
+                                    optionalInsurances: car.optionalInsurances, 
+                                    _etoCID: '56935466' 
+                                  }); 
+                                }}
                                 className={`w-full mt-2 font-bold py-2 rounded text-xs transition-colors ${
                                   isSelected && selectedTariffType === 'ETO' ? "bg-[#e67e00] text-white" : "bg-[#e67e00] hover:bg-[#cc6f00] text-white"
                                 }`}

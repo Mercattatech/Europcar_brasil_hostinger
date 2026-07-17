@@ -190,3 +190,11 @@ model LoyaltyProgram {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// Car Image Overrides
+model CarImageOverride {
+  carCode   String   @id
+  imageUrl  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

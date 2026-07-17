@@ -37,8 +37,8 @@ export default function Footer() {
               <li><a href="https://www.europcar.com/pt-br/contact-us" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Contato</a></li>
               <li><a href="/reservation/vehicles" className="hover:text-white transition-colors">Localidades agências no Brasil</a></li>
               <li><a href="https://www.europcar.com/pt-br/rental-agreement" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Contrato de locação</a></li>
-              <li><a href="https://www.europcar.com/pt-br/terms-and-conditions" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Termos e Condições</a></li>
-              <li><a href="https://www.europcar.com/pt-br/deposit-policy" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Política de depósito</a></li>
+              <li><a href="https://www.europcar.com/pt-br/legal-pages/termsAndConditions" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Termos e Condições</a></li>
+              <li><a href="https://www.europcar.com/pt-br/p/legal-information/deposit-policy" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Política de depósito</a></li>
             </ul>
           </div>
 
