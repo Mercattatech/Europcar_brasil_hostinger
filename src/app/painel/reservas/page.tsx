@@ -379,6 +379,23 @@ export default function PainelReservas() {
                                                  </a>
                                               )}
                                            </p>
+
+                                           {/* Programa de Fidelidade */}
+                                           {(parsed?.customer?.loyaltyProgramName || parsed?.customer?.loyaltyProgramId) && (
+                                              <>
+                                                 <div className="border-t border-gray-700/50 my-2"></div>
+                                                 <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Programa de Fidelidade</p>
+                                                 <div className="flex items-center gap-2">
+                                                    <span className="bg-[#e67e00]/20 text-[#e67e00] text-[10px] font-bold px-2 py-1 rounded">
+                                                       ✈️ {parsed.customer.loyaltyProgramName || parsed.customer.loyaltyProgramId}
+                                                    </span>
+                                                    {parsed?.customer?.loyaltyId && (
+                                                       <span className="text-gray-400 text-[10px]">Nº {parsed.customer.loyaltyId}</span>
+                                                    )}
+                                                 </div>
+                                              </>
+                                           )}
+
                                            <div className="border-t border-gray-700/50 my-2"></div>
                                            <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Extras Selecionados</p>
                                            {parsed?.booking?.extras && Object.keys(parsed.booking.extras).filter((k: string) => parsed.booking.extras[k] > 0).length > 0 ? (

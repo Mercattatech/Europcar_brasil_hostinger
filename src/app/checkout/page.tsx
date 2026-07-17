@@ -18,6 +18,8 @@ export default function CheckoutPage() {
   const [telefone, setTelefone] = useState("");
   const [cpf, setCpf] = useState("");
   const [loyaltyProgramId, setLoyaltyProgramId] = useState("");
+  const [loyaltyProgramName, setLoyaltyProgramName] = useState("");
+  const [loyaltyPrograms, setLoyaltyPrograms] = useState<any[]>([]);
   const [loyaltyId, setLoyaltyId] = useState("");
   const [flightNumber, setFlightNumber] = useState("");
 
@@ -82,6 +84,14 @@ export default function CheckoutPage() {
         setPaymentMethod('CREDIT');
       }
     }
+  }, []);
+
+  // Fetch loyalty programs for dropdown
+  useEffect(() => {
+    fetch('/api/loyalty-programs')
+      .then(r => r.json())
+      .then(data => setLoyaltyPrograms(Array.isArray(data) ? data : []))
+      .catch(() => {});
   }, []);
 
   // When booking loads, resolve selected extras from XRS optionalInsurances (no DB needed)
@@ -321,7 +331,7 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           bookingData: booking,
-          customerData: { nome, sobrenome, email, telefone, cpf, loyaltyProgramId, loyaltyId, flightNumber },
+          customerData: { nome, sobrenome, email, telefone, cpf, loyaltyProgramId, loyaltyProgramName, loyaltyId, flightNumber },
           paymentData: {
             method: paymentMethod,
             amountInCents,
@@ -691,8 +701,21 @@ export default function CheckoutPage() {
               {/* Programa de Fidelidade e Voo */}
               <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Programa de Fidelidade (ID) <span className="text-gray-400 font-normal">(Opcional)</span></label>
-                  <input value={loyaltyProgramId} onChange={e => setLoyaltyProgramId(e.target.value.toUpperCase())} className="w-full border rounded p-3 outline-none focus:border-[#008d36]" placeholder="Ex: PRIV" />
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Programa de Fidelidade <span className="text-gray-400 font-normal">(Opcional)</span></label>
+                  <select
+                    value={loyaltyProgramId}
+                    onChange={e => {
+                      setLoyaltyProgramId(e.target.value);
+                      const prog = loyaltyPrograms.find(p => p.code === e.target.value);
+                      setLoyaltyProgramName(prog?.name || '');
+                    }}
+                    className="w-full border rounded p-3 outline-none focus:border-[#008d36] bg-white text-gray-900"
+                  >
+                    <option value="">Selecione um programa</option>
+                    {loyaltyPrograms.map(p => (
+                      <option key={p.id} value={p.code}>{p.name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Número Fidelidade <span className="text-gray-400 font-normal">(Opcional)</span></label>
@@ -829,6 +852,12 @@ export default function CheckoutPage() {
                     {driverCountryName}
                   </span>
                 </div>
+                {loyaltyProgramName && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 font-bold">Fidelidade</span>
+                    <span className="font-bold text-[#e67e00] text-right text-xs">✈️ {loyaltyProgramName}</span>
+                  </div>
+                )}
               </div>
 
               {/* Price breakdown */}

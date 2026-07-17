@@ -16,6 +16,7 @@ const sidebarLinks = [
    { href: "/painel/margem", label: "Margem ETO", icon: "💹" },
    { href: "/painel/promocoes", label: "Promoções", icon: "🏷️" },
    { href: "/painel/extras", label: "Extras & Proteções", icon: "🛡️" },
+   { href: "/painel/fidelidade", label: "Programas Fidelidade", icon: "✈️" },
    { href: "/painel/config", label: "Config Pagamento", icon: "💳" },
    { href: "/painel/config-email", label: "E-mails Automáticos", icon: "✉️" },
    { href: "/painel/tags", label: "Tags & Rastreamento", icon: "📈" },
