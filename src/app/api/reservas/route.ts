@@ -75,10 +75,16 @@ export async function POST(request: Request) {
                  "Payment": { "Type": "Pix", "Amount": paymentData.amountInCents }
              })
          });
-         const cieloResponseJson = await resCielo.json();
+         const rawPixText = await resCielo.text();
+         let cieloResponseJson: any = {};
+         try {
+             cieloResponseJson = rawPixText ? JSON.parse(rawPixText) : {};
+         } catch (parseErr) {
+             throw new Error(`Erro na API da Cielo PIX (HTTP ${resCielo.status}): Resposta inválida. Detalhes: ` + rawPixText);
+         }
          
          if (!resCielo.ok || !cieloResponseJson.Payment || !cieloResponseJson.Payment.QrCodeString) {
-             throw new Error("Erro na Cielo ao gerar PIX: " + JSON.stringify(cieloResponseJson));
+             throw new Error("Erro na Cielo ao gerar PIX: " + (JSON.stringify(cieloResponseJson) || `Erro HTTP ${resCielo.status}`));
          }
 
          cieloLog = "Sucesso PIX Cielo.";
@@ -110,15 +116,22 @@ export async function POST(request: Request) {
                          "Holder": paymentData.creditCard.name,
                          "ExpirationDate": validityFormatted,
                          "SecurityCode": paymentData.creditCard.cvv,
-                          brand
+                         "Brand": brand
                      }
                  }
              })
          });
-         const cieloResponseJson = await resCielo.json();
+         
+         const rawText = await resCielo.text();
+         let cieloResponseJson: any = {};
+         try {
+             cieloResponseJson = rawText ? JSON.parse(rawText) : {};
+         } catch (parseErr) {
+             throw new Error(`Erro na API da Cielo (HTTP ${resCielo.status}): Resposta inválida. Detalhes: ` + rawText);
+         }
 
-         if (!resCielo.ok || (cieloResponseJson.Payment.Status !== 1 && cieloResponseJson.Payment.Status !== 2)) {
-             throw new Error("Pagamento Recusado pela Cielo: " + (cieloResponseJson.Payment?.ReturnMessage || JSON.stringify(cieloResponseJson)));
+         if (!resCielo.ok || (cieloResponseJson.Payment?.Status !== 1 && cieloResponseJson.Payment?.Status !== 2)) {
+             throw new Error("Pagamento Recusado pela Cielo: " + (cieloResponseJson.Payment?.ReturnMessage || JSON.stringify(cieloResponseJson) || `Erro HTTP ${resCielo.status}`));
          }
 
          cieloLog = "Sucesso Cartão Cielo: " + cieloResponseJson.Payment.ReturnMessage;
