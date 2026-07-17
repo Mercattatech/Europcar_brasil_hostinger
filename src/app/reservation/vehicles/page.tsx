@@ -747,7 +747,11 @@ function VehiclesContent() {
                 <button
                   onClick={() => {
                     const selectedInsuranceCodes = Object.keys(selectedExtrasMap).filter(k => selectedExtrasMap[k] > 0);
-                    const xrsEquipmentPayload = Object.entries(selectedEquipmentMap).filter(([, qty]) => qty > 0).map(([code, qty]) => ({ code, qty }));
+                    const xrsEquipmentPayload = Object.entries(selectedEquipmentMap).filter(([, qty]) => qty > 0).map(([code, qty]) => {
+                      const ep = equipmentPrices[code];
+                      const meta = xrsEquipment.find((e: any) => e.code === code);
+                      return { code, qty, name: meta?.name || code, icon: meta?.icon || '📦', price: ep?.price || 0, priceBRL: ep?.priceBRL || 0, currency: ep?.currency || 'EUR' };
+                    });
                     const xrsInsurancesPayload = selectedInsuranceCodes.map(code => ({ code }));
                     const cidForTariff = selectedTariffType === 'ETO'
                       ? (zeroExcessUpgrade ? '56935495' : (selectedCar?._etoCID || '56935466'))
@@ -773,7 +777,11 @@ function VehiclesContent() {
                   <button
                     onClick={() => {
                       const selectedInsuranceCodes2 = Object.keys(selectedExtrasMap).filter(k => selectedExtrasMap[k] > 0);
-                      const xrsEquipmentPayload2 = Object.entries(selectedEquipmentMap).filter(([, qty]) => qty > 0).map(([code, qty]) => ({ code, qty }));
+                      const xrsEquipmentPayload2 = Object.entries(selectedEquipmentMap).filter(([, qty]) => qty > 0).map(([code, qty]) => {
+                        const ep2 = equipmentPrices[code];
+                        const meta2 = xrsEquipment.find((e: any) => e.code === code);
+                        return { code, qty, name: meta2?.name || code, icon: meta2?.icon || '📦', price: ep2?.price || 0, priceBRL: ep2?.priceBRL || 0, currency: ep2?.currency || 'EUR' };
+                      });
                       const xrsInsurancesPayload2 = selectedInsuranceCodes2.map(code => ({ code }));
                       const cidForTariff = selectedTariffType === 'ETO'
                         ? (zeroExcessUpgrade ? '56935495' : (selectedCar?._etoCID || '56935466'))
@@ -883,65 +891,59 @@ function VehiclesContent() {
                           const qty = selectedEquipmentMap[eq.code] || 0;
                           const totalSelectedItems = Object.values(selectedEquipmentMap).reduce((a: number, b: number) => a + b, 0);
                           const canAdd = totalSelectedItems < 4;
+                          const ep = equipmentPrices[eq.code];
+                          const hasPrice = ep && ep.price > 0;
+                          const isUnavailable = !loadingEquipment && !hasPrice;
+
                           return (
-                            <div key={eq.code} className={`border-2 rounded-lg p-5 transition-colors ${qty > 0 ? 'border-[#008d36] bg-green-50' : 'border-gray-200 hover:border-[#008d36]'}`}>
+                            <div key={eq.code} className={`border-2 rounded-lg p-5 transition-colors ${isUnavailable ? 'border-gray-100 bg-gray-50 opacity-60' : qty > 0 ? 'border-[#008d36] bg-green-50' : 'border-gray-200 hover:border-[#008d36]'}`}>
                               <div className="flex items-start gap-3 mb-3">
-                                <span className="text-3xl">{eq.icon}</span>
+                                <span className={`text-3xl ${isUnavailable ? 'grayscale' : ''}`}>{eq.icon}</span>
                                 <div className="flex-1 min-w-0">
-                                  <h4 className="font-black text-gray-900 text-sm">{eq.name}</h4>
+                                  <h4 className={`font-black text-sm ${isUnavailable ? 'text-gray-400' : 'text-gray-900'}`}>{eq.name}</h4>
                                   {eq.description && <p className="text-xs text-gray-500 mt-1">{eq.description}</p>}
                                 </div>
                               </div>
-                              {(() => {
-                                const ep = equipmentPrices[eq.code];
-                                if (ep && ep.price > 0) {
-                                  return (
-                                    <div className="mb-3">
-                                      <div className="text-xl font-black text-gray-900">
-                                        {ep.currency} {ep.price.toFixed(2)}
-                                        <span className="text-xs text-gray-400 font-normal"> /dia</span>
-                                      </div>
-                                      {ep.priceBRL > 0 && (
-                                        <div className="text-xs text-gray-500">R$ {ep.priceBRL.toFixed(2)} /dia</div>
-                                      )}
-                                    </div>
-                                  );
-                                }
-                                if (loadingEquipment) {
-                                  return (
-                                    <div className="flex items-center gap-2 text-sm text-gray-400 mb-3">
-                                      <div className="w-3 h-3 border-2 border-[#e67e00] border-t-transparent rounded-full animate-spin"></div>
-                                      Buscando preço...
-                                    </div>
-                                  );
-                                }
-                                return (
+
+                              {loadingEquipment ? (
+                                <div className="flex items-center gap-2 text-sm text-gray-400 mb-3">
+                                  <div className="w-3 h-3 border-2 border-[#e67e00] border-t-transparent rounded-full animate-spin"></div>
+                                  Buscando preço...
+                                </div>
+                              ) : isUnavailable ? (
+                                <div className="mb-3">
+                                  <span className="text-xs bg-red-100 text-red-600 font-bold px-2 py-1 rounded-full">Indisponível para esta reserva</span>
+                                </div>
+                              ) : (
+                                <>
                                   <div className="mb-3">
                                     <div className="text-xl font-black text-gray-900">
-                                      EUR 0.00
+                                      {ep!.currency} {ep!.price.toFixed(2)}
                                       <span className="text-xs text-gray-400 font-normal"> /dia</span>
                                     </div>
-                                    <div className="text-xs text-gray-500">R$ 0,00 /dia</div>
+                                    {ep!.priceBRL > 0 && (
+                                      <div className="text-xs text-gray-500">R$ {ep!.priceBRL.toFixed(2)} /dia</div>
+                                    )}
                                   </div>
-                                );
-                              })()}
-                              {eq.onRequest && <div className="text-[10px] bg-yellow-100 text-yellow-700 font-bold px-2 py-0.5 rounded-full mb-2 w-fit">Sob consulta — sujeito à disponibilidade</div>}
-                              <div className="flex items-center gap-3">
-                                <button
-                                  onClick={() => handleEquipmentQuantity(eq.code, -1, eq.maxQty)}
-                                  disabled={qty === 0}
-                                  className={`w-9 h-9 rounded-lg font-bold text-lg flex items-center justify-center transition-colors ${qty > 0 ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
-                                >−</button>
-                                <span className="font-black text-lg text-gray-900 w-6 text-center">{qty}</span>
-                                <button
-                                  onClick={() => handleEquipmentQuantity(eq.code, 1, eq.maxQty)}
-                                  disabled={!canAdd || qty >= eq.maxQty}
-                                  className={`w-9 h-9 rounded-lg font-bold text-lg flex items-center justify-center transition-colors ${canAdd && qty < eq.maxQty ? 'bg-[#ffcc00] hover:bg-[#e6b800] text-gray-900' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
-                                >+</button>
-                                {qty > 0 && (
-                                  <span className="text-xs text-[#008d36] font-bold ml-2">✓ {qty}x adicionado</span>
-                                )}
-                              </div>
+                                  {eq.onRequest && <div className="text-[10px] bg-yellow-100 text-yellow-700 font-bold px-2 py-0.5 rounded-full mb-2 w-fit">Sob consulta — sujeito à disponibilidade</div>}
+                                  <div className="flex items-center gap-3">
+                                    <button
+                                      onClick={() => handleEquipmentQuantity(eq.code, -1, eq.maxQty)}
+                                      disabled={qty === 0}
+                                      className={`w-9 h-9 rounded-lg font-bold text-lg flex items-center justify-center transition-colors ${qty > 0 ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
+                                    >−</button>
+                                    <span className="font-black text-lg text-gray-900 w-6 text-center">{qty}</span>
+                                    <button
+                                      onClick={() => handleEquipmentQuantity(eq.code, 1, eq.maxQty)}
+                                      disabled={!canAdd || qty >= eq.maxQty}
+                                      className={`w-9 h-9 rounded-lg font-bold text-lg flex items-center justify-center transition-colors ${canAdd && qty < eq.maxQty ? 'bg-[#ffcc00] hover:bg-[#e6b800] text-gray-900' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
+                                    >+</button>
+                                    {qty > 0 && (
+                                      <span className="text-xs text-[#008d36] font-bold ml-2">✓ {qty}x adicionado</span>
+                                    )}
+                                  </div>
+                                </>
+                              )}
                             </div>
                           );
                         })}
