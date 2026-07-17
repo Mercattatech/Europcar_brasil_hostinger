@@ -13,6 +13,7 @@ export default function PainelFrotaPage() {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [message, setMessage] = useState<{ type: string; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -30,6 +31,26 @@ export default function PainelFrotaPage() {
   };
 
   useEffect(() => { fetchOverrides(); }, []);
+
+  // Auto-sync from XRS API (Brazilian stations)
+  const handleSync = async () => {
+    setSyncing(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/cars/sync-images", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        setMessage({ type: "success", text: `✅ ${data.message} (${data.cars?.join(", ")})` });
+        await fetchOverrides();
+      } else {
+        setMessage({ type: "error", text: data.message || data.error || "Erro ao sincronizar" });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Erro ao conectar com a API." });
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,15 +133,28 @@ export default function PainelFrotaPage() {
 
   return (
     <div className="max-w-4xl">
-      <h1 className="text-2xl font-black text-white mb-1">Fotos da Frota (Veículos)</h1>
+      <div className="flex items-center justify-between mb-1">
+        <h1 className="text-2xl font-black text-white">Fotos da Frota (Veículos)</h1>
+        <button
+          onClick={handleSync}
+          disabled={syncing}
+          className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 shadow-lg"
+        >
+          {syncing ? (
+            <>
+              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              Sincronizando...
+            </>
+          ) : "🔄 Sincronizar da Europcar"}
+        </button>
+      </div>
       <p className="text-gray-400 text-sm mb-2">
-        Cadastre fotos customizadas por código SIPP (ex: EDMR, CDAR). Quando não houver customização, o sistema usa automaticamente as fotos do CDN da Europcar.
+        Cadastre fotos customizadas por código SIPP (ex: EDMR, CDAR). O botão Sincronizar busca automaticamente as URLs oficiais da API para a frota do Brasil.
       </p>
 
       {/* Info box */}
       <div className="bg-blue-900/20 border border-blue-800/30 rounded-lg p-4 mb-6 text-xs text-gray-400">
-        <strong className="text-blue-400">ℹ️ Como funciona:</strong> O sistema já exibe as imagens do CDN da Europcar automaticamente (
-        <code className="text-gray-300">static.europcar.com/.../SIPP_IT.png</code>). Use esta página apenas para <strong className="text-white">substituir</strong> a foto padrão ou para baixar e salvar a imagem da Europcar localmente usando o botão <strong className="text-green-400">"Buscar da Europcar"</strong>.
+        <strong className="text-blue-400">ℹ️ Dica:</strong> Se os carros estão aparecendo sem foto no site, clique em <strong className="text-blue-400">Sincronizar da Europcar</strong>. O sistema vai baixar as URLs reais da API (como o Fiat Mobi, Onix, etc.) e salvar no banco automaticamente.
       </div>
 
       {message && (
@@ -135,7 +169,7 @@ export default function PainelFrotaPage() {
 
       {/* Upload Form */}
       <form onSubmit={handleUpload} className="bg-gray-800/50 border border-gray-700 rounded-lg p-5 mb-6">
-        <h2 className="text-sm font-bold text-white mb-3">Adicionar/Atualizar Foto</h2>
+        <h2 className="text-sm font-bold text-white mb-3">Upload Manual (Substituir Foto)</h2>
         <div className="flex gap-3 items-end flex-wrap">
           <div className="w-48">
             <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Código do Carro (SIPP)</label>
@@ -147,25 +181,8 @@ export default function PainelFrotaPage() {
             />
           </div>
 
-          {/* Auto-fetch from Europcar CDN */}
-          <button
-            type="button"
-            onClick={handleFetchFromAPI}
-            disabled={fetching || !carCode.trim()}
-            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-bold px-5 py-2 rounded text-sm transition-colors shrink-0 flex items-center gap-2"
-          >
-            {fetching ? (
-              <>
-                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Buscando...
-              </>
-            ) : "🌐 Buscar da Europcar"}
-          </button>
-
-          <div className="text-gray-600 text-xs py-2 shrink-0">ou</div>
-
           <div className="flex-1 min-w-48">
-            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Fazer Upload Manual (.jpg, .png)</label>
+            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Arquivo da Imagem (.jpg, .png)</label>
             <input
               type="file"
               accept="image/*"
@@ -180,7 +197,7 @@ export default function PainelFrotaPage() {
             disabled={uploading || !carCode.trim() || !file}
             className="bg-[#008d36] hover:bg-[#007a2d] disabled:opacity-50 text-white font-bold px-6 py-2 rounded text-sm transition-colors shrink-0"
           >
-            {uploading ? "Salvando..." : "📤 Upload"}
+            {uploading ? "Salvando..." : "📤 Enviar Foto"}
           </button>
         </div>
       </form>
