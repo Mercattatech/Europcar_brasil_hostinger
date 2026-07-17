@@ -2,13 +2,25 @@
 
 import HeroSearchForm from "@/components/home/HeroSearchForm";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import LoginModal from "@/components/auth/LoginModal";
 
 export default function Home() {
   const { data: session, status } = useSession();
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [carImages, setCarImages] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    fetch("/api/cars/images")
+      .then(res => res.json())
+      .then((data: any[]) => {
+        const map: Record<string, string> = {};
+        data.forEach(img => map[img.carCode] = img.imageUrl);
+        setCarImages(map);
+      })
+      .catch(console.error);
+  }, []);
   return (
     <main className="min-h-screen bg-white">
       {/* Login Modal */}
@@ -252,7 +264,7 @@ export default function Home() {
                 {/* Image */}
                 <div className="h-40 bg-gradient-to-b from-gray-50 to-white flex items-center justify-center p-4">
                   <img
-                    src={car.img}
+                    src={carImages[car.acriss] || car.img}
                     alt={car.nome}
                     className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500"
                     onError={(e) => {
