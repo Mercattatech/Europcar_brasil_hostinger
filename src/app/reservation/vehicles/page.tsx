@@ -832,12 +832,17 @@ function VehiclesContent() {
                     const code = selectedCar?.carCategoryCode;
                     const etoZeroCar = etoZeroCars.find(e => e.carCategoryCode === code);
                     if (!etoZeroCar) return null;
+                    // selectedCar.totalRateEstimate already has etoMargin applied (set when user clicked "Pagar Agora")
+                    // so we must apply the same margin to the Zero Excess price to get a consistent upgrade delta
+                    const marginMultiplier = 1 + (etoMargin / 100);
                     const currentTotal = parseFloat(selectedCar?.totalRateEstimate || 0);
-                    const zeroTotal = parseFloat(etoZeroCar.totalRateEstimate || 0);
+                    const zeroTotal_raw = parseFloat(etoZeroCar.totalRateEstimate || 0);
+                    const zeroTotal = zeroTotal_raw * marginMultiplier;
                     const upgradeCost = zeroTotal - currentTotal;
                     const currency = selectedCar?.currency || 'EUR';
                     const currentBRL = parseFloat(selectedCar?.totalRateEstimateInBookingCurrency || 0);
-                    const zeroBRL = parseFloat(etoZeroCar.totalRateEstimateInBookingCurrency || 0);
+                    const zeroBRL_raw = parseFloat(etoZeroCar.totalRateEstimateInBookingCurrency || 0);
+                    const zeroBRL = zeroBRL_raw * marginMultiplier;
                     const upgradeBRL = zeroBRL - currentBRL;
                     if (upgradeCost <= 0) return null;
                     return (
@@ -859,7 +864,19 @@ function VehiclesContent() {
                               <button
                                 onClick={() => {
                                   if (zeroExcessUpgrade) { setZeroExcessUpgrade(false); }
-                                  else { setZeroExcessUpgrade(true); setSelectedCar((prev: any) => ({ ...prev, ...etoZeroCar, optionalInsurances: prev?.optionalInsurances, imageUrl: prev?.imageUrl, _etoCID: '56935495' })); }
+                                  else {
+                                    setZeroExcessUpgrade(true);
+                                    setSelectedCar((prev: any) => ({
+                                      ...prev,
+                                      ...etoZeroCar,
+                                      // Store margin-adjusted prices so totals downstream are consistent
+                                      totalRateEstimate: zeroTotal.toFixed(2),
+                                      totalRateEstimateInBookingCurrency: zeroBRL.toFixed(2),
+                                      optionalInsurances: prev?.optionalInsurances,
+                                      imageUrl: prev?.imageUrl,
+                                      _etoCID: '56935495'
+                                    }));
+                                  }
                                 }}
                                 className={`font-bold py-3 px-8 rounded-lg text-sm transition-all ${zeroExcessUpgrade ? 'bg-[#008d36] text-white shadow-lg' : 'bg-[#e67e00] hover:bg-[#cc6f00] text-white shadow-lg shadow-[#e67e00]/25'}`}
                               >
