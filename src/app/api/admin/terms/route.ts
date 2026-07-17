@@ -4,13 +4,34 @@ import prisma from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
-// GET: list all terms documents (without file data to keep response small)
+// We store terms in the existing ContentBlock table as JSON to avoid needing a new DB migration.
+// Key format: terms_doc_RESERVA, terms_doc_PAIS, terms_doc_BRASIL_ONLINE
+// Value format: JSON { fileName, mimeType, fileData, updatedAt }
+
+const typeKey = (type: string) => `terms_doc_${type}`;
+
+// GET: list all terms documents (metadata only, no fileData)
 export async function GET() {
   try {
-    const docs = await prisma.termsDocument.findMany({
-      select: { id: true, type: true, fileName: true, mimeType: true, updatedAt: true },
-      orderBy: { type: 'asc' },
+    const blocks = await prisma.contentBlock.findMany({
+      where: { key: { in: ['terms_doc_RESERVA', 'terms_doc_PAIS', 'terms_doc_BRASIL_ONLINE'] } },
     });
+
+    const docs = blocks.map(b => {
+      try {
+        const parsed = JSON.parse(b.value_ptBR);
+        return {
+          id: b.id,
+          type: b.key.replace('terms_doc_', ''),
+          fileName: parsed.fileName || '',
+          mimeType: parsed.mimeType || 'application/pdf',
+          updatedAt: parsed.updatedAt || b.updatedAt,
+        };
+      } catch {
+        return null;
+      }
+    }).filter(Boolean);
+
     return NextResponse.json(docs);
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
@@ -33,31 +54,36 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: `type inválido. Use: ${validTypes.join(', ')}` }, { status: 400 });
     }
 
-    // PAIS type accepts an external URL instead of file upload
-    if (type === 'PAIS') {
-      if (!externalUrl) {
-        return NextResponse.json({ error: 'externalUrl é obrigatório para o tipo PAIS' }, { status: 400 });
+    const key = typeKey(type);
+    const now = new Date().toISOString();
+
+    let value: object;
+
+    // PAIS with external URL
+    if (type === 'PAIS' && externalUrl) {
+      value = { fileName: externalUrl, mimeType: 'text/uri-list', fileData: 'EXTERNAL_LINK', updatedAt: now };
+    } else {
+      // File upload (all types including PAIS)
+      if (!fileName || !fileData) {
+        return NextResponse.json({ error: 'fileName e fileData são obrigatórios' }, { status: 400 });
       }
-      const doc = await prisma.termsDocument.upsert({
-        where: { type },
-        update: { fileName: externalUrl, mimeType: 'text/uri-list', fileData: 'EXTERNAL_LINK' },
-        create: { type, fileName: externalUrl, mimeType: 'text/uri-list', fileData: 'EXTERNAL_LINK' },
-      });
-      return NextResponse.json({ id: doc.id, type: doc.type, fileName: doc.fileName, updatedAt: doc.updatedAt });
+      value = { fileName, mimeType: mimeType || 'application/pdf', fileData, updatedAt: now };
     }
 
-    // Other types require file upload
-    if (!fileName || !fileData) {
-      return NextResponse.json({ error: 'fileName e fileData são obrigatórios' }, { status: 400 });
-    }
-
-    const doc = await prisma.termsDocument.upsert({
-      where: { type },
-      update: { fileName, mimeType: mimeType || 'application/pdf', fileData },
-      create: { type, fileName, mimeType: mimeType || 'application/pdf', fileData },
+    const block = await prisma.contentBlock.upsert({
+      where: { key },
+      update: { value_ptBR: JSON.stringify(value) },
+      create: { key, value_ptBR: JSON.stringify(value) },
     });
 
-    return NextResponse.json({ id: doc.id, type: doc.type, fileName: doc.fileName, updatedAt: doc.updatedAt });
+    const parsed = JSON.parse(block.value_ptBR);
+    return NextResponse.json({
+      id: block.id,
+      type,
+      fileName: parsed.fileName,
+      mimeType: parsed.mimeType,
+      updatedAt: parsed.updatedAt,
+    });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
