@@ -318,20 +318,20 @@ function VehiclesContent() {
         .then(d => setDbExtras(d.filter((e: any) => e.active)))
         .finally(() => setLoadingExtras(false));
     }
-    // Also fetch XRS equipment for the pickup station
-    if (currentStep === 3 && xrsEquipment.length === 0 && pickupStation) {
-      setLoadingEquipment(true);
-      fetch(`/api/europcar/getEquipmentList?station=${pickupStation}`)
-        .then(r => r.json())
-        .then(d => {
-          if (d.equipment && Array.isArray(d.equipment)) {
-            setXrsEquipment(d.equipment);
-          }
-        })
-        .catch(err => console.warn('[Step3] Equipment fetch failed:', err))
-        .finally(() => setLoadingEquipment(false));
+    // Load standard equipment list (hardcoded — XRS getEquipmentList is not available for our caller code,
+    // but these items are universally available at Europcar stations and validated at booking time)
+    if (currentStep === 3 && xrsEquipment.length === 0) {
+      setXrsEquipment([
+        { code: 'CSB', name: 'Cadeira de bebê (0-12 meses)', icon: '👶', description: 'Cadeira infantil para bebês de até 12 meses (grupo 0).', maxQty: 2, onRequest: false },
+        { code: 'CST', name: 'Cadeira de criança (1-3 anos)', icon: '🧒', description: 'Cadeira infantil para crianças de 1 a 3 anos (grupo 1).', maxQty: 2, onRequest: false },
+        { code: 'BST', name: 'Assento elevatório (4-12 anos)', icon: '💺', description: 'Assento elevatório (booster) para crianças de 4 a 12 anos.', maxQty: 2, onRequest: false },
+        { code: 'NVS', name: 'GPS / Navegador', icon: '🗺️', description: 'Navegador GPS portátil com mapas atualizados.', maxQty: 1, onRequest: false },
+        { code: 'SKR', name: 'Rack de esqui', icon: '🎿', description: 'Suporte para transporte de esquis no teto do veículo.', maxQty: 1, onRequest: true },
+        { code: 'CHN', name: 'Correntes para neve', icon: '⛓️', description: 'Correntes para pneus — obrigatórias em certas regiões com neve.', maxQty: 1, onRequest: true },
+        { code: 'WFI', name: 'Wi-Fi portátil', icon: '📶', description: 'Hotspot Wi-Fi portátil com dados móveis inclusos.', maxQty: 1, onRequest: true },
+      ]);
     }
-  }, [currentStep, dbExtras.length, xrsEquipment.length, pickupStation]);
+  }, [currentStep, dbExtras.length, xrsEquipment.length]);
 
   const handleEquipmentQuantity = (code: string, delta: number, maxQty: number = 4) => {
     setSelectedEquipmentMap(prev => {
@@ -838,11 +838,10 @@ function VehiclesContent() {
                                   {eq.description && <p className="text-xs text-gray-500 mt-1">{eq.description}</p>}
                                 </div>
                               </div>
-                              <div className="text-lg font-black text-gray-900 mb-3">
-                                {eq.currency} {eq.price.toFixed(2)}
-                                <span className="text-xs text-gray-400 font-normal"> /unidade</span>
+                              <div className="text-sm font-bold text-[#e67e00] mb-3">
+                                Preço calculado no total da reserva
                               </div>
-                              {eq.onRequest && <div className="text-[10px] bg-yellow-100 text-yellow-700 font-bold px-2 py-0.5 rounded-full mb-2 w-fit">Sob consulta</div>}
+                              {eq.onRequest && <div className="text-[10px] bg-yellow-100 text-yellow-700 font-bold px-2 py-0.5 rounded-full mb-2 w-fit">Sob consulta — sujeito à disponibilidade</div>}
                               <div className="flex items-center gap-3">
                                 <button
                                   onClick={() => handleEquipmentQuantity(eq.code, -1, eq.maxQty)}
@@ -864,12 +863,6 @@ function VehiclesContent() {
                         })}
                       </div>
                     </>
-                  )}
-                  {loadingEquipment && (
-                    <div className="flex items-center gap-2 text-sm text-gray-400 mb-4">
-                      <div className="w-4 h-4 border-2 border-[#008d36] border-t-transparent rounded-full animate-spin"></div>
-                      Buscando acessórios disponíveis...
-                    </div>
                   )}
 
                   {/* ETO: Skip protections button */}
