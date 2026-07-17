@@ -390,6 +390,22 @@ export default function PainelReservas() {
                                            ) : (
                                               <p className="text-gray-500 text-xs italic">Nenhum extra selecionado</p>
                                            )}
+
+                                           {/* Acessórios / Equipment */}
+                                           {parsed?.booking?.xrsEquipment && parsed.booking.xrsEquipment.length > 0 && (
+                                              <>
+                                                 <div className="border-t border-gray-700/50 my-2"></div>
+                                                 <p className="text-[10px] text-[#e67e00] font-bold uppercase mb-1">Acessórios</p>
+                                                 <div className="flex flex-wrap gap-1">
+                                                    {parsed.booking.xrsEquipment.map((eq: any) => (
+                                                       <span key={eq.code} className="bg-orange-900/40 text-orange-300 text-[10px] font-bold px-2 py-1 rounded">
+                                                          {eq.icon || '📦'} {eq.name || eq.code} x{eq.qty}
+                                                          {eq.priceBRL > 0 && ` (R$${parseFloat(eq.priceBRL).toFixed(2)}/dia)`}
+                                                       </span>
+                                                    ))}
+                                                 </div>
+                                              </>
+                                           )}
                                         </div>
                                      </div>
                                   </td>

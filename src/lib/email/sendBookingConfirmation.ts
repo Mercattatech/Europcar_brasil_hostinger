@@ -13,6 +13,8 @@ interface BookingConfirmationData {
   paymentMethod: string;
   totalBRL?: number;
   isOnRequest?: boolean;
+  xrsEquipment?: Array<{ code: string; name?: string; icon?: string; qty: number; price?: number; priceBRL?: number; currency?: string }>;
+  extras?: Array<{ code: string; name?: string; qty: number }>;
 }
 
 function formatXRSDate(d: string): string {
@@ -108,6 +110,34 @@ export async function sendBookingConfirmation(data: BookingConfirmationData) {
           ` : ''}
         </tbody>
       </table>
+
+      ${data.xrsEquipment && data.xrsEquipment.length > 0 ? `
+      <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:14px 16px;margin:12px 0;">
+        <strong style="color:#9a3412;font-size:13px;">🧳 Acessórios Inclusos</strong>
+        <table style="width:100%;border-collapse:collapse;margin-top:8px;">
+          ${data.xrsEquipment.map(eq => {
+            const pBRL = eq.priceBRL || 0;
+            return `<tr>
+              <td style="padding:4px 0;color:#374151;font-size:13px;">${eq.icon || '📦'} ${eq.name || eq.code} ×${eq.qty}</td>
+              <td style="padding:4px 0;color:#374151;font-size:13px;text-align:right;font-weight:bold;">${pBRL > 0 ? `R$ ${pBRL.toFixed(2).replace('.', ',')} /dia` : ''}</td>
+            </tr>`;
+          }).join('')}
+        </table>
+      </div>
+      ` : ''}
+
+      ${data.extras && data.extras.length > 0 ? `
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px 16px;margin:12px 0;">
+        <strong style="color:#166534;font-size:13px;">🛡️ Proteções Adicionais</strong>
+        <table style="width:100%;border-collapse:collapse;margin-top:8px;">
+          ${data.extras.map(ex => {
+            return `<tr>
+              <td style="padding:4px 0;color:#374151;font-size:13px;">${ex.name || ex.code} ×${ex.qty}</td>
+            </tr>`;
+          }).join('')}
+        </table>
+      </div>
+      ` : ''}
 
       ${isOnRequest ? `
       <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:14px 16px;margin:20px 0;">

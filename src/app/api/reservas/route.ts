@@ -440,6 +440,37 @@ export async function POST(request: Request) {
         } catch (emailErr) {
           console.error('[reservas] Error calling sendTransactionalEmail:', emailErr);
         }
+
+        // Also send detailed HTML confirmation with equipment & extras
+        try {
+          const insNames: Record<string, string> = {
+            TPL: 'Resp. Civil', LDW: 'Danos e Roubo', CDW: 'Colisão', THW: 'Roubo',
+            SCDW: 'Super CDW', PAI: 'Acidentes Pessoais', PEP: 'Efeitos Pessoais',
+            RSA: 'Assistência na Estrada', APP: 'Proteção de Aparência',
+          };
+          const extrasMap = bookingData.extras || {};
+          const extrasArr = Object.entries(extrasMap)
+            .filter(([, v]: any) => v > 0)
+            .map(([code, qty]: any) => ({ code, name: insNames[code] || code, qty }));
+
+          sendBookingConfirmation({
+            toEmail: customerData.email,
+            customerName: `${customerData.nome} ${customerData.sobrenome}`,
+            resNumber: finalResNumber,
+            carName: bookingData.car?.carCategoryName || bookingData.car?.name || '',
+            pickupStation,
+            returnStation,
+            pickupDate,
+            returnDate,
+            paymentMethod: paymentData.method,
+            totalBRL: parseFloat(bookingData.car?.totalRateEstimateInBookingCurrency || '0'),
+            isOnRequest,
+            xrsEquipment: Array.isArray(xrsEquipment) ? xrsEquipment : [],
+            extras: extrasArr,
+          });
+        } catch (emailErr2) {
+          console.error('[reservas] Error sending detailed confirmation:', emailErr2);
+        }
       }
 
       return NextResponse.json({

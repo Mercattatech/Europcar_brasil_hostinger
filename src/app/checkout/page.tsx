@@ -307,8 +307,12 @@ export default function CheckoutPage() {
 
     setLoading(true);
     const extrasTotalBRL = extrasDetails.reduce((sum: number, ex: any) => sum + ex.pricePerDay * ex.qty, 0) * days;
+    const equipTotalBRL = (booking?.xrsEquipment || []).reduce((sum: number, eq: any) => {
+      const p = parseFloat(eq.priceBRL || 0);
+      return sum + p * (eq.qty || 1) * days;
+    }, 0);
     const baseAmountBRL = totalBRL > 0 ? totalBRL : totalRateXRS;
-    const grandTotalBRL = baseAmountBRL + extrasTotalBRL;
+    const grandTotalBRL = baseAmountBRL + extrasTotalBRL + equipTotalBRL;
     const amountInCents = Math.round(grandTotalBRL * 100);
 
     try {
@@ -430,8 +434,12 @@ export default function CheckoutPage() {
 
     // Compute total for summary
     const extrasSumBRL = extrasDetails.reduce((s: number, e: any) => s + e.pricePerDay * e.qty, 0) * days;
+    const equipSumBRL = (booking?.xrsEquipment || []).reduce((s: number, eq: any) => {
+      const p = parseFloat(eq.priceBRL || 0);
+      return s + p * (eq.qty || 1) * days;
+    }, 0);
     const baseBRL = totalBRL > 0 ? totalBRL : totalRateXRS;
-    const grandTotal = baseBRL + extrasSumBRL;
+    const grandTotal = baseBRL + extrasSumBRL + equipSumBRL;
 
     const insNames: Record<string, string> = {
       TPL: "Resp. Civil (TPL)", LDW: "Danos e Roubo (LDW)",
@@ -971,20 +979,44 @@ export default function CheckoutPage() {
 
               {/* Total */}
               <div className="bg-gray-50 -mx-6 -mb-6 p-6 border-t border-gray-200">
+
+                {/* Equipment section in main form */}
+                {booking?.xrsEquipment?.length > 0 && (
+                  <div className="mb-4 pb-3 border-b border-gray-200">
+                    <div className="text-[10px] font-bold text-[#e67e00] uppercase mb-2">Acessórios</div>
+                    {booking.xrsEquipment.map((eq: any) => {
+                      const eqPriceBRL = parseFloat(eq.priceBRL || 0);
+                      const eqTotal = eqPriceBRL * (eq.qty || 1) * days;
+                      return (
+                        <div key={eq.code} className="flex justify-between items-center text-sm mb-1">
+                          <span className="text-gray-700">{eq.icon || '📦'} {eq.name || eq.code} ×{eq.qty}</span>
+                          <span className="font-bold text-gray-900">R$ {eqTotal.toFixed(2).replace(".", ",")}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
                 <div className="flex justify-between items-end">
                   <span className="text-xs font-bold text-gray-500 uppercase">Preço Total</span>
                   <div className="text-right">
-                    {extrasDetails.length > 0 && (
+                    {(extrasDetails.length > 0 || booking?.xrsEquipment?.length > 0) && (
                       <span className="text-xs text-gray-400 block mb-1">
-                        incl. R$ {(extrasDetails.reduce((s: number, e: any) => s + e.pricePerDay * e.qty, 0) * days).toFixed(2).replace(".", ",")} em extras
+                        {(() => {
+                          const extrasVal = extrasDetails.reduce((s: number, e: any) => s + e.pricePerDay * e.qty, 0) * days;
+                          const equipVal = (booking?.xrsEquipment || []).reduce((s: number, eq: any) => s + parseFloat(eq.priceBRL || 0) * (eq.qty || 1) * days, 0);
+                          const total = extrasVal + equipVal;
+                          return total > 0 ? `incl. R$ ${total.toFixed(2).replace(".", ",")} em extras/acessórios` : '';
+                        })()}
                       </span>
                     )}
                     <span className="text-2xl font-black text-gray-900">
                       {(() => {
                         const extrasSum = extrasDetails.reduce((s: number, e: any) => s + e.pricePerDay * e.qty, 0) * days;
+                        const equipSum = (booking?.xrsEquipment || []).reduce((s: number, eq: any) => s + parseFloat(eq.priceBRL || 0) * (eq.qty || 1) * days, 0);
                         const base = totalBRL > 0 ? totalBRL : totalRateXRS;
                         const cur = totalBRL > 0 ? bookingCurrency : currency;
-                        return `${cur} ${(base + extrasSum).toFixed(2).replace(".", ",")}`;
+                        return `${cur} ${(base + extrasSum + equipSum).toFixed(2).replace(".", ",")}`;
                       })()}
                     </span>
                   </div>
