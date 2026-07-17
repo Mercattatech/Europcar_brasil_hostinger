@@ -35,12 +35,15 @@ export async function GET(_req: Request, { params }: { params: { type: string } 
     }
 
     const buffer = Buffer.from(parsed.fileData, 'base64');
+    // Encode filename for Content-Disposition (RFC 5987) to support non-ASCII chars
+    const safeFileName = parsed.fileName.replace(/[^\x00-\x7F]/g, '_');
+    const encodedFileName = encodeURIComponent(parsed.fileName);
 
     return new NextResponse(buffer, {
       status: 200,
       headers: {
         'Content-Type': parsed.mimeType || 'application/pdf',
-        'Content-Disposition': `inline; filename="${parsed.fileName}"`,
+        'Content-Disposition': `inline; filename="${safeFileName}"; filename*=UTF-8''${encodedFileName}`,
         'Content-Length': buffer.length.toString(),
         'Cache-Control': 'public, max-age=3600',
       },
