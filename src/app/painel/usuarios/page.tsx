@@ -21,6 +21,9 @@ export default function PainelUsuarios() {
    const [createRole, setCreateRole] = useState("USER");
 
    const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+   const [historyUser, setHistoryUser] = useState<any>(null);
+   const [historyData, setHistoryData] = useState<any[]>([]);
+   const [historyLoading, setHistoryLoading] = useState(false);
 
    const showToast = (message: string, type: "success" | "error" = "success") => {
       setToast({ message, type });
@@ -129,6 +132,21 @@ export default function PainelUsuarios() {
       const newRole = user.role === "ADMIN" ? "USER" : "ADMIN";
       if (!confirm(`Deseja alterar o papel de ${user.email} para ${newRole}?`)) return;
       await handleUpdateUser(user.id, { role: newRole });
+   };
+
+   const handleShowHistory = async (user: any) => {
+      setHistoryUser(user);
+      setHistoryData([]);
+      setHistoryLoading(true);
+      try {
+         const res = await fetch(`/api/admin/reservations?search=${encodeURIComponent(user.email)}&status=ALL&limit=100`);
+         const data = await res.json();
+         setHistoryData(data.reservations || data || []);
+      } catch (e) {
+         console.error(e);
+      } finally {
+         setHistoryLoading(false);
+      }
    };
 
    return (
@@ -252,6 +270,10 @@ export default function PainelUsuarios() {
                            </td>
                            <td className="px-5 py-4">
                               <div className="flex items-center gap-2 justify-end">
+                                 {/* History */}
+                                 <button onClick={() => handleShowHistory(u)} className="p-1.5 rounded-lg bg-gray-800 hover:bg-blue-900/50 text-gray-400 hover:text-blue-400 transition-colors" title="Histórico de Compras">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                                 </button>
                                  {/* Edit */}
                                  <button onClick={() => { setEditingUser(u); setNewName(u.name || ""); setNewPassword(""); }} className="p-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors" title="Editar">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
@@ -402,6 +424,86 @@ export default function PainelUsuarios() {
                      >
                         {saving ? "Salvando..." : "Salvar Alterações"}
                      </button>
+                  </div>
+               </div>
+            </div>
+         )}
+         {/* History Modal */}
+         {historyUser && (
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setHistoryUser(null)}>
+               <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800 shrink-0">
+                     <div>
+                        <h2 className="text-lg font-black text-white">📋 Histórico de Compras</h2>
+                        <p className="text-xs text-gray-400 mt-0.5">{historyUser.name || historyUser.email} · {historyUser.email}</p>
+                     </div>
+                     <button onClick={() => setHistoryUser(null)} className="text-gray-500 hover:text-white transition-colors">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                     </button>
+                  </div>
+                  <div className="overflow-y-auto flex-1">
+                     {historyLoading ? (
+                        <div className="flex items-center justify-center py-16">
+                           <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                     ) : historyData.length === 0 ? (
+                        <div className="text-center py-16 text-gray-500">
+                           <svg className="w-12 h-12 mx-auto mb-3 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                           <p className="font-bold">Nenhuma reserva encontrada</p>
+                           <p className="text-xs mt-1">Este usuário ainda não fez nenhuma reserva.</p>
+                        </div>
+                     ) : (
+                        <table className="w-full text-sm text-left">
+                           <thead className="bg-gray-800/60 border-b border-gray-700 sticky top-0">
+                              <tr>
+                                 <th className="px-5 py-3 text-[10px] font-bold text-gray-400 uppercase">Reserva</th>
+                                 <th className="px-5 py-3 text-[10px] font-bold text-gray-400 uppercase">Veículo</th>
+                                 <th className="px-5 py-3 text-[10px] font-bold text-gray-400 uppercase">Retirada</th>
+                                 <th className="px-5 py-3 text-[10px] font-bold text-gray-400 uppercase">Valor</th>
+                                 <th className="px-5 py-3 text-[10px] font-bold text-gray-400 uppercase">Status</th>
+                                 <th className="px-5 py-3 text-[10px] font-bold text-gray-400 uppercase">Data</th>
+                              </tr>
+                           </thead>
+                           <tbody className="divide-y divide-gray-800/50">
+                              {historyData.map((res: any) => {
+                                 const parsed = (() => { try { return JSON.parse(res.customerData || '{}'); } catch { return {}; } })();
+                                 const STATUS_LABELS: Record<string,string> = { CONFIRMED_PREPAID: 'Pago Online', CONFIRMED_NON_PREPAID: 'Pagar Balcão', PENDING_PIX: 'PIX Aguardando', CANCELLED: 'Cancelada', ON_REQUEST: 'Sob Consulta' };
+                                 const STATUS_COLORS: Record<string,string> = { CONFIRMED_PREPAID: 'bg-green-500/20 text-green-400', CONFIRMED_NON_PREPAID: 'bg-blue-500/20 text-blue-400', PENDING_PIX: 'bg-yellow-500/20 text-yellow-400', CANCELLED: 'bg-red-500/20 text-red-400', ON_REQUEST: 'bg-purple-500/20 text-purple-400' };
+                                 const pickupDate = parsed?.booking?.pickupDate || parsed?.booking?.pickupdate || '';
+                                 const formattedDate = pickupDate ? `${pickupDate.slice(6,8)}/${pickupDate.slice(4,6)}/${pickupDate.slice(0,4)}` : '—';
+                                 const carName = parsed?.booking?.car?.carCategoryName || parsed?.booking?.car?.name || parsed?.booking?.car?.carCategoryCode || '—';
+                                 return (
+                                    <tr key={res.id} className="hover:bg-gray-800/30 transition-colors">
+                                       <td className="px-5 py-3">
+                                          <span className="font-mono font-bold text-white text-xs">{res.resNumber || '—'}</span>
+                                       </td>
+                                       <td className="px-5 py-3">
+                                          <span className="text-gray-300 text-xs">{carName}</span>
+                                       </td>
+                                       <td className="px-5 py-3 text-xs text-gray-400">{formattedDate}</td>
+                                       <td className="px-5 py-3">
+                                          <span className="font-bold text-green-400 text-xs">
+                                             {res.amountInCents ? `R$ ${(res.amountInCents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'}
+                                          </span>
+                                       </td>
+                                       <td className="px-5 py-3">
+                                          <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded ${STATUS_COLORS[res.status] || 'bg-gray-700 text-gray-300'}`}>
+                                             {STATUS_LABELS[res.status] || res.status}
+                                          </span>
+                                       </td>
+                                       <td className="px-5 py-3 text-xs text-gray-500">
+                                          {new Date(res.createdAt).toLocaleDateString('pt-BR')}
+                                       </td>
+                                    </tr>
+                                 );
+                              })}
+                           </tbody>
+                        </table>
+                     )}
+                  </div>
+                  <div className="px-6 py-3 border-t border-gray-800 shrink-0 flex items-center justify-between">
+                     <span className="text-xs text-gray-500">{historyData.length} reserva{historyData.length !== 1 ? 's' : ''} encontrada{historyData.length !== 1 ? 's' : ''}</span>
+                     <button onClick={() => setHistoryUser(null)} className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold text-sm rounded-lg transition-colors">Fechar</button>
                   </div>
                </div>
             </div>
