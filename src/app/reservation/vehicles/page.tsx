@@ -916,8 +916,12 @@ function VehiclesContent() {
                                   );
                                 }
                                 return (
-                                  <div className="text-sm font-bold text-[#e67e00] mb-3">
-                                    Preço calculado no total da reserva
+                                  <div className="mb-3">
+                                    <div className="text-xl font-black text-gray-900">
+                                      EUR 0.00
+                                      <span className="text-xs text-gray-400 font-normal"> /dia</span>
+                                    </div>
+                                    <div className="text-xs text-gray-500">R$ 0,00 /dia</div>
                                   </div>
                                 );
                               })()}
