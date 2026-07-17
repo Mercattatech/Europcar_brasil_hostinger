@@ -175,7 +175,11 @@ export async function POST(request: Request) {
 
          if (!resCielo.ok || (cieloResponseJson.Payment?.Status !== 1 && cieloResponseJson.Payment?.Status !== 2)) {
              let errorMsg = cieloResponseJson.Payment?.ReturnMessage;
-             if (!errorMsg && Array.isArray(cieloResponseJson) && cieloResponseJson[0]?.Message) {
+             
+             // Tratamento específico para o Código 002 da Cielo
+             if (cieloResponseJson.Payment?.ReturnCode === "002" || cieloResponseJson.Payment?.ReturnCode === "2") {
+                 errorMsg = `A sua conta Cielo não está habilitada para processar esta bandeira de cartão (${brand}), ou o seu cadastro na Cielo ainda não foi ativado (Credenciais Inválidas - 002). Contate o suporte da Cielo.`;
+             } else if (!errorMsg && Array.isArray(cieloResponseJson) && cieloResponseJson[0]?.Message) {
                  errorMsg = cieloResponseJson.map((e: any) => e.Message).join(', ');
              }
              if (!errorMsg) {
@@ -185,7 +189,7 @@ export async function POST(request: Request) {
                  }
              }
              
-             throw new Error("Transação Recusada pela Operadora do Cartão: " + errorMsg);
+             throw new Error("Transação Recusada pela Operadora: " + errorMsg);
          }
 
          cieloLog = "Sucesso Cartão Cielo: " + cieloResponseJson.Payment.ReturnMessage;
