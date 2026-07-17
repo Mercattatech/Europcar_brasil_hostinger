@@ -1,5 +1,25 @@
+"use client";
+
+import { useState, useEffect } from "react";
+
 export default function Footer() {
   const year = new Date().getFullYear();
+  const [termsAvailable, setTermsAvailable] = useState<{reserva: boolean, pais: boolean, brasil: boolean}>({reserva: false, pais: false, brasil: false});
+
+  useEffect(() => {
+    fetch('/api/admin/terms')
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setTermsAvailable({
+            reserva: data.some((d: any) => d.type === 'RESERVA'),
+            pais: data.some((d: any) => d.type === 'PAIS'),
+            brasil: data.some((d: any) => d.type === 'BRASIL_ONLINE'),
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <footer className="bg-[#1a1a1a] text-gray-400 border-t border-gray-800">
@@ -40,6 +60,24 @@ export default function Footer() {
               <li><a href="https://www.europcar.com/pt-br/legal-pages/termsAndConditions" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Termos e Condições</a></li>
               <li><a href="https://www.europcar.com/pt-br/p/legal-information/deposit-policy" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Política de depósito</a></li>
             </ul>
+
+            {/* Platform Terms Links */}
+            {(termsAvailable.reserva || termsAvailable.pais || termsAvailable.brasil) && (
+              <>
+                <p className="text-[10px] text-gray-500 font-bold uppercase mb-2 mt-4">Termos da Plataforma</p>
+                <ul className="space-y-2 text-xs">
+                  {termsAvailable.reserva && (
+                    <li><a href="/api/terms/reserva" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">📄 Termos da Reserva</a></li>
+                  )}
+                  {termsAvailable.pais && (
+                    <li><a href="/api/terms/pais" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">🌍 Termos do País de Destino</a></li>
+                  )}
+                  {termsAvailable.brasil && (
+                    <li><a href="/api/terms/brasil" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">🇧🇷 Reserva Online — Brasil</a></li>
+                  )}
+                </ul>
+              </>
+            )}
           </div>
 
           {/* Col 4 - Divisão de Negócios */}

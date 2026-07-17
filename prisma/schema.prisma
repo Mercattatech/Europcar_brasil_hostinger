@@ -198,3 +198,14 @@ model CarImageOverride {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// Terms & Conditions Documents (PDF / DOC uploads)
+model TermsDocument {
+  id        String   @id @default(cuid())
+  type      String   @unique // RESERVA, PAIS, BRASIL_ONLINE
+  fileName  String
+  mimeType  String   @default("application/pdf")
+  fileData  String   // base64-encoded file content
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

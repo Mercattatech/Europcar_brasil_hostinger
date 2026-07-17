@@ -1,0 +1,224 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+
+interface TermsDoc {
+  id: string;
+  type: string;
+  fileName: string;
+  mimeType: string;
+  updatedAt: string;
+}
+
+const TERMS_CONFIG = [
+  {
+    type: "RESERVA",
+    label: "Termos e Condições da Reserva",
+    description: "Documento com os termos gerais para todas as reservas realizadas na plataforma.",
+    icon: "📄",
+  },
+  {
+    type: "PAIS",
+    label: "Termos e Condições do País de Destino",
+    description: "Documento com os termos específicos do país onde a reserva será realizada.",
+    icon: "🌍",
+  },
+  {
+    type: "BRASIL_ONLINE",
+    label: "Termos de Reserva Online — Brasil",
+    description: "Termos e condições para reservas online realizadas no Brasil.",
+    icon: "🇧🇷",
+  },
+];
+
+export default function TermosPage() {
+  const [docs, setDocs] = useState<TermsDoc[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ type: string; text: string } | null>(null);
+  const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const fetchDocs = async () => {
+    try {
+      const res = await fetch("/api/admin/terms");
+      const data = await res.json();
+      setDocs(Array.isArray(data) ? data : []);
+    } catch {
+      setDocs([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchDocs(); }, []);
+
+  const getDoc = (type: string) => docs.find(d => d.type === type);
+
+  const handleUpload = async (type: string) => {
+    const input = fileRefs.current[type];
+    if (!input?.files?.length) return;
+
+    const file = input.files[0];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      setMessage({ type: "error", text: "Arquivo muito grande. Máximo: 10MB." });
+      return;
+    }
+
+    setUploading(type);
+    setMessage(null);
+
+    try {
+      // Read file as base64
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => {
+          const result = reader.result as string;
+          // Remove data:xxx;base64, prefix
+          const base64Data = result.split(",")[1] || result;
+          resolve(base64Data);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const res = await fetch("/api/admin/terms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type,
+          fileName: file.name,
+          mimeType: file.type || "application/pdf",
+          fileData: base64,
+        }),
+      });
+
+      if (res.ok) {
+        setMessage({ type: "success", text: `"${file.name}" enviado com sucesso!` });
+        fetchDocs();
+      } else {
+        const err = await res.json();
+        setMessage({ type: "error", text: err.error || "Erro ao enviar" });
+      }
+    } catch (e: any) {
+      setMessage({ type: "error", text: e.message || "Erro ao enviar" });
+    } finally {
+      setUploading(null);
+      if (input) input.value = "";
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-black text-white flex items-center gap-3">
+            📜 Termos e Condições
+          </h1>
+          <p className="text-gray-400 text-sm mt-1">
+            Faça upload dos documentos de termos e condições (PDF ou DOC). Eles aparecerão no checkout e no rodapé do site.
+          </p>
+        </div>
+      </div>
+
+      {message && (
+        <div className={`mb-6 p-4 rounded-lg border text-sm font-bold ${
+          message.type === "success"
+            ? "bg-green-900/30 border-green-800 text-green-400"
+            : "bg-red-900/30 border-red-800 text-red-400"
+        }`}>
+          {message.text}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center py-20">
+          <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {TERMS_CONFIG.map(config => {
+            const doc = getDoc(config.type);
+            const isUploading = uploading === config.type;
+
+            return (
+              <div key={config.type} className="bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-gray-700 transition-colors">
+                <div className="flex items-start gap-3 mb-4">
+                  <span className="text-3xl">{config.icon}</span>
+                  <div>
+                    <h3 className="text-white font-bold text-sm">{config.label}</h3>
+                    <p className="text-gray-500 text-xs mt-1">{config.description}</p>
+                  </div>
+                </div>
+
+                {/* Current file status */}
+                {doc ? (
+                  <div className="bg-gray-800 rounded-lg p-3 mb-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="w-2 h-2 bg-green-500 rounded-full" />
+                      <span className="text-green-400 text-xs font-bold">Arquivo ativo</span>
+                    </div>
+                    <p className="text-white text-sm font-medium truncate">{doc.fileName}</p>
+                    <p className="text-gray-500 text-[10px] mt-1">
+                      Atualizado em: {new Date(doc.updatedAt).toLocaleString("pt-BR")}
+                    </p>
+                    <a
+                      href={`/api/terms/${config.type === "RESERVA" ? "reserva" : config.type === "PAIS" ? "pais" : "brasil"}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-400 text-xs hover:underline mt-2 inline-block"
+                    >
+                      Visualizar arquivo →
+                    </a>
+                  </div>
+                ) : (
+                  <div className="bg-gray-800/50 border border-dashed border-gray-700 rounded-lg p-3 mb-4 text-center">
+                    <span className="text-gray-600 text-xs">Nenhum arquivo enviado</span>
+                  </div>
+                )}
+
+                {/* Upload */}
+                <input
+                  ref={el => { fileRefs.current[config.type] = el; }}
+                  type="file"
+                  accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  className="hidden"
+                  onChange={() => handleUpload(config.type)}
+                />
+                <button
+                  onClick={() => fileRefs.current[config.type]?.click()}
+                  disabled={isUploading}
+                  className={`w-full py-3 rounded-lg text-sm font-bold transition-colors ${
+                    isUploading
+                      ? "bg-gray-800 text-gray-500 cursor-wait"
+                      : doc
+                        ? "bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600/30 border border-yellow-600/30"
+                        : "bg-green-600/20 text-green-400 hover:bg-green-600/30 border border-green-600/30"
+                  }`}
+                >
+                  {isUploading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
+                      Enviando...
+                    </span>
+                  ) : doc ? "📎 Substituir Arquivo" : "📤 Enviar Arquivo (PDF ou DOC)"}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Info box */}
+      <div className="mt-8 bg-blue-900/20 border border-blue-800/30 rounded-xl p-5">
+        <h4 className="text-blue-400 text-sm font-bold mb-2">ℹ️ Como funciona</h4>
+        <ul className="text-gray-400 text-xs space-y-1.5">
+          <li>• Faça upload de arquivos <strong className="text-white">PDF</strong> ou <strong className="text-white">DOC/DOCX</strong> (máx. 10MB)</li>
+          <li>• Os links aparecerão automaticamente no <strong className="text-white">rodapé do site</strong></li>
+          <li>• No <strong className="text-white">checkout</strong>, o cliente será obrigado a aceitar os termos antes de finalizar</li>
+          <li>• Para alterar, basta enviar um novo arquivo — o anterior será substituído</li>
+        </ul>
+      </div>
+    </div>
+  );
+}

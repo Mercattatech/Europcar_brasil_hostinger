@@ -73,6 +73,11 @@ export default function CheckoutPage() {
   const [isOnRequest, setIsOnRequest] = useState(false);
   const [onRequestItems, setOnRequestItems] = useState<any[]>([]);
 
+  // Terms & Conditions
+  const [acceptTermsReserva, setAcceptTermsReserva] = useState(false);
+  const [acceptTermsPais, setAcceptTermsPais] = useState(false);
+  const [termsAvailable, setTermsAvailable] = useState<{reserva: boolean, pais: boolean, brasil: boolean}>({reserva: false, pais: false, brasil: false});
+
 
   useEffect(() => {
     const data = sessionStorage.getItem("europcar_booking");
@@ -91,6 +96,22 @@ export default function CheckoutPage() {
     fetch('/api/loyalty-programs')
       .then(r => r.json())
       .then(data => setLoyaltyPrograms(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
+
+  // Fetch available terms documents
+  useEffect(() => {
+    fetch('/api/admin/terms')
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setTermsAvailable({
+            reserva: data.some(d => d.type === 'RESERVA'),
+            pais: data.some(d => d.type === 'PAIS'),
+            brasil: data.some(d => d.type === 'BRASIL_ONLINE'),
+          });
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -792,8 +813,54 @@ export default function CheckoutPage() {
               </div>
             </div>
 
+            {/* Terms & Conditions Checkboxes */}
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 mb-6 space-y-4">
+              <h4 className="text-sm font-black text-gray-900 uppercase tracking-wide flex items-center gap-2">
+                <svg className="w-5 h-5 text-[#008d36]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Termos e Condições
+              </h4>
+
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={acceptTermsReserva}
+                  onChange={e => setAcceptTermsReserva(e.target.checked)}
+                  className="mt-1 w-5 h-5 accent-[#008d36] rounded cursor-pointer shrink-0"
+                />
+                <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">
+                  Li e aceito os{' '}
+                  <a href="/api/terms/reserva" target="_blank" rel="noopener noreferrer" className="text-[#008d36] font-bold underline hover:text-[#006d28]">
+                    Termos e Condições da Reserva
+                  </a>
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={acceptTermsPais}
+                  onChange={e => setAcceptTermsPais(e.target.checked)}
+                  className="mt-1 w-5 h-5 accent-[#008d36] rounded cursor-pointer shrink-0"
+                />
+                <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">
+                  Li e aceito os{' '}
+                  <a href="/api/terms/pais" target="_blank" rel="noopener noreferrer" className="text-[#008d36] font-bold underline hover:text-[#006d28]">
+                    Termos e Condições do País
+                  </a>
+                  {' '}onde a reserva está sendo realizada
+                </span>
+              </label>
+
+              {!acceptTermsReserva || !acceptTermsPais ? (
+                <p className="text-xs text-red-500 font-medium flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                  Você precisa aceitar ambos os termos para finalizar a reserva.
+                </p>
+              ) : null}
+            </div>
+
             <div className="text-right">
-              <button disabled={loading} type="submit" className="bg-[#008d36] hover:bg-[#007a2d] text-white font-black py-5 px-10 rounded-lg shadow-lg uppercase tracking-wide text-lg disabled:opacity-50 transition-colors">
+              <button disabled={loading || !acceptTermsReserva || !acceptTermsPais} type="submit" className="bg-[#008d36] hover:bg-[#007a2d] text-white font-black py-5 px-10 rounded-lg shadow-lg uppercase tracking-wide text-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                 {loading ? "Processando..." : "Finalizar e Reservar Agora"}
               </button>
             </div>
