@@ -365,8 +365,10 @@ function VehiclesContent() {
     })
       .then(r => r.json())
       .then(data => {
-        const quote = data?.message?.serviceResponse?.reservation?.quote;
-        const eqList = quote?.equipmentList?.equipment;
+        const reservation = data?.message?.serviceResponse?.reservation;
+        const quote = reservation?.quote;
+        // equipmentList is under reservation, NOT under quote
+        const eqList = reservation?.equipmentList?.equipment;
         if (!eqList) return;
         const items = Array.isArray(eqList) ? eqList : [eqList];
         const prices: Record<string, { price: number; priceBRL: number; currency: string }> = {};
