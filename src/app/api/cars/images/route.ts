@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { writeFile, unlink } from 'fs/promises';
-import { join } from 'path';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,12 +8,12 @@ export async function GET() {
     const overrides = await prisma.carImageOverride.findMany();
     return NextResponse.json(overrides);
   } catch (error: any) {
-    console.error("Car images GET error (table might not exist):", error.message);
-    return NextResponse.json([]); // return empty array as fallback
+    console.error("Car images GET error:", error.message);
+    return NextResponse.json([]);
   }
 }
 
-// POST to upload an image and save to DB
+// POST: receive image as base64 and store directly in DB (no filesystem needed)
 export async function POST(req: Request) {
   try {
     const data = await req.formData();
@@ -26,33 +24,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'File and carCode are required' }, { status: 400 });
     }
 
+    // Convert file to base64 data URL — stored directly in DB, no disk write needed
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    const base64 = buffer.toString('base64');
+    const mimeType = file.type || 'image/jpeg';
+    const imageUrl = `data:${mimeType};base64,${base64}`;
 
-    // Save to public/uploads/cars
-    const fileName = `${carCode.toUpperCase()}.jpg`;
-    const uploadDir = join(process.cwd(), 'public', 'uploads', 'cars');
-    const filePath = join(uploadDir, fileName);
-
-    await writeFile(filePath, buffer);
-
-    const imageUrl = `/uploads/cars/${fileName}?v=${Date.now()}`;
-
-    // Update DB
     const override = await prisma.carImageOverride.upsert({
       where: { carCode: carCode.toUpperCase() },
       update: { imageUrl },
       create: { carCode: carCode.toUpperCase(), imageUrl },
     });
 
-    return NextResponse.json({ success: true, override });
+    return NextResponse.json({ success: true, override: { carCode: override.carCode, imageUrl: imageUrl.substring(0, 50) + '...' } });
   } catch (error: any) {
     console.error('Upload Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-// DELETE to remove override and delete file
+// DELETE: remove override from DB only (no filesystem operations)
 export async function DELETE(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -62,17 +54,6 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: 'carCode is required' }, { status: 400 });
     }
 
-    const fileName = `${carCode.toUpperCase()}.jpg`;
-    const filePath = join(process.cwd(), 'public', 'uploads', 'cars', fileName);
-
-    // Try deleting file if exists
-    try {
-      await unlink(filePath);
-    } catch (e) {
-      // Ignore if file doesn't exist
-    }
-
-    // Delete from DB
     await prisma.carImageOverride.delete({
       where: { carCode: carCode.toUpperCase() }
     });
