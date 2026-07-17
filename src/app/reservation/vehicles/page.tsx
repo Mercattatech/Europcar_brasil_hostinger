@@ -133,6 +133,8 @@ function VehiclesContent() {
   const [xrsEquipment, setXrsEquipment] = useState<any[]>([]);
   const [selectedEquipmentMap, setSelectedEquipmentMap] = useState<Record<string, number>>({});
   const [loadingEquipment, setLoadingEquipment] = useState(false);
+  // Equipment prices fetched from getQuote: { code: { price, priceBRL, currency } }
+  const [equipmentPrices, setEquipmentPrices] = useState<Record<string, { price: number; priceBRL: number; currency: string }>>({});
 
   // ETO protection skip state
   const [protectionsSkipped, setProtectionsSkipped] = useState(false);
@@ -318,8 +320,7 @@ function VehiclesContent() {
         .then(d => setDbExtras(d.filter((e: any) => e.active)))
         .finally(() => setLoadingExtras(false));
     }
-    // Load standard equipment list (hardcoded — XRS getEquipmentList is not available for our caller code,
-    // but these items are universally available at Europcar stations and validated at booking time)
+    // Load standard equipment list
     if (currentStep === 3 && xrsEquipment.length === 0) {
       setXrsEquipment([
         { code: 'CSB', name: 'Cadeira de bebê (0-12 meses)', icon: '👶', description: 'Cadeira infantil para bebês de até 12 meses (grupo 0).', maxQty: 2, onRequest: false },
@@ -332,6 +333,59 @@ function VehiclesContent() {
       ]);
     }
   }, [currentStep, dbExtras.length, xrsEquipment.length]);
+
+  // Fetch equipment prices from getQuote when entering Step 3
+  useEffect(() => {
+    if (currentStep !== 3 || !selectedCar || Object.keys(equipmentPrices).length > 0) return;
+    const carCategory = selectedCar.carCategoryCode;
+    if (!carCategory || !pickupStation || !pickupDate || !returnDate) return;
+
+    setLoadingEquipment(true);
+    const allEqCodes = ['CSB', 'CST', 'BST', 'NVS', 'SKR', 'CHN', 'WFI'];
+    const equipmentList = allEqCodes.map(code => ({ code, qty: 1 }));
+
+    const cidForQuote = selectedTariffType === 'ETO'
+      ? (selectedCar._etoCID || '56935466')
+      : (effectiveContractID || '57269673');
+
+    fetch('/api/europcar/getQuote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        carCategory,
+        pickupStation,
+        returnStation: returnStation || pickupStation,
+        pickupDate,
+        returnDate,
+        pickupTime,
+        returnTime,
+        contractID: cidForQuote,
+        equipmentList,
+      }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        const quote = data?.message?.serviceResponse?.reservation?.quote;
+        const eqList = quote?.equipmentList?.equipment;
+        if (!eqList) return;
+        const items = Array.isArray(eqList) ? eqList : [eqList];
+        const prices: Record<string, { price: number; priceBRL: number; currency: string }> = {};
+        for (const item of items) {
+          const a = item.$ || item;
+          const code = a.code || '';
+          if (code) {
+            prices[code] = {
+              price: parseFloat(a.price || '0'),
+              priceBRL: parseFloat(a.priceInBookingCurrency || '0'),
+              currency: quote?.$?.currency || 'EUR',
+            };
+          }
+        }
+        setEquipmentPrices(prices);
+      })
+      .catch(err => console.warn('[Step3] Equipment price fetch failed:', err))
+      .finally(() => setLoadingEquipment(false));
+  }, [currentStep, selectedCar, equipmentPrices, pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, selectedTariffType, effectiveContractID]);
 
   const handleEquipmentQuantity = (code: string, delta: number, maxQty: number = 4) => {
     setSelectedEquipmentMap(prev => {
@@ -838,9 +892,35 @@ function VehiclesContent() {
                                   {eq.description && <p className="text-xs text-gray-500 mt-1">{eq.description}</p>}
                                 </div>
                               </div>
-                              <div className="text-sm font-bold text-[#e67e00] mb-3">
-                                Preço calculado no total da reserva
-                              </div>
+                              {(() => {
+                                const ep = equipmentPrices[eq.code];
+                                if (ep && ep.price > 0) {
+                                  return (
+                                    <div className="mb-3">
+                                      <div className="text-xl font-black text-gray-900">
+                                        {ep.currency} {ep.price.toFixed(2)}
+                                        <span className="text-xs text-gray-400 font-normal"> /dia</span>
+                                      </div>
+                                      {ep.priceBRL > 0 && (
+                                        <div className="text-xs text-gray-500">R$ {ep.priceBRL.toFixed(2)} /dia</div>
+                                      )}
+                                    </div>
+                                  );
+                                }
+                                if (loadingEquipment) {
+                                  return (
+                                    <div className="flex items-center gap-2 text-sm text-gray-400 mb-3">
+                                      <div className="w-3 h-3 border-2 border-[#e67e00] border-t-transparent rounded-full animate-spin"></div>
+                                      Buscando preço...
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <div className="text-sm font-bold text-[#e67e00] mb-3">
+                                    Preço calculado no total da reserva
+                                  </div>
+                                );
+                              })()}
                               {eq.onRequest && <div className="text-[10px] bg-yellow-100 text-yellow-700 font-bold px-2 py-0.5 rounded-full mb-2 w-fit">Sob consulta — sujeito à disponibilidade</div>}
                               <div className="flex items-center gap-3">
                                 <button
