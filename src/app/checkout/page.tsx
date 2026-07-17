@@ -766,57 +766,7 @@ export default function CheckoutPage() {
                     </div>
                   )}
                 </div>
-
-                {/* ETO Voucher — hide for ETO tariff AND for Brazilian stations */}
-                {tariffType !== 'ETO' && stationCountry !== 'BR' && (
-                <label className={`block border-2 rounded-lg p-5 cursor-pointer flex items-center gap-4 transition-colors ${paymentMethod === "VOUCHER_ETO" ? "border-[#e67e00] bg-orange-50" : "border-gray-200 hover:border-gray-300"}`}>
-                  <input type="radio" checked={paymentMethod === "VOUCHER_ETO"} onChange={() => setPaymentMethod("VOUCHER_ETO" as any)} className="w-5 h-5 accent-[#e67e00]" />
-                  <div className="flex-1">
-                    <span className="font-bold text-gray-900 flex items-center gap-2">
-                      Tarifa ETO Voucher
-                      <span className="bg-[#e67e00] text-white text-[10px] px-2 py-0.5 rounded font-bold">CORPORATIVO</span>
-                    </span>
-                    <span className="text-xs text-gray-500">Pagamento via voucher corporativo pré-pago (ETO).</span>
-                  </div>
-                  <button type="button" className="bg-[#e67e00] hover:bg-[#cc6f00] text-white font-bold text-sm px-6 py-2.5 rounded-lg transition-colors shrink-0">retirar</button>
-                </label>
-                )}
-
-                {/* EXO Voucher — hide for ETO tariff AND for Brazilian stations */}
-                {tariffType !== 'ETO' && stationCountry !== 'BR' && (
-                <label className={`block border-2 rounded-lg p-5 cursor-pointer flex items-center gap-4 transition-colors ${paymentMethod === "VOUCHER_EXO" ? "border-[#e67e00] bg-orange-50" : "border-gray-200 hover:border-gray-300"}`}>
-                  <input type="radio" checked={paymentMethod === "VOUCHER_EXO"} onChange={() => setPaymentMethod("VOUCHER_EXO" as any)} className="w-5 h-5 accent-[#e67e00]" />
-                  <div className="flex-1">
-                    <span className="font-bold text-gray-900 flex items-center gap-2">
-                      Tarifa EXO Voucher
-                      <span className="bg-[#e67e00] text-white text-[10px] px-2 py-0.5 rounded font-bold">AGÊNCIA</span>
-                    </span>
-                    <span className="text-xs text-gray-500">Pagamento via voucher de agência (EXO — pós-pago).</span>
-                  </div>
-                  <button type="button" className="bg-[#e67e00] hover:bg-[#cc6f00] text-white font-bold text-sm px-6 py-2.5 rounded-lg transition-colors shrink-0">retirar</button>
-                </label>
-                )}
               </div>
-
-              {/* IOF Banner — hide for Brazilian stations (IOF only applies to international rentals) */}
-              {stationCountry !== 'BR' && (
-              <div className="mt-6 bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg p-5">
-                <div className="flex items-start gap-3">
-                  <div className="bg-[#008d36] text-white rounded-full w-8 h-8 flex items-center justify-center shrink-0 mt-0.5">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  </div>
-                  <div>
-                    <p className="font-black text-gray-900 text-sm mb-1">💡 Pagando online, você fica livre de IOF!</p>
-                    <p className="text-xs text-gray-600 leading-relaxed">
-                      O <strong>IOF (Imposto sobre Operações Financeiras)</strong> incide sobre pagamentos realizados 
-                      no balcão da loja com cartão de crédito internacional. Ao pagar antecipadamente pela nossa 
-                      plataforma via <strong>PIX</strong> ou <strong>Cartão de Crédito</strong>, você elimina essa cobrança 
-                      e garante economia na sua reserva.
-                    </p>
-                  </div>
-                </div>
-              </div>
-              )}
             </div>
 
             <div className="text-right">
