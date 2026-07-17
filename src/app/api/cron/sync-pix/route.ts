@@ -1,17 +1,9 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { sendTransactionalEmail } from '@/lib/emailService';
+import { executeXRSBooking } from '@/lib/europcar/bookXRS';
 
 export const dynamic = 'force-dynamic';
-
-function gerarLocalizador() {
-   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-   let result = '';
-   for (let i = 0; i < 8; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-   }
-   return result;
-}
 
 export async function GET(request: Request) {
    try {
@@ -66,7 +58,18 @@ export async function GET(request: Request) {
             
             // Status 2 = Paid, Status 1 = Authorized (for Pix usually meaning paid or authorized to be captured)
             if (cieloJson.Payment && (cieloJson.Payment.Status === 2 || cieloJson.Payment.Status === 1)) {
-               const resNumber = gerarLocalizador();
+               let resNumber = reserva.merchantOrderId;
+               try {
+                  const { resNumber: europcarResNumber } = await executeXRSBooking({
+                      bookingData: parsedData.booking,
+                      customerData: parsedData,
+                      paymentData: { method: 'PIX', amountInCents: reserva.amountInCents },
+                      xrsEquipment: parsedData.booking?.xrsEquipment || [],
+                  });
+                  if (europcarResNumber) resNumber = europcarResNumber;
+               } catch (e: any) {
+                  console.error("SYNC-PIX: Error executing XRS Booking", e.message);
+               }
                
                await prisma.localReservation.update({
                   where: { id: reserva.id },

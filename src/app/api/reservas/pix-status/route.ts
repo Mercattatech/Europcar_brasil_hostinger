@@ -1,15 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { executeXRSBooking } from '@/lib/europcar/bookXRS';
 export const dynamic = 'force-dynamic';
-
-function gerarLocalizador() {
-   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-   let result = '';
-   for (let i = 0; i < 8; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-   }
-   return result;
-}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -56,7 +48,19 @@ export async function GET(request: Request) {
              // Status 2 = Paid, Status 12 = Pending, Status 1 = Authorized (for Pix 2 meaning Paid)
              // Let's also consider 1 or 2 as approved/paid depending on sandbox
              if (cieloJson.Payment && (cieloJson.Payment.Status === 2 || cieloJson.Payment.Status === 1)) { 
-                 const resNumber = gerarLocalizador();
+                 let resNumber = reservaLocal.merchantOrderId;
+                 try {
+                     const { resNumber: europcarResNumber } = await executeXRSBooking({
+                         bookingData: parsedData.booking,
+                         customerData: parsedData,
+                         paymentData: { method: 'PIX', amountInCents: reservaLocal.amountInCents },
+                         xrsEquipment: parsedData.booking?.xrsEquipment || [],
+                     });
+                     if (europcarResNumber) resNumber = europcarResNumber;
+                 } catch (e: any) {
+                     console.error("PIX-STATUS: Error executing XRS Booking", e.message);
+                 }
+
                  await prisma.localReservation.update({
                      where: { id: reservaLocal.id },
                      data: {
