@@ -879,8 +879,8 @@ function VehiclesContent() {
                     );
                   })()}
 
-                  {/* Proteções da API Europcar XRS — hidden when premium protection is active */}
-                  {!zeroExcessUpgrade && selectedCar?.optionalInsurances?.length > 0 ? (
+                  {/* Proteções da API Europcar XRS — shown only for POA (pay at counter) */}
+                  {!zeroExcessUpgrade && selectedTariffType === 'POA' && selectedCar?.optionalInsurances?.length > 0 ? (
                     <>
                       <h3 className="font-bold text-lg text-gray-900 mb-4">Proteções disponíveis</h3>
                       <div className="grid grid-cols-2 gap-4 mb-8">
@@ -907,9 +907,9 @@ function VehiclesContent() {
                         })}
                       </div>
                     </>
-                  ) : (
+                  ) : selectedTariffType === 'POA' ? (
                     <p className="text-gray-400 text-sm py-4">Nenhuma proteção disponível para este veículo.</p>
-                  )}
+                  ) : null}
 
                   {/* 🧳 Acessórios e Equipamentos (XRS API) */}
                   {xrsEquipment.length > 0 && (
