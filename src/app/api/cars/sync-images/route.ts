@@ -6,14 +6,14 @@ import { parseStringPromise } from 'xml2js';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-// Brazilian stations to query for car images
-const BR_STATIONS = ['POA01', 'GRU01', 'SDU01', 'BSB01', 'FOR01', 'REC01'];
+// Brazilian stations to query for car images (valid from getStations)
+const BR_STATIONS = ['CGHO03', 'GRUO02', 'VCPT02', 'POAO03', 'SAOC04', 'SSAC03'];
 
 function formatDate(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  return `${y}${m}${day}`;
 }
 
 async function fetchImagesForStation(station: string): Promise<Record<string, string>> {
@@ -26,10 +26,11 @@ async function fetchImagesForStation(station: string): Promise<Record<string, st
 <message>
   <serviceRequest serviceCode="getMultipleRates">
     <serviceParameters>
-      <reservation>
+      <reservation rateDetails="Y" chargesDetail="TRE">
         <checkout stationID="${station}" date="${formatDate(pickup)}" time="1000"/>
         <checkin stationID="${station}" date="${formatDate(ret)}" time="1000"/>
       </reservation>
+      <driver countryOfResidence="BR" />
     </serviceParameters>
   </serviceRequest>
 </message>`;
