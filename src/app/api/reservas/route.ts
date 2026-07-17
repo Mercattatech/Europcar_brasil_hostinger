@@ -66,25 +66,42 @@ export async function POST(request: Request) {
       let paymentApproved = false;
 
       if (paymentData.method === 'PIX') {
+         const pixPayload = {
+             "MerchantOrderId": merchantOrderId,
+             "Customer": { "Name": customerData.nome + " " + customerData.sobrenome, "Identity": customerData.cpf },
+             "Payment": { "Type": "Pix", "Amount": paymentData.amountInCents }
+         };
+
          const resCielo = await fetch(CIELO_API_URL, {
              method: 'POST',
              headers: cieloHeaders,
-             body: JSON.stringify({
-                 "MerchantOrderId": merchantOrderId,
-                 "Customer": { "Name": customerData.nome + " " + customerData.sobrenome, "Identity": customerData.cpf },
-                 "Payment": { "Type": "Pix", "Amount": paymentData.amountInCents }
-             })
+             body: JSON.stringify(pixPayload)
          });
+         
          const rawPixText = await resCielo.text();
+         
+         prisma.logCielo.create({
+             data: {
+                 endpoint: CIELO_API_URL,
+                 payload: JSON.stringify(pixPayload),
+                 response: rawPixText || `[Resposta Vazia] HTTP ${resCielo.status}`
+             }
+         }).catch(console.error);
+
          let cieloResponseJson: any = {};
          try {
              cieloResponseJson = rawPixText ? JSON.parse(rawPixText) : {};
          } catch (parseErr) {
-             throw new Error(`Erro na API da Cielo PIX (HTTP ${resCielo.status}): Resposta inválida. Detalhes: ` + rawPixText);
+             throw new Error(`Erro de Comunicação com a Cielo (HTTP ${resCielo.status}). Verifique as configurações de chave no painel.`);
          }
          
          if (!resCielo.ok || !cieloResponseJson.Payment || !cieloResponseJson.Payment.QrCodeString) {
-             throw new Error("Erro na Cielo ao gerar PIX: " + (JSON.stringify(cieloResponseJson) || `Erro HTTP ${resCielo.status}`));
+             let errorMsg = cieloResponseJson.Payment?.ReturnMessage;
+             if (!errorMsg && Array.isArray(cieloResponseJson) && cieloResponseJson[0]?.Message) {
+                 errorMsg = cieloResponseJson.map((e: any) => e.Message).join(', ');
+             }
+             if (!errorMsg) errorMsg = `Código HTTP ${resCielo.status}`;
+             throw new Error("Transação PIX Recusada: " + errorMsg);
          }
 
          cieloLog = "Sucesso PIX Cielo.";
@@ -103,35 +120,53 @@ export async function POST(request: Request) {
              validityFormatted = `${mm}/20${yy}`;
          }
 
+         const cieloPayload = {
+             "MerchantOrderId": merchantOrderId,
+             "Customer": { "Name": customerData.nome + " " + customerData.sobrenome, "Identity": customerData.cpf.replace(/\D/g, '') },
+             "Payment": {
+                 "Type": "CreditCard", "Amount": paymentData.amountInCents, "Installments": 1, "Capture": true,
+                 "CreditCard": {
+                     "CardNumber": paymentData.creditCard.number.replace(/\D/g, ''),
+                     "Holder": paymentData.creditCard.name,
+                     "ExpirationDate": validityFormatted,
+                     "SecurityCode": paymentData.creditCard.cvv,
+                     "Brand": brand
+                 }
+             }
+         };
+
          const resCielo = await fetch(CIELO_API_URL, {
              method: 'POST',
              headers: cieloHeaders,
-             body: JSON.stringify({
-                 "MerchantOrderId": merchantOrderId,
-                 "Customer": { "Name": customerData.nome + " " + customerData.sobrenome, "Identity": customerData.cpf.replace(/\D/g, '') },
-                 "Payment": {
-                     "Type": "CreditCard", "Amount": paymentData.amountInCents, "Installments": 1, "Capture": true,
-                     "CreditCard": {
-                         "CardNumber": paymentData.creditCard.number.replace(/\D/g, ''),
-                         "Holder": paymentData.creditCard.name,
-                         "ExpirationDate": validityFormatted,
-                         "SecurityCode": paymentData.creditCard.cvv,
-                         "Brand": brand
-                     }
-                 }
-             })
+             body: JSON.stringify(cieloPayload)
          });
          
          const rawText = await resCielo.text();
+         
+         // Salva log no banco para aparecer no painel
+         prisma.logCielo.create({
+             data: {
+                 endpoint: CIELO_API_URL,
+                 payload: JSON.stringify(cieloPayload),
+                 response: rawText || `[Resposta Vazia] HTTP ${resCielo.status}`
+             }
+         }).catch(console.error);
+
          let cieloResponseJson: any = {};
          try {
              cieloResponseJson = rawText ? JSON.parse(rawText) : {};
          } catch (parseErr) {
-             throw new Error(`Erro na API da Cielo (HTTP ${resCielo.status}): Resposta inválida. Detalhes: ` + rawText);
+             throw new Error(`Erro de Comunicação com a Cielo (HTTP ${resCielo.status}). Verifique as configurações de chave no painel.`);
          }
 
          if (!resCielo.ok || (cieloResponseJson.Payment?.Status !== 1 && cieloResponseJson.Payment?.Status !== 2)) {
-             throw new Error("Pagamento Recusado pela Cielo: " + (cieloResponseJson.Payment?.ReturnMessage || JSON.stringify(cieloResponseJson) || `Erro HTTP ${resCielo.status}`));
+             let errorMsg = cieloResponseJson.Payment?.ReturnMessage;
+             if (!errorMsg && Array.isArray(cieloResponseJson) && cieloResponseJson[0]?.Message) {
+                 errorMsg = cieloResponseJson.map((e: any) => e.Message).join(', ');
+             }
+             if (!errorMsg) errorMsg = `Código HTTP ${resCielo.status}`;
+             
+             throw new Error("Transação Recusada pela Operadora do Cartão: " + errorMsg);
          }
 
          cieloLog = "Sucesso Cartão Cielo: " + cieloResponseJson.Payment.ReturnMessage;
