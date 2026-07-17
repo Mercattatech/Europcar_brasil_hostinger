@@ -33,21 +33,22 @@ export async function POST(request: Request) {
       try {
         cieloConfig = await prisma.cieloConfig.findFirst();
       } catch (dbErr: any) {
-        console.warn('[reservas] DB indisponível, usando credenciais do .env como fallback:', dbErr.message);
+        console.warn('[reservas] DB indisponível:', dbErr.message);
+      }
+
+      // Fallback para .env caso não tenha sido configurado no painel ou o banco falhe
+      if (!cieloConfig || !cieloConfig.merchantId) {
         const envMerchantId = process.env.CIELO_MERCHANT_ID;
         const envMerchantKey = process.env.CIELO_MERCHANT_KEY;
         const envSandbox = process.env.CIELO_SANDBOX !== 'false';
-        if ((paymentData.method === 'PIX' || paymentData.method === 'CREDIT') && envMerchantId && envMerchantKey) {
+        
+        if (envMerchantId && envMerchantKey) {
           cieloConfig = { merchantId: envMerchantId, merchantKey: envMerchantKey, isSandbox: envSandbox };
-        } else if (paymentData.method === 'PIX' || paymentData.method === 'CREDIT') {
-          return NextResponse.json({
-            error: `Banco de dados indisponível e credenciais Cielo não encontradas no ambiente. Verifique se o projeto Supabase está ativo e tente novamente. (${dbErr.message})`
-          }, { status: 503 });
         }
       }
 
       if ((paymentData.method === 'PIX' || paymentData.method === 'CREDIT') && (!cieloConfig || !cieloConfig.merchantId || !cieloConfig.merchantKey)) {
-         return NextResponse.json({ error: 'Chaves da Cielo não configuradas no Admin. Configure-as em /painel/config antes de testar pagamentos online.' }, { status: 400 });
+         return NextResponse.json({ error: 'Chaves da Cielo não configuradas no Admin e nem no .env.' }, { status: 400 });
       }
 
       // 1. Iniciar transação CIELO baseada no paymentData.method
@@ -92,7 +93,11 @@ export async function POST(request: Request) {
          try {
              cieloResponseJson = rawPixText ? JSON.parse(rawPixText) : {};
          } catch (parseErr) {
-             throw new Error(`Erro de Comunicação com a Cielo (HTTP ${resCielo.status}). Verifique as configurações de chave no painel.`);
+             let msg = `Erro de Comunicação com a Cielo PIX (HTTP ${resCielo.status}).`;
+             if (resCielo.status === 401) {
+                 msg = "Erro 401 (Não Autorizado) na Cielo PIX. Verifique se o MerchantId e MerchantKey estão corretos. Se estiver usando chaves de Produção, o 'Modo Sandbox' deve estar DESMARCADO.";
+             }
+             throw new Error(msg);
          }
          
          if (!resCielo.ok || !cieloResponseJson.Payment || !cieloResponseJson.Payment.QrCodeString) {
@@ -100,7 +105,12 @@ export async function POST(request: Request) {
              if (!errorMsg && Array.isArray(cieloResponseJson) && cieloResponseJson[0]?.Message) {
                  errorMsg = cieloResponseJson.map((e: any) => e.Message).join(', ');
              }
-             if (!errorMsg) errorMsg = `Código HTTP ${resCielo.status}`;
+             if (!errorMsg) {
+                 errorMsg = `Código HTTP ${resCielo.status}`;
+                 if (resCielo.status === 401) {
+                     errorMsg = "HTTP 401 (Não Autorizado): Chaves incorretas ou usando chaves de Produção no modo Sandbox.";
+                 }
+             }
              throw new Error("Transação PIX Recusada: " + errorMsg);
          }
 
@@ -156,7 +166,11 @@ export async function POST(request: Request) {
          try {
              cieloResponseJson = rawText ? JSON.parse(rawText) : {};
          } catch (parseErr) {
-             throw new Error(`Erro de Comunicação com a Cielo (HTTP ${resCielo.status}). Verifique as configurações de chave no painel.`);
+             let msg = `Erro de Comunicação com a Cielo (HTTP ${resCielo.status}).`;
+             if (resCielo.status === 401) {
+                 msg = "Erro 401 (Não Autorizado) na Cielo. Verifique se o MerchantId e MerchantKey estão corretos. Se estiver usando chaves de Produção, verifique se o botão 'Modo Sandbox' está DESMARCADO no painel. Chaves reais não funcionam no Sandbox.";
+             }
+             throw new Error(msg);
          }
 
          if (!resCielo.ok || (cieloResponseJson.Payment?.Status !== 1 && cieloResponseJson.Payment?.Status !== 2)) {
@@ -164,7 +178,12 @@ export async function POST(request: Request) {
              if (!errorMsg && Array.isArray(cieloResponseJson) && cieloResponseJson[0]?.Message) {
                  errorMsg = cieloResponseJson.map((e: any) => e.Message).join(', ');
              }
-             if (!errorMsg) errorMsg = `Código HTTP ${resCielo.status}`;
+             if (!errorMsg) {
+                 errorMsg = `Código HTTP ${resCielo.status}`;
+                 if (resCielo.status === 401) {
+                     errorMsg = "HTTP 401 (Não Autorizado): Suas chaves estão erradas ou você está usando chaves de Produção no modo Sandbox.";
+                 }
+             }
              
              throw new Error("Transação Recusada pela Operadora do Cartão: " + errorMsg);
          }
