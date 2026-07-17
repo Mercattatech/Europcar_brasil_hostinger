@@ -5,7 +5,13 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { carCategory, rateId, pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, contractID } = body;
+    const {
+      carCategory, rateId, pickupStation, returnStation,
+      pickupDate, returnDate, pickupTime, returnTime,
+      contractID,
+      equipmentList,  // Array of { code, qty } — optional
+      insuranceList,  // Array of { code } — optional
+    } = body;
 
     if (!carCategory) {
       return NextResponse.json({ error: 'carCategory é obrigatório' }, { status: 400 });
@@ -15,6 +21,30 @@ export async function POST(request: Request) {
     const contractAttr = contractID ? ` contractID="${contractID}" type="C"` : '';
     const rateIdAttr = rateId ? ` rateId="${rateId}"` : '';
 
+    // Build equipment XML
+    let equipmentXml = '';
+    if (equipmentList && Array.isArray(equipmentList) && equipmentList.length > 0) {
+      const items = equipmentList
+        .filter((eq: any) => eq.code && eq.qty > 0)
+        .map((eq: any) => `          <equipment code="${eq.code}" qty="${eq.qty}"/>`)
+        .join('\n');
+      if (items) {
+        equipmentXml = `\n        <equipmentList>\n${items}\n        </equipmentList>`;
+      }
+    }
+
+    // Build insurance XML
+    let insuranceXml = '';
+    if (insuranceList && Array.isArray(insuranceList) && insuranceList.length > 0) {
+      const items = insuranceList
+        .filter((ins: any) => ins.code)
+        .map((ins: any) => `          <insurance code="${ins.code}"/>`)
+        .join('\n');
+      if (items) {
+        insuranceXml = `\n        <insuranceList>\n${items}\n        </insuranceList>`;
+      }
+    }
+
     const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
 <message>
   <serviceRequest serviceCode="getQuote">
@@ -22,7 +52,7 @@ export async function POST(request: Request) {
     <serviceParameters>
       <reservation chargesDetail="TRE" rateDetails="Y" prepaidMode="NP" carCategory="${carCategory}"${contractAttr}${rateIdAttr}>
         <checkout stationID="${pickupStation}" date="${pickupDate}" time="${pickupTime || '1000'}"/>
-        <checkin stationID="${returnStation || pickupStation}" date="${returnDate}" time="${returnTime || '1000'}"/>
+        <checkin stationID="${returnStation || pickupStation}" date="${returnDate}" time="${returnTime || '1000'}"/>${equipmentXml}${insuranceXml}
       </reservation>
       <driver countryOfResidence="BR"/>
     </serviceParameters>

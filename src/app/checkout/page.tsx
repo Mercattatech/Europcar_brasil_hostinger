@@ -323,6 +323,8 @@ export default function CheckoutPage() {
             amountInCents,
             creditCard: paymentMethod === "CREDIT" ? { name: ccName, number: ccNumber, validity: ccValidity, cvv: ccCvv } : undefined,
           },
+          xrsEquipment: booking?.xrsEquipment || [],
+          xrsInsurances: booking?.xrsInsurances || [],
           voucherData: undefined,
         }),
       });
@@ -565,6 +567,26 @@ export default function CheckoutPage() {
                         </span>
                       </div>
                     ))}
+                  </>
+                )}
+
+                {/* XRS Equipment / Accessories */}
+                {booking?.xrsEquipment?.length > 0 && (
+                  <>
+                    <div className="text-[10px] font-bold text-[#e67e00] uppercase mt-2 mb-1">Acessórios</div>
+                    {booking.xrsEquipment.map((eq: any) => {
+                      const eqNames: Record<string, string> = {
+                        CSB: '👶 Cadeira bebê', CST: '🧒 Cadeira criança', BST: '💺 Assento elevatório',
+                        NVS: '🗺️ GPS', SKR: '🎿 Rack esqui', CHN: '⛓️ Correntes neve',
+                        WFI: '📶 Wi-Fi', ADD: '👤 Condutor adicional', YDR: '🧑 Condutor jovem',
+                      };
+                      return (
+                        <div key={eq.code} className="flex justify-between">
+                          <span className="text-gray-500">{eqNames[eq.code] || eq.code} ×{eq.qty}</span>
+                          <span className="text-xs text-gray-400">Incluso no total</span>
+                        </div>
+                      );
+                    })}
                   </>
                 )}
               </div>

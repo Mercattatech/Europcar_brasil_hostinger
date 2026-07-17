@@ -17,7 +17,7 @@ export async function POST(request: Request) {
    let customerEmail = '';
    let customerName = '';
    try {
-      const { bookingData, customerData, paymentData, voucherData } = await request.json();
+      const { bookingData, customerData, paymentData, voucherData, xrsEquipment, xrsInsurances } = await request.json();
       customerEmail = customerData?.email || '';
       customerName = customerData?.nome || '';
 
@@ -199,10 +199,30 @@ export async function POST(request: Request) {
         const extras = bookingData.extras || {};
         const extraKeys = Object.keys(extras).filter(k => extras[k] > 0);
         // Only include equipment codes (not insurance codes like CDW, LDW, etc.)
-        const insuranceCodes = ['TPL','LDW','CDW','THW','SCDW','SPCDW','STHW','SPTHW','MEDIUM','PREMIUM','PREMPRE','PREMUP','RSA','APP','PAI','PEP'];
+        const insuranceCodes = ['TPL','LDW','CDW','THW','SCDW','SPCDW','STHW','SPTHW','MEDIUM','PREMIUM','PREMPRE','PREMUP','RSA','APP','PAI','PEP','SLDW','WWI','SPAI'];
         const equipmentKeys = extraKeys.filter(k => !insuranceCodes.includes(k));
         if (equipmentKeys.length > 0) {
           equipmentXml = equipmentKeys.map(k => `\n          <equipment code="${k}" qty="${extras[k]}"/>`).join('');
+        }
+
+        // Also include XRS equipment from Step 3
+        if (Array.isArray(xrsEquipment) && xrsEquipment.length > 0) {
+          const xrsEqItems = xrsEquipment
+            .filter((eq: any) => eq.code && eq.qty > 0)
+            .map((eq: any) => `\n          <equipment code="${eq.code}" qty="${eq.qty}"/>`)
+            .join('');
+          equipmentXml += xrsEqItems;
+        }
+
+        // Build insurance XML from extras map + xrsInsurances
+        let insuranceXml = '';
+        const selectedInsKeys = extraKeys.filter(k => insuranceCodes.includes(k));
+        const allInsCodes = new Set<string>([
+          ...selectedInsKeys,
+          ...(Array.isArray(xrsInsurances) ? xrsInsurances.map((ins: any) => ins.code || ins).filter(Boolean) : []),
+        ]);
+        if (allInsCodes.size > 0) {
+          insuranceXml = [...allInsCodes].map(code => `\n          <insurance code="${code}"/>`).join('');
         }
 
         let meanOfPaymentXml = '';
@@ -237,7 +257,7 @@ export async function POST(request: Request) {
       <reservation carCategory="${carCategory}" rateId="${rateId}"${prepaidAttr}${contractAttr}${productDataAttr} preferredLanguage="pt_BR" email="${customerData.email.trim()}">
         <checkout stationID="${pickupStation}" date="${pickupDate}" time="${bookingData.pickupTime || '1000'}"/>
         <checkin stationID="${returnStation}" date="${returnDate}" time="${bookingData.returnTime || '1000'}"/>
-        <equipmentList>${equipmentXml}</equipmentList>${meanOfPaymentXml}${loyaltyXml}
+        <equipmentList>${equipmentXml}</equipmentList>${insuranceXml ? `\n        <insuranceList>${insuranceXml}\n        </insuranceList>` : ''}${meanOfPaymentXml}${loyaltyXml}
       </reservation>
       <driver countryOfResidence="BR"
               firstName="${customerData.nome.trim()}"

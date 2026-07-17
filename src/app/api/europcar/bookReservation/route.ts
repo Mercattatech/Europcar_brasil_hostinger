@@ -59,10 +59,35 @@ export async function POST(request: Request) {
     let equipmentXml = '';
     const extras = body.extras || {};
     const extraKeys = Object.keys(extras).filter(k => extras[k] > 0);
-    const insuranceCodes = ['TPL','LDW','CDW','THW','SCDW','SPCDW','STHW','SPTHW','MEDIUM','PREMIUM','PREMPRE','PREMUP','RSA','APP','PAI','PEP'];
+    const insuranceCodes = ['TPL','LDW','CDW','THW','SCDW','SPCDW','STHW','SPTHW','MEDIUM','PREMIUM','PREMPRE','PREMUP','RSA','APP','PAI','PEP','SLDW','WWI','SPAI'];
     const equipmentKeys = extraKeys.filter(k => !insuranceCodes.includes(k));
     if (equipmentKeys.length > 0) {
       equipmentXml = equipmentKeys.map(k => `\n          <equipment code="${k}" qty="${extras[k]}"/>`).join('');
+    }
+
+    // Also include equipment from xrsEquipment array (from Step 3 UI)
+    const xrsEquipment = body.xrsEquipment || [];
+    if (Array.isArray(xrsEquipment) && xrsEquipment.length > 0) {
+      const xrsEqItems = xrsEquipment
+        .filter((eq: any) => eq.code && eq.qty > 0)
+        .map((eq: any) => `\n          <equipment code="${eq.code}" qty="${eq.qty}"/>`)
+        .join('');
+      equipmentXml += xrsEqItems;
+    }
+
+    // Build insurance XML from extras map + xrsInsurances array
+    let insuranceXml = '';
+    const selectedInsuranceCodes = extraKeys.filter(k => insuranceCodes.includes(k));
+    const xrsInsurances = body.xrsInsurances || [];
+
+    // Merge both sources (avoid duplicates)
+    const allInsuranceCodes = new Set<string>([
+      ...selectedInsuranceCodes,
+      ...(Array.isArray(xrsInsurances) ? xrsInsurances.map((ins: any) => ins.code || ins).filter(Boolean) : []),
+    ]);
+
+    if (allInsuranceCodes.size > 0) {
+      insuranceXml = [...allInsuranceCodes].map(code => `\n          <insurance code="${code}"/>`).join('');
     }
 
     const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
@@ -72,7 +97,7 @@ export async function POST(request: Request) {
       <reservation carCategory="${carCategory}" rateId="${rateId}" chargesDetail="TRE"${prepaidModeAttr}${contractAttr} email="${driverData?.email || ''}">
         <checkout stationID="${pickupStation}" date="${pickupDate}" time="${pickupTime || '1000'}"/>
         <checkin stationID="${returnStation || pickupStation}" date="${returnDate}" time="${returnTime || '1000'}"/>
-        <equipmentList>${equipmentXml}</equipmentList>${meanOfPaymentXml}${loyaltyXml}
+        <equipmentList>${equipmentXml}</equipmentList>${insuranceXml ? `\n        <insuranceList>${insuranceXml}\n        </insuranceList>` : ''}${meanOfPaymentXml}${loyaltyXml}
       </reservation>
       <driver countryOfResidence="BR"
               firstName="${driverData?.firstName || 'Test'}"
