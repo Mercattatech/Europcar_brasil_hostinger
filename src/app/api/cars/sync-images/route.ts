@@ -97,18 +97,14 @@ export async function POST() {
     let saved = 0;
     for (const [carCode, imageUrl] of Object.entries(allImages)) {
       try {
-        // Only upsert if no custom image already exists OR if existing is also an API URL (not base64)
-        const existing = await prisma.carImageOverride.findUnique({ where: { carCode } });
-        if (!existing || !existing.imageUrl.startsWith('data:')) {
-          await prisma.carImageOverride.upsert({
-            where: { carCode },
-            update: { imageUrl },
-            create: { carCode, imageUrl },
-          });
-          saved++;
-        }
-      } catch {
-        // skip failed upserts
+        await prisma.carImageOverride.upsert({
+          where: { carCode },
+          update: { imageUrl },
+          create: { carCode, imageUrl },
+        });
+        saved++;
+      } catch (upsertErr) {
+        console.error(`[sync-images] Failed to save image for ${carCode}:`, upsertErr);
       }
     }
 
