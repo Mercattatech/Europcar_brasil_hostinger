@@ -4,16 +4,18 @@ import { useState, useEffect } from "react";
 
 export default function Footer() {
   const year = new Date().getFullYear();
-  const [termsAvailable, setTermsAvailable] = useState<{reserva: boolean, pais: boolean, brasil: boolean}>({reserva: false, pais: false, brasil: false});
+  const [termsAvailable, setTermsAvailable] = useState<{reserva: boolean, pais: boolean, paisUrl: string, brasil: boolean}>({reserva: false, pais: false, paisUrl: '', brasil: false});
 
   useEffect(() => {
     fetch('/api/admin/terms')
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data)) {
+          const paisDoc = data.find((d: any) => d.type === 'PAIS');
           setTermsAvailable({
             reserva: data.some((d: any) => d.type === 'RESERVA'),
-            pais: data.some((d: any) => d.type === 'PAIS'),
+            pais: !!paisDoc,
+            paisUrl: paisDoc?.mimeType === 'text/uri-list' ? paisDoc.fileName : '/api/terms/pais',
             brasil: data.some((d: any) => d.type === 'BRASIL_ONLINE'),
           });
         }
@@ -70,7 +72,7 @@ export default function Footer() {
                     <li><a href="/api/terms/reserva" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">📄 Termos da Reserva</a></li>
                   )}
                   {termsAvailable.pais && (
-                    <li><a href="/api/terms/pais" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">🌍 Termos do País de Destino</a></li>
+                    <li><a href={termsAvailable.paisUrl} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">🌍 Termos do País de Destino</a></li>
                   )}
                   {termsAvailable.brasil && (
                     <li><a href="/api/terms/brasil" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">🇧🇷 Reserva Online — Brasil</a></li>

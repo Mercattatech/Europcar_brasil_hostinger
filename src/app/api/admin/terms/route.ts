@@ -17,7 +17,7 @@ export async function GET() {
   }
 }
 
-// POST: upload or replace a terms document
+// POST: upload or replace a terms document (or save external link for PAIS)
 export async function POST(req: Request) {
   try {
     const session = await getServerSession();
@@ -26,18 +26,31 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { type, fileName, mimeType, fileData } = body;
-
-    if (!type || !fileName || !fileData) {
-      return NextResponse.json({ error: 'type, fileName e fileData são obrigatórios' }, { status: 400 });
-    }
+    const { type, fileName, mimeType, fileData, externalUrl } = body;
 
     const validTypes = ['RESERVA', 'PAIS', 'BRASIL_ONLINE'];
-    if (!validTypes.includes(type)) {
+    if (!type || !validTypes.includes(type)) {
       return NextResponse.json({ error: `type inválido. Use: ${validTypes.join(', ')}` }, { status: 400 });
     }
 
-    // Upsert: create or replace
+    // PAIS type accepts an external URL instead of file upload
+    if (type === 'PAIS') {
+      if (!externalUrl) {
+        return NextResponse.json({ error: 'externalUrl é obrigatório para o tipo PAIS' }, { status: 400 });
+      }
+      const doc = await prisma.termsDocument.upsert({
+        where: { type },
+        update: { fileName: externalUrl, mimeType: 'text/uri-list', fileData: 'EXTERNAL_LINK' },
+        create: { type, fileName: externalUrl, mimeType: 'text/uri-list', fileData: 'EXTERNAL_LINK' },
+      });
+      return NextResponse.json({ id: doc.id, type: doc.type, fileName: doc.fileName, updatedAt: doc.updatedAt });
+    }
+
+    // Other types require file upload
+    if (!fileName || !fileData) {
+      return NextResponse.json({ error: 'fileName e fileData são obrigatórios' }, { status: 400 });
+    }
+
     const doc = await prisma.termsDocument.upsert({
       where: { type },
       update: { fileName, mimeType: mimeType || 'application/pdf', fileData },

@@ -10,18 +10,12 @@ interface TermsDoc {
   updatedAt: string;
 }
 
-const TERMS_CONFIG = [
+const FILE_TERMS = [
   {
     type: "RESERVA",
     label: "Termos e Condições da Reserva",
     description: "Documento com os termos gerais para todas as reservas realizadas na plataforma.",
     icon: "📄",
-  },
-  {
-    type: "PAIS",
-    label: "Termos e Condições do País de Destino",
-    description: "Documento com os termos específicos do país onde a reserva será realizada.",
-    icon: "🌍",
   },
   {
     type: "BRASIL_ONLINE",
@@ -38,11 +32,21 @@ export default function TermosPage() {
   const [message, setMessage] = useState<{ type: string; text: string } | null>(null);
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
+  // PAIS link state
+  const [paisUrl, setPaisUrl] = useState("");
+  const [savingPais, setSavingPais] = useState(false);
+
   const fetchDocs = async () => {
     try {
       const res = await fetch("/api/admin/terms");
       const data = await res.json();
-      setDocs(Array.isArray(data) ? data : []);
+      const arr = Array.isArray(data) ? data : [];
+      setDocs(arr);
+      // Load existing PAIS URL
+      const paisDoc = arr.find((d: TermsDoc) => d.type === "PAIS");
+      if (paisDoc && paisDoc.mimeType === "text/uri-list") {
+        setPaisUrl(paisDoc.fileName);
+      }
     } catch {
       setDocs([]);
     } finally {
@@ -59,7 +63,7 @@ export default function TermosPage() {
     if (!input?.files?.length) return;
 
     const file = input.files[0];
-    const maxSize = 10 * 1024 * 1024; // 10MB
+    const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
       setMessage({ type: "error", text: "Arquivo muito grande. Máximo: 10MB." });
       return;
@@ -69,12 +73,10 @@ export default function TermosPage() {
     setMessage(null);
 
     try {
-      // Read file as base64
       const reader = new FileReader();
       const base64 = await new Promise<string>((resolve, reject) => {
         reader.onload = () => {
           const result = reader.result as string;
-          // Remove data:xxx;base64, prefix
           const base64Data = result.split(",")[1] || result;
           resolve(base64Data);
         };
@@ -108,6 +110,33 @@ export default function TermosPage() {
     }
   };
 
+  const handleSavePaisUrl = async () => {
+    if (!paisUrl.trim()) {
+      setMessage({ type: "error", text: "Insira uma URL válida." });
+      return;
+    }
+    setSavingPais(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/admin/terms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "PAIS", externalUrl: paisUrl.trim() }),
+      });
+      if (res.ok) {
+        setMessage({ type: "success", text: "Link do país de destino salvo com sucesso!" });
+        fetchDocs();
+      } else {
+        const err = await res.json();
+        setMessage({ type: "error", text: err.error || "Erro ao salvar" });
+      }
+    } catch (e: any) {
+      setMessage({ type: "error", text: e.message || "Erro ao salvar" });
+    } finally {
+      setSavingPais(false);
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
@@ -116,7 +145,7 @@ export default function TermosPage() {
             📜 Termos e Condições
           </h1>
           <p className="text-gray-400 text-sm mt-1">
-            Faça upload dos documentos de termos e condições (PDF ou DOC). Eles aparecerão no checkout e no rodapé do site.
+            Gerencie os documentos de termos e condições. Eles aparecerão no checkout e no rodapé do site.
           </p>
         </div>
       </div>
@@ -137,7 +166,8 @@ export default function TermosPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {TERMS_CONFIG.map(config => {
+          {/* File upload cards (RESERVA, BRASIL_ONLINE) */}
+          {FILE_TERMS.map(config => {
             const doc = getDoc(config.type);
             const isUploading = uploading === config.type;
 
@@ -151,7 +181,6 @@ export default function TermosPage() {
                   </div>
                 </div>
 
-                {/* Current file status */}
                 {doc ? (
                   <div className="bg-gray-800 rounded-lg p-3 mb-4">
                     <div className="flex items-center gap-2 mb-1">
@@ -163,7 +192,7 @@ export default function TermosPage() {
                       Atualizado em: {new Date(doc.updatedAt).toLocaleString("pt-BR")}
                     </p>
                     <a
-                      href={`/api/terms/${config.type === "RESERVA" ? "reserva" : config.type === "PAIS" ? "pais" : "brasil"}`}
+                      href={`/api/terms/${config.type === "RESERVA" ? "reserva" : "brasil"}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-400 text-xs hover:underline mt-2 inline-block"
@@ -177,7 +206,6 @@ export default function TermosPage() {
                   </div>
                 )}
 
-                {/* Upload */}
                 <input
                   ref={el => { fileRefs.current[config.type] = el; }}
                   type="file"
@@ -206,6 +234,70 @@ export default function TermosPage() {
               </div>
             );
           })}
+
+          {/* PAIS card — external URL */}
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-gray-700 transition-colors">
+            <div className="flex items-start gap-3 mb-4">
+              <span className="text-3xl">🌍</span>
+              <div>
+                <h3 className="text-white font-bold text-sm">Termos e Condições do País de Destino</h3>
+                <p className="text-gray-500 text-xs mt-1">Link externo para os termos do país onde a reserva será realizada.</p>
+              </div>
+            </div>
+
+            {/* Current status */}
+            {(() => {
+              const paisDoc = getDoc("PAIS");
+              if (paisDoc) {
+                return (
+                  <div className="bg-gray-800 rounded-lg p-3 mb-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="w-2 h-2 bg-green-500 rounded-full" />
+                      <span className="text-green-400 text-xs font-bold">Link ativo</span>
+                    </div>
+                    <a href={paisDoc.fileName} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-sm font-medium hover:underline break-all">
+                      {paisDoc.fileName}
+                    </a>
+                    <p className="text-gray-500 text-[10px] mt-1">
+                      Atualizado em: {new Date(paisDoc.updatedAt).toLocaleString("pt-BR")}
+                    </p>
+                  </div>
+                );
+              }
+              return (
+                <div className="bg-gray-800/50 border border-dashed border-gray-700 rounded-lg p-3 mb-4 text-center">
+                  <span className="text-gray-600 text-xs">Nenhum link configurado</span>
+                </div>
+              );
+            })()}
+
+            {/* URL input */}
+            <div className="space-y-3">
+              <input
+                type="url"
+                value={paisUrl}
+                onChange={e => setPaisUrl(e.target.value)}
+                placeholder="https://www.europcar.com/terms-and-conditions"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white text-sm placeholder:text-gray-600 outline-none focus:border-blue-500 transition-colors"
+              />
+              <button
+                onClick={handleSavePaisUrl}
+                disabled={savingPais || !paisUrl.trim()}
+                className={`w-full py-3 rounded-lg text-sm font-bold transition-colors ${
+                  savingPais || !paisUrl.trim()
+                    ? "bg-gray-800 text-gray-500 cursor-not-allowed"
+                    : "bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-600/30"
+                }`}
+              >
+                {savingPais ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
+                    Salvando...
+                  </span>
+                ) : "🔗 Salvar Link"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -213,10 +305,11 @@ export default function TermosPage() {
       <div className="mt-8 bg-blue-900/20 border border-blue-800/30 rounded-xl p-5">
         <h4 className="text-blue-400 text-sm font-bold mb-2">ℹ️ Como funciona</h4>
         <ul className="text-gray-400 text-xs space-y-1.5">
-          <li>• Faça upload de arquivos <strong className="text-white">PDF</strong> ou <strong className="text-white">DOC/DOCX</strong> (máx. 10MB)</li>
+          <li>• <strong className="text-white">Reserva e Brasil</strong>: Faça upload de arquivos PDF ou DOC/DOCX (máx. 10MB)</li>
+          <li>• <strong className="text-white">País de Destino</strong>: Cole o link externo (ex: página de termos da Europcar internacional)</li>
           <li>• Os links aparecerão automaticamente no <strong className="text-white">rodapé do site</strong></li>
           <li>• No <strong className="text-white">checkout</strong>, o cliente será obrigado a aceitar os termos antes de finalizar</li>
-          <li>• Para alterar, basta enviar um novo arquivo — o anterior será substituído</li>
+          <li>• Para alterar, basta enviar um novo arquivo ou link — o anterior será substituído</li>
         </ul>
       </div>
     </div>

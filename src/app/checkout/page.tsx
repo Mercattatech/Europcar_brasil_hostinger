@@ -76,7 +76,7 @@ export default function CheckoutPage() {
   // Terms & Conditions
   const [acceptTermsReserva, setAcceptTermsReserva] = useState(false);
   const [acceptTermsPais, setAcceptTermsPais] = useState(false);
-  const [termsAvailable, setTermsAvailable] = useState<{reserva: boolean, pais: boolean, brasil: boolean}>({reserva: false, pais: false, brasil: false});
+  const [termsAvailable, setTermsAvailable] = useState<{reserva: boolean, pais: boolean, paisUrl: string, brasil: boolean}>({reserva: false, pais: false, paisUrl: '', brasil: false});
 
 
   useEffect(() => {
@@ -105,10 +105,12 @@ export default function CheckoutPage() {
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data)) {
+          const paisDoc = data.find((d: any) => d.type === 'PAIS');
           setTermsAvailable({
-            reserva: data.some(d => d.type === 'RESERVA'),
-            pais: data.some(d => d.type === 'PAIS'),
-            brasil: data.some(d => d.type === 'BRASIL_ONLINE'),
+            reserva: data.some((d: any) => d.type === 'RESERVA'),
+            pais: !!paisDoc,
+            paisUrl: paisDoc?.mimeType === 'text/uri-list' ? paisDoc.fileName : '/api/terms/pais',
+            brasil: data.some((d: any) => d.type === 'BRASIL_ONLINE'),
           });
         }
       })
@@ -844,7 +846,7 @@ export default function CheckoutPage() {
                 />
                 <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">
                   Li e aceito os{' '}
-                  <a href="/api/terms/pais" target="_blank" rel="noopener noreferrer" className="text-[#008d36] font-bold underline hover:text-[#006d28]">
+                  <a href={termsAvailable.paisUrl || "/api/terms/pais"} target="_blank" rel="noopener noreferrer" className="text-[#008d36] font-bold underline hover:text-[#006d28]">
                     Termos e Condições do País
                   </a>
                   {' '}onde a reserva está sendo realizada
