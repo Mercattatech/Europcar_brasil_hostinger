@@ -209,3 +209,12 @@ model TermsDocument {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// AI Agent Settings
+model AIAgentConfig {
+  id              String   @id @default(cuid())
+  isActive        Boolean  @default(true)
+  positivePrompt  String?  @db.Text
+  negativePrompt  String?  @db.Text
+  updatedAt       DateTime @updatedAt
+}

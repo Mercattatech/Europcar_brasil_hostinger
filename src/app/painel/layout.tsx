@@ -11,6 +11,7 @@ const ADMIN_EMAILS = ["grupomercatta@gmail.com", "matheus@grupomercatta.com.br",
 const sidebarLinks = [
    { href: "/painel", label: "Dashboard", icon: "📊" },
    { href: "/painel/usuarios", label: "Gestão de Usuários", icon: "👥" },
+   { href: "/painel/agente-ia", label: "Agente de IA", icon: "🤖" },
    { href: "/painel/reservas", label: "Reservas", icon: "📋" },
    { href: "/painel/comissoes", label: "Comissões", icon: "💰" },
    { href: "/painel/margem", label: "Margem ETO", icon: "💹" },

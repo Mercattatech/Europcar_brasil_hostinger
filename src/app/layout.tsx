@@ -13,6 +13,7 @@ import AuthProvider from "@/components/auth/AuthProvider";
 import Footer from "@/components/Footer";
 import MaintenanceGuard from "@/components/MaintenanceGuard";
 import GoogleTags from "@/components/GoogleTags";
+import AIChatWidget from "@/components/chat/AIChatWidget";
 
 export default function RootLayout({
   children,
@@ -27,6 +28,7 @@ export default function RootLayout({
           <GoogleTags />
           {children}
           <Footer />
+          <AIChatWidget />
         </AuthProvider>
       </body>
     </html>
