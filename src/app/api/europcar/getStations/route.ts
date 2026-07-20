@@ -105,6 +105,31 @@ const CITY_COUNTRY_MAP: Record<string, string[]> = {
   'auckland': ['NZ'],
 };
 
+const SYNONYMS: Record<string, string[]> = {
+  'roma': ['rome'], 'rome': ['roma'],
+  'milano': ['milan'], 'milan': ['milano'],
+  'firenze': ['florence'], 'florence': ['firenze'],
+  'napoli': ['naples'], 'naples': ['napoli'],
+  'venezia': ['venice'], 'venice': ['venezia'],
+  'torino': ['turin'], 'turin': ['torino'],
+  'londres': ['london'], 'london': ['londres'],
+  'lisboa': ['lisbon'], 'lisbon': ['lisboa'],
+  'munich': ['munchen'], 'munchen': ['munich'],
+  'bruxelas': ['brussels', 'bruxelles'], 'brussels': ['bruxelas', 'bruxelles'], 'bruxelles': ['bruxelas', 'brussels'],
+  'zurique': ['zurich'], 'zurich': ['zurique'],
+  'genebra': ['geneva'], 'geneva': ['genebra'],
+  'viena': ['vienna'], 'vienna': ['viena'],
+  'atenas': ['athens'], 'athens': ['atenas'],
+  'praga': ['prague'], 'prague': ['praga'],
+  'copenhague': ['copenhagen'], 'copenhagen': ['copenhague'],
+  'budapeste': ['budapest'], 'budapest': ['budapeste'],
+  'varsovia': ['warsaw'], 'warsaw': ['varsovia'],
+  'cracovia': ['krakow'], 'krakow': ['cracovia'],
+  'bucareste': ['bucharest'], 'bucharest': ['bucareste'],
+  'estocolmo': ['stockholm'], 'stockholm': ['estocolmo'],
+  'istambul': ['istanbul'], 'istanbul': ['istambul'],
+};
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = (searchParams.get('q') ?? '').trim().toLowerCase();
@@ -177,12 +202,13 @@ export async function GET(request: Request) {
   });
 
   // Apply text filter
+  const searchTerms = [q, ...(SYNONYMS[q] || [])];
   const filtered = uniqueStations.filter((s) => {
     const code = (s.stationCode ?? s.code ?? '').toLowerCase();
     const name = (s.stationName ?? s.name ?? '').toLowerCase();
     const city = (s.cityName ?? s.city ?? '').toLowerCase();
     const country = (COUNTRY_NAMES[s.countryCode] ?? '').toLowerCase();
-    return code.includes(q) || name.includes(q) || city.includes(q) || country.includes(q);
+    return searchTerms.some(term => code.includes(term) || name.includes(term) || city.includes(term) || country.includes(term));
   });
 
   // Sort: exact city match first, then station name match, then others
@@ -193,13 +219,13 @@ export async function GET(request: Request) {
     const nameB = (b.stationName ?? b.name ?? '').toLowerCase();
 
     // Exact city match gets priority
-    const aCityExact = cityA === q ? 0 : cityA.startsWith(q) ? 1 : 2;
-    const bCityExact = cityB === q ? 0 : cityB.startsWith(q) ? 1 : 2;
+    const aCityExact = searchTerms.some(term => cityA === term) ? 0 : searchTerms.some(term => cityA.startsWith(term)) ? 1 : 2;
+    const bCityExact = searchTerms.some(term => cityB === term) ? 0 : searchTerms.some(term => cityB.startsWith(term)) ? 1 : 2;
     if (aCityExact !== bCityExact) return aCityExact - bCityExact;
 
     // Then station name match
-    const aNameMatch = nameA.includes(q) ? 0 : 1;
-    const bNameMatch = nameB.includes(q) ? 0 : 1;
+    const aNameMatch = searchTerms.some(term => nameA.includes(term)) ? 0 : 1;
+    const bNameMatch = searchTerms.some(term => nameB.includes(term)) ? 0 : 1;
     if (aNameMatch !== bNameMatch) return aNameMatch - bNameMatch;
 
     return nameA.localeCompare(nameB);
