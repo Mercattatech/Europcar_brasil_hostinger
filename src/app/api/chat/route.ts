@@ -67,7 +67,7 @@ FLUXO DA RESERVA (Passo a Passo OBRIGATÓRIO):
            // Note: since this runs on the server, we need absolute URL. It's safer to just implement a lightweight search here or call getStations directly.
            // To keep it simple, we use the country mappings if possible, but let's assume we can fetch our own endpoint
            try {
-              const url = new URL(\`\${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/europcar/getStations?q=\${encodeURIComponent(query)}\`);
+              const url = new URL(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/europcar/getStations?q=${encodeURIComponent(query)}`);
               const res = await fetch(url.toString());
               if (!res.ok) return { error: "Erro ao buscar lojas." };
               const data = await res.json();
@@ -97,7 +97,7 @@ FLUXO DA RESERVA (Passo a Passo OBRIGATÓRIO):
         }),
         execute: async ({ pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime }) => {
            try {
-              const url = new URL(\`\${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/europcar/getCarCategories\`);
+              const url = new URL(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/europcar/getCarCategories`);
               const resCats = await fetch(url.toString(), {
                  method: 'POST', headers: { 'Content-Type': 'application/json' },
                  body: JSON.stringify({ stationID: pickupStation })
@@ -107,7 +107,7 @@ FLUXO DA RESERVA (Passo a Passo OBRIGATÓRIO):
 
               const acrissCodes = cats.categories.slice(0, 10).map((c: any) => c.code);
 
-              const urlRates = new URL(\`\${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/europcar/getMultipleRates\`);
+              const urlRates = new URL(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/europcar/getMultipleRates`);
               const resRates = await fetch(urlRates.toString(), {
                  method: 'POST', headers: { 'Content-Type': 'application/json' },
                  body: JSON.stringify({
@@ -169,7 +169,7 @@ FLUXO DA RESERVA (Passo a Passo OBRIGATÓRIO):
               returnDate: params.returnDate
            }).toString();
 
-           const link = \`\${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/checkout?\${queryString}\`;
+           const link = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/checkout?${queryString}`;
            return {
               mensagem: "Pronto! Clique no link abaixo para finalizar a reserva de forma segura:",
               link
