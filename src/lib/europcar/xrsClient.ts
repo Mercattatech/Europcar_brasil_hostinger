@@ -164,10 +164,15 @@ export interface Station {
  * Retrieve list of stations for a given country code.
  * Example: getStations('BR')
  */
-export async function getStations(countryCode: string): Promise<Station[]> {
+export async function getStations(countryCode: string, language: string = 'pt_BR'): Promise<Station[]> {
   const xml = `
 <message>
   <serviceRequest serviceCode="getStations">
+    <serviceContext>
+      <localisation active="true">
+        <language code="${language}"/>
+      </localisation>
+    </serviceContext>
     <serviceParameters>
       <station countryCode="${countryCode}"/>
     </serviceParameters>
@@ -190,6 +195,7 @@ export async function getStations(countryCode: string): Promise<Station[]> {
     prestige: s.$?.prestige ?? s.prestige,
     stationCode: s.$?.stationCode ?? s.stationCode,
     stationName: s.$?.stationName ?? s.stationName,
+    cityName: s.$?.cityName ?? s.cityName,
     truckAvailable: s.$?.truckAvailable ?? s.truckAvailable,
   } as Station));
 }
@@ -197,7 +203,7 @@ export async function getStations(countryCode: string): Promise<Station[]> {
 /**
  * Retrieve detailed information for a specific station code.
  */
-export async function getStation(stationCode: string, language: string = 'en_US'): Promise<Station | null> {
+export async function getStation(stationCode: string, language: string = 'pt_BR'): Promise<Station | null> {
   const xml = `
 <message>
   <serviceRequest serviceCode="getStation">
