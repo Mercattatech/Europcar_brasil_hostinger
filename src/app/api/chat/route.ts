@@ -62,7 +62,7 @@ FLUXO DA RESERVA (Passo a Passo OBRIGATÓRIO):
         parameters: z.object({
           query: z.string().describe('Nome da cidade ou aeroporto. Ex: Roma, Miami, Guarulhos'),
         }),
-        execute: async ({ query }) => {
+        execute: async ({ query }: { query: string }) => {
            // We can reuse the API logic or call it directly via fetch
            // Note: since this runs on the server, we need absolute URL. It's safer to just implement a lightweight search here or call getStations directly.
            // To keep it simple, we use the country mappings if possible, but let's assume we can fetch our own endpoint
@@ -95,7 +95,7 @@ FLUXO DA RESERVA (Passo a Passo OBRIGATÓRIO):
           pickupTime: z.string().optional().describe('Horário de retirada HHMM. Padrão: 1000'),
           returnTime: z.string().optional().describe('Horário de devolução HHMM. Padrão: 1000')
         }),
-        execute: async ({ pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime }) => {
+        execute: async ({ pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime }: { pickupStation: string, returnStation: string, pickupDate: string, returnDate: string, pickupTime: string, returnTime: string }) => {
            try {
               const url = new URL(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/europcar/getCarCategories`);
               const resCats = await fetch(url.toString(), {
@@ -158,7 +158,7 @@ FLUXO DA RESERVA (Passo a Passo OBRIGATÓRIO):
            pickupDate: z.string().describe('Data de retirada.'),
            returnDate: z.string().describe('Data de devolução.')
         }),
-        execute: async (params) => {
+        execute: async (params: { rateId: string, acriss: string, price: number, pickupStation: string, pickupDate: string, returnDate: string }) => {
            // O front-end precisa dos dados na URL para montar o carrinho/checkout
            const queryString = new URLSearchParams({
               rateId: params.rateId,
@@ -179,5 +179,5 @@ FLUXO DA RESERVA (Passo a Passo OBRIGATÓRIO):
     },
   });
 
-  return result.toDataStreamResponse();
+  return result.toTextStreamResponse();
 }

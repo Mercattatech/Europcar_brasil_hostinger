@@ -8,13 +8,14 @@ export default function AIChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [input, setInput] = useState('');
-  const { messages, append, isLoading } = useChat();
+  const { messages, sendMessage, status } = useChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const isLoading = status === 'streaming' || status === 'submitted';
     if (!input.trim() || isLoading) return;
-    append({ role: 'user', content: input });
+    sendMessage({ role: 'user', content: input });
     setInput('');
   };
 
@@ -104,7 +105,7 @@ export default function AIChatWidget() {
             </div>
           </div>
         ))}
-        {isLoading && (
+        {(status === 'streaming' || status === 'submitted') && (
            <div className="flex justify-start">
              <div className="bg-white border border-gray-100 text-gray-500 rounded-2xl rounded-bl-none px-4 py-3 shadow-sm flex items-center gap-2">
                 <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></span>
@@ -124,11 +125,11 @@ export default function AIChatWidget() {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Digite sua mensagem..."
             className="flex-1 bg-gray-50 border border-gray-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-europcar-green focus:ring-1 focus:ring-europcar-green transition-shadow"
-            disabled={isLoading}
+            disabled={status === 'streaming' || status === 'submitted'}
           />
           <button 
             type="submit" 
-            disabled={isLoading || !input.trim()}
+            disabled={status === 'streaming' || status === 'submitted' || !input.trim()}
             className="bg-europcar-green text-white p-2.5 rounded-full hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
