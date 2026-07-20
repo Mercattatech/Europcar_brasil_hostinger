@@ -34,8 +34,8 @@ export default function PromocoesPage() {
       {/* Header - same style as main page */}
       <div className="bg-[#1a1a1a] w-full">
         <div className="max-w-7xl mx-auto px-4 lg:px-6 flex justify-between items-center py-3">
-          <a href="/" className="bg-[#008d36] px-4 py-2 rounded-b-md shadow-lg flex items-center justify-center">
-            <img src="/logo.jpg" alt="Europcar" className="h-[40px] md:h-[50px] object-contain" />
+          <a href="/" className="rounded-b-md shadow-lg overflow-hidden flex items-center justify-center">
+            <img src="/logo.jpg" alt="Europcar" className="h-[48px] md:h-[58px] object-contain" />
           </a>
           <div className="flex text-white text-sm font-bold items-center gap-6">
             {status === "loading" ? (

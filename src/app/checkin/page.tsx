@@ -136,9 +136,7 @@ export default function CheckInOnline() {
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 h-20 flex justify-between items-center">
           <Link href="/">
-            <div className="bg-[#008d36] px-4 py-2 flex items-center justify-center">
-              <img src="/logo.jpg" alt="Europcar" className="h-[40px] md:h-[50px] object-contain" />
-            </div>
+            <img src="/logo.jpg" alt="Europcar" className="h-[48px] md:h-[58px] object-contain rounded-b-md shadow-lg" />
           </Link>
           <div className="flex items-center gap-6 text-sm font-bold text-gray-900">
             <Link href="/reservation/searchbooking" className="hover:text-[#008d36] flex items-center gap-2">
