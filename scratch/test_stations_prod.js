@@ -12,7 +12,7 @@ async function testStationsProd() {
 <message>
   <serviceRequest serviceCode="getStations">
     <serviceParameters>
-      <station countryCode="BR"/>
+      <station countryCode="BR"/> 
     </serviceParameters>
   </serviceRequest>
 </message>`.trim();
