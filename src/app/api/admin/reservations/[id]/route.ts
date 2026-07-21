@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
+import { cancelXRSReservation } from '@/lib/europcar/cancelService';
 export const dynamic = 'force-dynamic';
 
 const ADMIN_EMAILS = ["grupomercatta@gmail.com", "matheus@grupomercatta.com.br", "matheusconti@gmail.com", "matheus@grupomercatta.com"];
@@ -58,12 +59,8 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
       let xrsCancelResult: any = null;
       if (reservation.resNumber && !reservation.resNumber.startsWith('LOCAL_')) {
          try {
-            const cancelRes = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/europcar/cancelReservation`, {
-               method: 'POST',
-               headers: { 'Content-Type': 'application/json' },
-               body: JSON.stringify({ resNumber: reservation.resNumber })
-            });
-            xrsCancelResult = await cancelRes.json();
+            const { hasError, raw, errorMsg } = await cancelXRSReservation(reservation.resNumber);
+            xrsCancelResult = { success: !hasError, raw, error: errorMsg };
             console.log(`[CANCEL] XRS cancelamento para ${reservation.resNumber}:`, JSON.stringify(xrsCancelResult));
          } catch (xrsErr: any) {
             // Log mas não bloqueia — o admin pode cancelar manualmente no Greenway

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { callXRS } from '@/lib/europcar/xrsClient';
+import { cancelXRSReservation } from '@/lib/europcar/cancelService';
 import prisma from '@/lib/prisma';
 import { sendTransactionalEmail } from '@/lib/emailService';
 
@@ -14,50 +14,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'resNumber é obrigatório para cancelamento' }, { status: 400 });
     }
 
-    const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
-<message>
-  <serviceRequest serviceCode="cancelReservation">
-    <serviceParameters>
-      <reservation resNumber="${resNumber}"/>
-    </serviceParameters>
-  </serviceRequest>
-</message>`;
-
-    const config = {
-      callerCode: process.env.XRS_CALLER_CODE || 'DEMO',
-      password: process.env.XRS_PASSWORD || 'DEMO',
-      action: 'cancelReservation',
-      sourceFile: 'cancelReservation/route.ts'
-    };
-
-    const xrsResponse = await callXRS(xmlRequest, config);
-
-    // Check for XRS-level errors in the response
-    const returnCode =
-      xrsResponse?.message?.serviceResponse?.$?.returnCode ||
-      xrsResponse?.message?.serviceResponse?.returnCode ||
-      null;
-
-    const hasError = returnCode && returnCode !== 'OK';
-
-    let errorMsg = 'Erro desconhecido na Europcar';
-    if (hasError) {
-      const errors = xrsResponse?.message?.serviceResponse?.errors?.error || xrsResponse?.serviceResponse?.errors?.error;
-      if (Array.isArray(errors)) {
-        errorMsg = errors.map((e: any) => e.errorText || e.$?.errorText || '').join(' | ');
-      } else if (errors) {
-        errorMsg = errors.errorText || errors.$?.errorText || errorMsg;
-      }
-      
-      // If we still don't have a good error message, serialize the response for debugging
-      if (errorMsg === 'Erro desconhecido na Europcar' || !errorMsg.trim()) {
-        try {
-          const rawErr = xrsResponse?.message?.serviceResponse?.errors || xrsResponse?.serviceResponse?.errors || xrsResponse;
-          errorMsg = `Erro XRS (KO): ${JSON.stringify(rawErr).slice(0, 150)}`;
-        } catch(e) {
-          errorMsg = "Erro desconhecido na Europcar (XRS KO)";
-        }
-      }
+    const { hasError, returnCode, errorMsg, raw: xrsResponse } = await cancelXRSReservation(resNumber);
 
       // Se a Europcar já tiver cancelado previamente, a string de erro costuma ter "cancel" ou "already"
       const isAlreadyCancelled = errorMsg.toLowerCase().includes('cancel') || errorMsg.toLowerCase().includes('already');

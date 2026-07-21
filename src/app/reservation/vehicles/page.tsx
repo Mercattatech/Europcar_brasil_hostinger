@@ -942,7 +942,7 @@ function VehiclesContent() {
                             <div key={insId} className={`border-2 rounded-lg p-5 transition-colors ${sel ? "border-[#008d36] bg-green-50" : "border-gray-200 hover:border-[#008d36]"}`}>
                               <div className="flex justify-between items-start mb-2">
                                 <h4 className="font-black text-gray-900">{insNames[insId] || insId}</h4>
-                                {ins.excessWithPOM && parseFloat(ins.excessWithPOM) === 0 && <span className="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">SEM FRANQUIA</span>}
+                                {insId !== 'TPL' && ins.excessWithPOM && parseFloat(ins.excessWithPOM) === 0 && <span className="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">SEM FRANQUIA</span>}
                               </div>
                               <div className="text-xl font-black text-gray-900 mb-1">{selectedCar?.currency || 'EUR'} {priceEUR.toFixed(2)}{priceBRL > 0 && selectedCar?.currency !== 'BRL' && <span className="text-sm font-normal text-gray-400 ml-1">(R$ {priceBRL.toFixed(2)})</span>}<span className="text-xs text-gray-400 font-normal"> /dia</span></div>
                               {totalWithInsBRL > 0 && <div className="text-xs text-green-700 font-bold mb-1">Total com proteção: R$ {totalWithInsBRL.toFixed(2)}</div>}
