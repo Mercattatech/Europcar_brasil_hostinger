@@ -58,6 +58,9 @@ FLUXO DA RESERVA (Passo a Passo OBRIGATÓRIO):
     model: openai('gpt-4o-mini'),
     system: systemPrompt,
     messages: modelMessages,
+    onError: ({ error }) => {
+      console.error('AI chat streamText error:', error);
+    },
     tools: {
       searchStations: tool({
         description: 'Busca os códigos de lojas (stations) da Europcar pelo nome da cidade ou aeroporto. Obrigatório usar antes de cotar.',
