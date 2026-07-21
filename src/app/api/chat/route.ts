@@ -1,5 +1,5 @@
 import { openai } from '@ai-sdk/openai';
-import { streamText, tool } from 'ai';
+import { streamText, tool, convertToModelMessages } from 'ai';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { getStations } from '@/lib/europcar/xrsClient';
@@ -52,14 +52,16 @@ FLUXO DA RESERVA (Passo a Passo OBRIGATÓRIO):
 6. Quando o usuário escolher e confirmar um carro e os detalhes, USE A TOOL "generateCheckoutUrl" para gerar o link final e envie para o cliente concluir a reserva.
 `;
 
+  const modelMessages = await convertToModelMessages(messages);
+
   const result = streamText({
     model: openai('gpt-4o-mini'),
     system: systemPrompt,
-    messages,
+    messages: modelMessages,
     tools: {
       searchStations: tool({
         description: 'Busca os códigos de lojas (stations) da Europcar pelo nome da cidade ou aeroporto. Obrigatório usar antes de cotar.',
-        parameters: z.object({
+        inputSchema: z.object({
           query: z.string().describe('Nome da cidade ou aeroporto. Ex: Roma, Miami, Guarulhos'),
         }),
         execute: async ({ query }: { query: string }) => {
@@ -87,7 +89,7 @@ FLUXO DA RESERVA (Passo a Passo OBRIGATÓRIO):
       
       getRates: tool({
         description: 'Busca os veículos disponíveis e preços (cotação) em tempo real.',
-        parameters: z.object({
+        inputSchema: z.object({
           pickupStation: z.string().describe('O código da loja de retirada. Ex: FCOT01'),
           returnStation: z.string().describe('O código da loja de devolução (igual ao pickup se for mesma). Ex: FCOT01'),
           pickupDate: z.string().describe('A data de retirada no formato AAAAMMDD. Ex: 20260715'),
@@ -95,7 +97,7 @@ FLUXO DA RESERVA (Passo a Passo OBRIGATÓRIO):
           pickupTime: z.string().optional().describe('Horário de retirada HHMM. Padrão: 1000'),
           returnTime: z.string().optional().describe('Horário de devolução HHMM. Padrão: 1000')
         }),
-        execute: async ({ pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime }: { pickupStation: string, returnStation: string, pickupDate: string, returnDate: string, pickupTime: string, returnTime: string }) => {
+        execute: async ({ pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime }: { pickupStation: string, returnStation: string, pickupDate: string, returnDate: string, pickupTime?: string, returnTime?: string }) => {
            try {
               const url = new URL(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/europcar/getCarCategories`);
               const resCats = await fetch(url.toString(), {
@@ -150,7 +152,7 @@ FLUXO DA RESERVA (Passo a Passo OBRIGATÓRIO):
 
       generateCheckoutUrl: tool({
         description: 'Gera a URL final de checkout com todos os parâmetros que o usuário escolheu.',
-        parameters: z.object({
+        inputSchema: z.object({
            rateId: z.string().describe('ID da tarifa escolhida (rateId).'),
            acriss: z.string().describe('Código da categoria do carro (acriss).'),
            price: z.number().describe('Preço convertido em centavos (ex: se for R$ 100,50 mande 10050). Mande apenas números inteiros.'),
@@ -179,5 +181,5 @@ FLUXO DA RESERVA (Passo a Passo OBRIGATÓRIO):
     },
   });
 
-  return result.toTextStreamResponse();
+  return result.toUIMessageStreamResponse();
 }

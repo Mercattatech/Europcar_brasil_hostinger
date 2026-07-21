@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useChat } from '@ai-sdk/react';
+import { isToolUIPart } from 'ai';
 import ReactMarkdown from 'react-markdown';
 
 export default function AIChatWidget() {
@@ -15,7 +16,7 @@ export default function AIChatWidget() {
     e.preventDefault();
     const isLoading = status === 'streaming' || status === 'submitted';
     if (!input.trim() || isLoading) return;
-    sendMessage({ role: 'user', content: input });
+    sendMessage({ text: input });
     setInput('');
   };
 
@@ -25,7 +26,7 @@ export default function AIChatWidget() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isLoading]);
+  }, [messages, status]);
 
   useEffect(() => {
     fetch('/api/admin/ai-config')
@@ -86,25 +87,34 @@ export default function AIChatWidget() {
            </div>
         )}
         
-        {messages.map(m => (
-          <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] rounded-2xl px-4 py-3 shadow-sm text-sm ${
-              m.role === 'user' 
-                ? 'bg-europcar-green text-white rounded-br-none' 
-                : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none prose prose-sm prose-p:leading-relaxed prose-img:rounded-xl prose-img:border prose-img:border-gray-100 prose-a:text-europcar-green prose-a:font-bold'
-            }`}>
-               {/* Hide raw tool invocations from user view, unless it's a message */}
-               {m.toolInvocations && m.toolInvocations.length > 0 && m.content === "" ? (
-                  <div className="flex items-center gap-2 text-gray-400 italic text-xs">
-                     <span className="w-3 h-3 border-2 border-green-500 border-t-transparent rounded-full animate-spin"></span>
-                     Buscando informações no sistema...
-                  </div>
-               ) : (
-                  <ReactMarkdown>{m.content}</ReactMarkdown>
-               )}
+        {messages.map(m => {
+          const textContent = m.parts
+            .filter(p => p.type === 'text')
+            .map(p => p.text)
+            .join('');
+          const hasPendingTool = m.parts.some(
+            p => isToolUIPart(p) && p.state !== 'output-available' && p.state !== 'output-error'
+          );
+          return (
+            <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[85%] rounded-2xl px-4 py-3 shadow-sm text-sm ${
+                m.role === 'user'
+                  ? 'bg-europcar-green text-white rounded-br-none'
+                  : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none prose prose-sm prose-p:leading-relaxed prose-img:rounded-xl prose-img:border prose-img:border-gray-100 prose-a:text-europcar-green prose-a:font-bold'
+              }`}>
+                 {/* Hide raw tool invocations from user view, unless it's a message */}
+                 {hasPendingTool && !textContent ? (
+                    <div className="flex items-center gap-2 text-gray-400 italic text-xs">
+                       <span className="w-3 h-3 border-2 border-green-500 border-t-transparent rounded-full animate-spin"></span>
+                       Buscando informações no sistema...
+                    </div>
+                 ) : (
+                    <ReactMarkdown>{textContent}</ReactMarkdown>
+                 )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         {(status === 'streaming' || status === 'submitted') && (
            <div className="flex justify-start">
              <div className="bg-white border border-gray-100 text-gray-500 rounded-2xl rounded-bl-none px-4 py-3 shadow-sm flex items-center gap-2">
