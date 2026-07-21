@@ -16,6 +16,8 @@ export async function POST(request: Request) {
 
     const { hasError, returnCode, errorMsg, raw: xrsResponse } = await cancelXRSReservation(resNumber);
 
+    if (hasError) {
+
       // Se a Europcar já tiver cancelado previamente, a string de erro costuma ter "cancel" ou "already"
       const isAlreadyCancelled = errorMsg.toLowerCase().includes('cancel') || errorMsg.toLowerCase().includes('already');
       if (isAlreadyCancelled) {
