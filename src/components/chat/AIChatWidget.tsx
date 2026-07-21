@@ -9,7 +9,7 @@ export default function AIChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [input, setInput] = useState('');
-  const { messages, sendMessage, status } = useChat();
+  const { messages, sendMessage, status, error } = useChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -27,6 +27,12 @@ export default function AIChatWidget() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, status]);
+
+  useEffect(() => {
+    if (error) {
+      console.error('AIChatWidget error:', error);
+    }
+  }, [error]);
 
   useEffect(() => {
     fetch('/api/admin/ai-config')
@@ -121,6 +127,13 @@ export default function AIChatWidget() {
                 <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></span>
                 <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></span>
                 <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></span>
+             </div>
+           </div>
+        )}
+        {status === 'error' && (
+           <div className="flex justify-start">
+             <div className="max-w-[85%] rounded-2xl rounded-bl-none px-4 py-3 shadow-sm text-sm bg-red-50 text-red-600 border border-red-100">
+                Desculpe, tive um problema para responder agora. Tente novamente em instantes.
              </div>
            </div>
         )}
