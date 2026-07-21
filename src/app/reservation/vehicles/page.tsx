@@ -209,6 +209,14 @@ function VehiclesContent() {
         .map((c: any) => (c.$ ? c.$.carCategoryCode : c.carCategoryCode))
         .filter(Boolean);
 
+      const catDetailsMap = catList.reduce((acc: any, c: any) => {
+        const attrs = c.$ || c;
+        if (attrs.carCategoryCode) {
+          acc[attrs.carCategoryCode] = attrs;
+        }
+        return acc;
+      }, {});
+
       if (acrissCodes.length === 0) {
         const returnCode = serviceResponse?.$?.returnCode || serviceResponse?.returnCode || '';
         if (returnCode === 'KO') {
@@ -253,7 +261,7 @@ function VehiclesContent() {
         }).catch(() => null),
       ]);
 
-      const parseRates = (ratesData: any) => {
+      const parseRates = (ratesData: any, specsMap: any) => {
         const allRates: any[] = [];
         const chunks = Array.isArray(ratesData.results) ? ratesData.results : [ratesData];
         for (const chunk of chunks) {
@@ -273,21 +281,51 @@ function VehiclesContent() {
             const optionalInsurances = insArr
               .map((ins: any) => ins.$ || ins)
               .filter((ins: any) => ins.type === "O" && parseFloat(ins.price || "0") > 0);
-            allRates.push({ ...attrs, imageUrl, optionalInsurances });
+
+            // Extract basic protections (included)
+            const includedInsurances = insArr
+              .map((ins: any) => ins.$ || ins)
+              .filter((ins: any) => ins.type === "M" || ins.type === "I");
+
+            // Extract mileage limits
+            let mileageType = "Controlado";
+            let mileageLimit = "";
+            let mileageUnit = "km";
+            const distance = r.distance?.$ || r.distance;
+            if (distance) {
+              if (distance.unlimitedDistance === "Y") {
+                mileageType = "Livre";
+              } else if (distance.distanceValue) {
+                mileageLimit = distance.distanceValue;
+                mileageUnit = distance.unit === "M" ? "milhas" : "km";
+              }
+            }
+
+            const specs = specsMap[attrs.carCategoryCode] || {};
+            allRates.push({ 
+              ...attrs, 
+              imageUrl, 
+              optionalInsurances, 
+              includedInsurances,
+              mileageType,
+              mileageLimit,
+              mileageUnit,
+              specs 
+            });
           }
         }
         return allRates;
       };
 
       const poaRatesData = await poaRatesRes.json();
-      const poaRates = parseRates(poaRatesData);
+      const poaRates = parseRates(poaRatesData, catDetailsMap);
 
       // Parse ETO rates (may fail for some stations)
       let etoRates: any[] = [];
       if (etoRatesRes) {
         try {
           const etoRatesData = await etoRatesRes.json();
-          etoRates = parseRates(etoRatesData);
+          etoRates = parseRates(etoRatesData, catDetailsMap);
         } catch { /* ETO unavailable for this station */ }
       }
 
@@ -296,7 +334,7 @@ function VehiclesContent() {
       if (etoZeroRatesRes) {
         try {
           const etoZeroRatesData = await etoZeroRatesRes.json();
-          etoZeroRates = parseRates(etoZeroRatesData);
+          etoZeroRates = parseRates(etoZeroRatesData, catDetailsMap);
         } catch { /* ETO Zero unavailable */ }
       }
 
@@ -662,11 +700,36 @@ function VehiclesContent() {
                     return (
                       <div key={`${code}-${idx}`} className={`bg-white rounded-lg border p-5 flex items-center gap-6 transition-shadow ${isSelected ? "border-[#008d36] shadow-lg" : "border-gray-200 hover:shadow-md"}`}>
                         {/* Image */}
-                        <div className="w-[240px] shrink-0">
-                          <div className="h-[150px] bg-white border border-gray-100 rounded flex items-center justify-center p-3">
+                        <div className="w-[240px] shrink-0 relative flex flex-col items-center">
+                          {/* 2.1 Tags */}
+                          {(code.startsWith('U') || code.startsWith('L') || car.specs?.carCategoryType?.toLowerCase().includes('premium')) ? (
+                            <div className="group relative z-10 -mb-2">
+                              <div className="bg-gradient-to-r from-[#d4af37] to-[#aa8323] text-white text-[10px] font-black uppercase px-3 py-1 rounded-full shadow cursor-help flex items-center gap-1">
+                                Premium Brand Guaranteed
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" /></svg>
+                              </div>
+                              <div className="absolute hidden group-hover:block bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-[#c8b46e] text-white border border-[#b89b4e] text-[10px] p-3 rounded shadow-lg z-20 font-bold leading-relaxed">
+                                You'll get this model or another similar from a Premium brand: BMW, Audi, Mercedes, Tesla, Jaguar, Land Rover, Lexus, Porsche, Volvo or Alfa Romeo.
+                                {/* Dropdown triangle */}
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-[#c8b46e]"></div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="group relative z-10 -mb-2">
+                              <div className="bg-white border border-gray-300 text-gray-700 text-[10px] font-black uppercase px-3 py-1 rounded-full shadow-sm cursor-help flex items-center gap-1">
+                                OU SIMILAR {car.specs?.carCategoryName ? car.specs.carCategoryName.split(',')[0].split(' ')[0] : 'MINI'}
+                                <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                              </div>
+                              <div className="absolute hidden group-hover:block bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-white text-gray-700 border border-gray-200 text-[10px] p-2 rounded shadow-lg z-20 text-center">
+                                Receberá este modelo ou um veículo semelhante, com o mesmo nível de características e conforto.
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-white drop-shadow"></div>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="h-[150px] w-full bg-white flex items-center justify-center p-3 mt-1">
                             <CarImage sample={sample} code={code} alt={sample || name} imageUrl={car.imageUrl} overrideUrl={carImageOverrides[code]} />
                           </div>
-                          {sample && <p className="text-[10px] text-center text-gray-400 mt-1">{sample} ou similar</p>}
                         </div>
 
                         {/* Info */}
@@ -674,19 +737,55 @@ function VehiclesContent() {
                           <h2 className="text-lg font-black text-gray-900 uppercase">{name}</h2>
                           <span className="text-[10px] bg-gray-100 text-gray-600 font-bold px-2 py-0.5 rounded-full">{code}</span>
 
-                          <div className="flex items-center gap-4 mt-3 text-sm font-bold text-gray-600 flex-wrap">
-                            <span>🧑‍🤝‍🧑 {car.carCategorySeats || "?"}</span>
-                            <span>🚪 {car.carCategoryDoors || "?"}</span>
-                            {car.carCategoryBaggageQuantity && <span>🧳 {car.carCategoryBaggageQuantity}</span>}
-                            <span>⚙️ {car.carCategoryAutomatic === "Y" ? "Auto" : "Manual"}</span>
-                            {car.carCategoryAirCond === "Y" && <span>❄️ A/C</span>}
-                            {car.fuelTypeCode && <span>⛽ {car.fuelTypeCode}</span>}
+                          {/* 2.2 Vehicle Specs */}
+                          <div className="flex items-center gap-3 mt-3 text-sm font-bold text-gray-600 flex-wrap">
+                            <span title="Passageiros">👥 {car.specs?.carCategorySeats || car.carCategorySeats || "?"}</span>
+                            {car.specs?.carCategoryBaggageQuantity && <span title="Malas">🧳 {car.specs.carCategoryBaggageQuantity}</span>}
+                            <span title="Portas">🚪 {car.specs?.carCategoryDoors || car.carCategoryDoors || "?"}</span>
+                            <span title="Transmissão">⚙️ {car.specs?.carCategoryAutomatic === "Y" || car.carCategoryAutomatic === "Y" ? "A" : "M"}</span>
+                            {(car.specs?.carCategoryAirCond === "Y" || car.carCategoryAirCond === "Y") && <span title="Ar-condicionado">❄️ A/C</span>}
+                            {car.specs?.carCategoryCO2Quantity && <span title="CO2 g/km">💨 {car.specs.carCategoryCO2Quantity}</span>}
+                            {car.fuelTypeCode && <span title="Combustível">⛽ {car.fuelTypeCode}</span>}
                           </div>
 
-                          <div className="flex items-center gap-2 mt-3 text-sm font-bold text-[#008d36]">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
-                            {car.includedKm === "UNLIMITED" ? "Quilometragem ilimitada" : `${car.includedKm} km incluídos`}
+                          {/* 2.3 Reservation Conditions */}
+                          <div className="flex flex-col gap-1 mt-3">
+                            {car.mileageType === "Livre" ? (
+                              <div className="flex items-center gap-2 text-[11px] font-bold text-[#008d36]">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                                Quilometragem Ilimitada incluída
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 text-[11px] font-bold text-[#008d36]">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                                {car.mileageLimit || "3600"} {car.mileageUnit} incluído
+                              </div>
+                            )}
+                            
+                            {(car.includedInsurances?.length > 0 || true) && (
+                              <div className="flex items-center gap-2 text-[11px] font-bold text-[#008d36]">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                                Proteção básica incluída
+                              </div>
+                            )}
                           </div>
+                          
+                          {/* 2.4 Detalhes do Veículo Dropdown */}
+                          <details className="mt-4 group">
+                            <summary className="list-none flex items-center gap-1 cursor-pointer text-[#008d36] text-[11px] font-black hover:underline">
+                              Detalhes do veículo 
+                              <svg className="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
+                            </summary>
+                            <div className="mt-2 p-3 bg-gray-50 border border-gray-100 rounded text-xs text-gray-600 grid grid-cols-2 gap-x-4 gap-y-2">
+                              {car.specs?.carCategoryModelLength && <div><span className="font-bold">Comprimento:</span> {car.specs.carCategoryModelLength}m</div>}
+                              {car.specs?.carCategoryModelWidth && <div><span className="font-bold">Largura:</span> {car.specs.carCategoryModelWidth}m</div>}
+                              {car.specs?.carCategoryModelHeight && <div><span className="font-bold">Altura:</span> {car.specs.carCategoryModelHeight}m</div>}
+                              {car.specs?.carCategoryPowerHP && <div><span className="font-bold">Potência:</span> {car.specs.carCategoryPowerHP} HP ({car.specs.carCategoryPowerKW} KW)</div>}
+                              {car.specs?.carCategoryModelWeight && <div><span className="font-bold">Peso:</span> {car.specs.carCategoryModelWeight} kg</div>}
+                              {car.specs?.carCategoryType && <div><span className="font-bold">Tipo:</span> {car.specs.carCategoryType}</div>}
+                              {sample && <div className="col-span-2 text-[10px] text-gray-400 mt-1">Exemplo: {sample}</div>}
+                            </div>
+                          </details>
                         </div>
 
                         {/* Price + CTA — POA vs ETO */}
