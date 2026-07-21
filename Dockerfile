@@ -1,7 +1,7 @@
 # =============================================================================
 # Stage 1 — Dependências
 # =============================================================================
-FROM node:20-alpine AS deps
+FROM node:22-alpine AS deps
 
 RUN apk add --no-cache libc6-compat openssl
 
@@ -20,7 +20,7 @@ RUN npx prisma generate
 # =============================================================================
 # Stage 2 — Build
 # =============================================================================
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 RUN apk add --no-cache libc6-compat openssl
 
@@ -52,7 +52,7 @@ RUN NODE_OPTIONS=--max-old-space-size=1024 npm run build
 # =============================================================================
 # Stage 3 — Runner (imagem final leve)
 # =============================================================================
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 
 RUN apk add --no-cache libc6-compat openssl
 
