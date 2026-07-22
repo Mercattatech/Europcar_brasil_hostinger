@@ -12,6 +12,7 @@ export async function POST(request: Request) {
     const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
 <message>
   <serviceRequest serviceCode="getCarCategories">
+    <serviceContext language="pt_PT"/>
     <serviceParameters>
       <reservation${contractAttr}>
         <checkout stationID="${pickupStation}" date="${pickupDate}" time="${pickupTime || '1000'}"/>

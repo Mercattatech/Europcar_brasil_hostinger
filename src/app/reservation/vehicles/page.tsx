@@ -55,6 +55,7 @@ function VehiclesContent() {
   const [selectedCar, setSelectedCar] = useState<any>(null);
   const [currentStep, setCurrentStep] = useState(2);
   const [carImageOverrides, setCarImageOverrides] = useState<Record<string, string>>({});
+  const [carCategoryOverrides, setCarCategoryOverrides] = useState<Record<string, string>>({});
 
   // URL params
   const pickupStation = searchParams.get("pickup") || "";
@@ -74,6 +75,16 @@ function VehiclesContent() {
         if (Array.isArray(data)) {
           const map = data.reduce((acc: any, item: any) => ({ ...acc, [item.carCode]: item.imageUrl }), {});
           setCarImageOverrides(map);
+        }
+      })
+      .catch(console.error);
+
+    fetch('/api/cars/categories')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          const map = data.reduce((acc: any, item: any) => ({ ...acc, [item.carCode]: item.friendlyName }), {});
+          setCarCategoryOverrides(map);
         }
       })
       .catch(console.error);
@@ -689,7 +700,7 @@ function VehiclesContent() {
                   )}
                   {filteredCars.map((car: any, idx: number) => {
                     const code = car.carCategoryCode;
-                    const name = car.carCategoryName || code;
+                    const name = carCategoryOverrides[code] || car.carCategoryName || code;
                     const sample = car.carCategorySample || "";
                     const currency = car.currency || "EUR";
                     const totalPricePOA = parseFloat(car.totalRateEstimate || 0);
@@ -733,7 +744,7 @@ function VehiclesContent() {
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1.5 border border-gray-300 rounded-full px-3 py-1 text-[10px] font-black text-gray-900 uppercase">
-                                  OU SIMILAR {car.specs?.carCategoryName ? car.specs.carCategoryName.split(',')[0].split(' ')[0] : 'STANDARD'}
+                                  {sample ? `${sample} OU SIMILAR` : `OU SIMILAR ${car.specs?.carCategoryName ? car.specs.carCategoryName.split(',')[0].split(' ')[0] : 'STANDARD'}`}
                                   <svg className="w-3.5 h-3.5 bg-gray-300 text-white rounded-full p-[2px]" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
                                 </span>
                               )}

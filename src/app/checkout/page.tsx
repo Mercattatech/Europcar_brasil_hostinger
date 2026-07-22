@@ -9,6 +9,7 @@ export default function CheckoutPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [booking, setBooking] = useState<any>(null);
+  const [carCategoryOverrides, setCarCategoryOverrides] = useState<Record<string, string>>({});
 
   // Condutor
   const [nome, setNome] = useState("");
@@ -97,6 +98,16 @@ export default function CheckoutPage() {
       .then(r => r.json())
       .then(data => setLoyaltyPrograms(Array.isArray(data) ? data : []))
       .catch(() => {});
+
+    fetch('/api/cars/categories')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          const map = data.reduce((acc: any, item: any) => ({ ...acc, [item.carCode]: item.friendlyName }), {});
+          setCarCategoryOverrides(map);
+        }
+      })
+      .catch(console.error);
   }, []);
 
   // Fetch available terms documents
@@ -270,8 +281,8 @@ export default function CheckoutPage() {
 
   // --- Extract values from XRS car object ---
   const car = booking.car || {};
-  const carName = car.carCategoryName || car.name || "Veículo não identificado";
   const carCode = car.carCategoryCode || "";
+  const carName = carCategoryOverrides[carCode] || car.carCategoryName || car.name || "Veículo não identificado";
   const carSample = car.carCategorySample || "";
   const currency = car.currency || "EUR";
 

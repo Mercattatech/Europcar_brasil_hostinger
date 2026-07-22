@@ -48,6 +48,7 @@ export async function POST(request: Request) {
     const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
 <message>
   <serviceRequest serviceCode="getQuote">
+    <serviceContext language="pt_PT"/>
     <caller/>
     <serviceParameters>
       <reservation chargesDetail="TRE" rateDetails="Y" prepaidMode="NP" carCategory="${carCategory}"${contractAttr}${rateIdAttr}>
