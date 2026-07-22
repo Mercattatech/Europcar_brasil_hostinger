@@ -1025,26 +1025,23 @@ function VehiclesContent() {
             </>
           ) : (
             /* Step 3 */
-            <div className="bg-white rounded border border-gray-200 p-8 relative">
-              <button onClick={() => setCurrentStep(2)} className="absolute top-6 right-6 text-[#008d36] font-bold hover:underline text-sm">← Voltar</button>
-              <h2 className="text-2xl font-black text-gray-900 mb-6">Proteções e extras</h2>
-
-              <div className="border border-green-200 rounded mb-8 bg-green-50 p-4 flex gap-4 items-center">
-                <div className="flex-1 border-r border-green-200">
-                  <div className="text-[10px] uppercase text-green-700">Veículo</div>
-                  <div className="font-bold text-sm">{selectedCar?.carCategorySample || carCategoryOverrides[selectedCar?.carCategoryCode] || selectedCar?.carCategoryName || selectedCar?.carCategoryCode}</div>
-                  <div className="text-xs text-green-700">{selectedCar?.currency} {fmtPrice(selectedCar?.totalRateEstimate)}</div>
-                </div>
-                {zeroExcessUpgrade && (
-                  <div className="flex-1 border-r border-green-200">
-                    <div className="text-[10px] uppercase text-green-700">Proteção</div>
-                    <div className="font-bold text-sm text-[#008d36]">🛡️ Franquia Zero</div>
-                    <div className="text-xs text-green-700">Incluída no total</div>
-                  </div>
-                )}
+            <div className="bg-white rounded border border-gray-200 relative">
+              {/* Step 3 Header bar */}
+              <div className="border-b border-gray-200 p-6 flex items-center justify-between gap-6">
                 <div className="flex-1">
-                  <div className="text-[10px] uppercase text-green-700">Extras</div>
-                  <div className="font-bold text-sm">+ R$ {selectedExtrasPricePerDay.toFixed(2).replace(".", ",")} / dia</div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <button onClick={() => setCurrentStep(2)} className="text-[#008d36] font-bold hover:underline text-sm">← Voltar</button>
+                  </div>
+                  <h2 className="text-2xl font-black text-gray-900">Escolha sua proteção e seus extras</h2>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-xs text-gray-500 uppercase font-bold">TOTAL</div>
+                  <div className="text-3xl font-black text-gray-900">
+                    R$ {fmtPrice(
+                      (parseFloat(selectedCar?.totalRateEstimateInBookingCurrency || selectedCar?.totalRateEstimate || "0")) +
+                      (selectedExtrasPricePerDay * bookingDurationDays)
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={() => {
@@ -1062,11 +1059,13 @@ function VehiclesContent() {
                     sessionStorage.setItem("europcar_booking", JSON.stringify(payload));
                     window.location.href = "/checkout";
                   }}
-                  className="bg-[#ffcc00] hover:bg-[#e6b800] text-gray-900 font-bold py-3 px-6 rounded shrink-0 text-sm uppercase"
+                  className="bg-[#008d36] hover:bg-[#007530] text-white font-black py-3 px-6 rounded shrink-0 text-sm"
                 >
-                  Ir para revisão →
+                  Ir para revisão e check-out →
                 </button>
               </div>
+
+              <div className="p-8">
 
               {/* Congrats message — show when ETO skipped OR premium protection added */}
               {(selectedTariffType === 'ETO' && protectionsSkipped) || zeroExcessUpgrade ? (
@@ -1200,26 +1199,32 @@ function VehiclesContent() {
                   {/* Proteções da API Europcar XRS — shown only for POA (pay at counter) */}
                   {!zeroExcessUpgrade && selectedTariffType === 'POA' && selectedCar?.optionalInsurances?.length > 0 ? (
                     <>
-                      <h3 className="font-bold text-lg text-gray-900 mb-4">Proteções disponíveis</h3>
+                      <h3 className="font-black text-lg text-gray-900 mb-6">Proteções disponíveis</h3>
                       <div className="grid grid-cols-2 gap-4 mb-8">
                         {selectedCar.optionalInsurances.map((ins: any) => {
                           const insId = ins.code;
                           const sel = selectedExtrasMap[insId] > 0;
-                          const priceEUR = parseFloat(ins.price || "0");
-                          const priceBRL = parseFloat(ins.priceInBookingCurrency || "0");
-                          const totalWithInsBRL = parseFloat(ins.rentalPriceInBookingCurrencyAI || "0");
+                          const pricePerDay = parseFloat(ins.price || "0");
+                          const priceBRLPerDay = parseFloat(ins.priceInBookingCurrency || "0");
+                          const totalPrice = pricePerDay * bookingDurationDays;
+                          const totalPriceBRL = priceBRLPerDay * bookingDurationDays;
                           const insNames: Record<string, string> = { TPL: "Seguro de Responsabilidade Civil", LDW: "Proteção contra Danos e Roubo (LDW)", CDW: "Proteção contra Danos por Colisão (CDW)", THW: "Proteção contra Roubo (THW)", SCDW: "Super Proteção CDW", SPCDW: "Super Proteção CDW Premium", STHW: "Super Proteção THW", SPTHW: "Super Proteção THW Premium", MEDIUM: "Cobertura Média", PREMIUM: "Cobertura Premium", PREMPRE: "Premium Pré-pago", PREMUP: "Upgrade Premium", RSA: "Assistência na Estrada (RSA)", APP: "Proteção de Aparência", PAI: "Proteção de Acidentes Pessoais (PAI)", PEP: "Proteção de Efeitos Pessoais (PEP)" };
                           const insDesc: Record<string, string> = { TPL: "Seguro obrigatório de Responsabilidade Civil perante terceiros.", LDW: `CDW + THW: limita responsabilidade. Franquia: ${selectedCar?.currency || 'EUR'} ${ins.excessWithPOM || "—"}.`, CDW: `Proteção contra Colisão. Franquia: ${selectedCar?.currency || 'EUR'} ${ins.excessWithPOM || "—"}.`, THW: `Proteção contra Roubo. Franquia: ${selectedCar?.currency || 'EUR'} ${ins.excessWithPOM || "—"}.`, SCDW: "Super CDW: franquia zero para danos.", SPCDW: "Super CDW Premium: franquia zero incluindo pneus e vidros.", STHW: "Super THW: franquia zero para roubo.", SPTHW: "Super THW Premium: franquia zero com cobertura estendida.", MEDIUM: `Cobertura Média com franquia reduzida. Franquia: ${selectedCar?.currency || 'EUR'} ${ins.excessWithPOM || "—"}.`, PREMIUM: "Cobertura Premium: proteção completa sem franquia.", PREMPRE: "Premium Pré-paga com desconto.", PREMUP: "Upgrade para proteção máxima.", RSA: "Assistência na Estrada 24h.", APP: "Cobre danos estéticos ao veículo.", PAI: "Cobre despesas médicas em acidentes.", PEP: "Cobre bagagens e pertences pessoais." };
                           return (
-                            <div key={insId} className={`border-2 rounded-lg p-5 transition-colors ${sel ? "border-[#008d36] bg-green-50" : "border-gray-200 hover:border-[#008d36]"}`}>
+                            <div key={insId} className={`border rounded-lg p-5 transition-colors ${sel ? "border-[#008d36] bg-green-50" : "border-gray-200 hover:border-gray-300"}`}>
                               <div className="flex justify-between items-start mb-2">
-                                <h4 className="font-black text-gray-900">{insNames[insId] || insId}</h4>
+                                <h4 className="font-black text-gray-900">{insNames[insId] || ins.name || insId}</h4>
                                 {insId !== 'TPL' && ins.excessWithPOM && parseFloat(ins.excessWithPOM) === 0 && <span className="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">SEM FRANQUIA</span>}
                               </div>
-                              <div className="text-xl font-black text-gray-900 mb-1">{selectedCar?.currency || 'EUR'} {priceEUR.toFixed(2)}{priceBRL > 0 && selectedCar?.currency !== 'BRL' && <span className="text-sm font-normal text-gray-400 ml-1">(R$ {priceBRL.toFixed(2)})</span>}<span className="text-xs text-gray-400 font-normal"> /dia</span></div>
-                              {totalWithInsBRL > 0 && <div className="text-xs text-green-700 font-bold mb-1">Total com proteção: R$ {totalWithInsBRL.toFixed(2)}</div>}
-                              <p className="text-sm text-gray-500 mb-4">{insDesc[insId] || "Proteção adicional."}</p>
-                              <button onClick={() => sel ? handleExtraQuantity(insId, -1) : handleExtraQuantity(insId, 1)} className={`w-full font-bold py-2 rounded text-sm transition-colors ${sel ? "bg-gray-100 text-gray-500" : "bg-[#ffcc00] hover:bg-[#e6b800] text-gray-900"}`}>{sel ? "Remover ✓" : "Adicionar"}</button>
+                              <div className="text-xl font-black text-gray-900 mb-1">
+                                {selectedCar?.currency || 'EUR'} {pricePerDay.toFixed(2)}
+                                <span className="text-xs text-gray-400 font-normal"> /dia</span>
+                              </div>
+                              <div className="text-xs text-green-700 font-bold mb-2">
+                                Total com proteção: R$ {(totalPriceBRL > 0 ? totalPriceBRL : totalPrice).toFixed(2).replace(".", ",")}
+                              </div>
+                              <p className="text-sm text-gray-500 mb-4">{insDesc[insId] || ins.description || "Proteção adicional."}</p>
+                              <button onClick={() => sel ? handleExtraQuantity(insId, -1) : handleExtraQuantity(insId, 1)} className={`w-full font-bold py-2 rounded text-sm transition-colors ${sel ? "bg-gray-200 text-gray-600" : "bg-[#ffcc00] hover:bg-[#e6b800] text-gray-900"}`}>{sel ? "Remover ✓" : "Adicionar"}</button>
                             </div>
                           );
                         })}
@@ -1232,9 +1237,8 @@ function VehiclesContent() {
                   {/* 🧳 Acessórios e Equipamentos (XRS API) */}
                   {xrsEquipment.length > 0 && (
                     <>
-                      <h3 className="font-bold text-lg text-gray-900 mb-4 mt-8">Acessórios e Equipamentos</h3>
-                      <p className="text-sm text-gray-500 mb-4">Máximo de 4 itens por reserva. Selecione os acessórios desejados.</p>
-                      <div className="grid grid-cols-2 gap-4 mb-8">
+                      <h3 className="font-black text-lg text-gray-900 mb-6 mt-8">Extras disponíveis</h3>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                         {xrsEquipment.map((eq: any) => {
                           const qty = selectedEquipmentMap[eq.code] || 0;
                           const totalSelectedItems = Object.values(selectedEquipmentMap).reduce((a: number, b: number) => a + b, 0);
@@ -1244,53 +1248,54 @@ function VehiclesContent() {
                           const isUnavailable = !loadingEquipment && !hasPrice;
 
                           return (
-                            <div key={eq.code} className={`border-2 rounded-lg p-5 transition-colors ${isUnavailable ? 'border-gray-100 bg-gray-50 opacity-60' : qty > 0 ? 'border-[#008d36] bg-green-50' : 'border-gray-200 hover:border-[#008d36]'}`}>
+                            <div key={eq.code} className={`border rounded-lg p-4 transition-colors flex flex-col ${isUnavailable ? 'border-gray-100 bg-gray-50 opacity-60' : qty > 0 ? 'border-[#008d36] bg-green-50' : 'border-gray-200 hover:border-gray-300'}`}>
                               <div className="flex items-start gap-3 mb-3">
                                 <span className={`text-3xl ${isUnavailable ? 'grayscale' : ''}`}>{eq.icon}</span>
                                 <div className="flex-1 min-w-0">
-                                  <h4 className={`font-black text-sm ${isUnavailable ? 'text-gray-400' : 'text-gray-900'}`}>{eq.name}</h4>
-                                  {eq.description && <p className="text-xs text-gray-500 mt-1">{eq.description}</p>}
+                                  <h4 className={`font-black text-sm leading-tight ${isUnavailable ? 'text-gray-400' : 'text-gray-900'}`}>{eq.name}</h4>
                                 </div>
                               </div>
+                              {eq.description && <p className="text-xs text-gray-500 mb-3 line-clamp-3">{eq.description}</p>}
 
                               {loadingEquipment ? (
-                                <div className="flex items-center gap-2 text-sm text-gray-400 mb-3">
+                                <div className="flex items-center gap-2 text-sm text-gray-400 mb-3 mt-auto">
                                   <div className="w-3 h-3 border-2 border-[#e67e00] border-t-transparent rounded-full animate-spin"></div>
                                   Buscando preço...
                                 </div>
                               ) : isUnavailable ? (
-                                <div className="mb-3">
-                                  <span className="text-xs bg-red-100 text-red-600 font-bold px-2 py-1 rounded-full">Indisponível para esta reserva</span>
+                                <div className="mt-auto">
+                                  <span className="text-xs bg-red-100 text-red-600 font-bold px-2 py-1 rounded-full">Indisponível</span>
                                 </div>
                               ) : (
-                                <>
+                                <div className="mt-auto">
                                   <div className="mb-3">
-                                    <div className="text-xl font-black text-gray-900">
-                                      {ep!.currency} {ep!.price.toFixed(2)}
-                                      <span className="text-xs text-gray-400 font-normal"> /dia</span>
+                                    <div className="text-lg font-black text-gray-900">
+                                      R$ {((ep!.priceBRL > 0 ? ep!.priceBRL : ep!.price) * bookingDurationDays).toFixed(2).replace(".", ",")}
+                                      <span className="text-xs text-gray-400 font-normal"> / total</span>
                                     </div>
-                                    {ep!.priceBRL > 0 && (
-                                      <div className="text-xs text-gray-500">R$ {ep!.priceBRL.toFixed(2)} /dia</div>
-                                    )}
                                   </div>
-                                  {eq.onRequest && <div className="text-[10px] bg-yellow-100 text-yellow-700 font-bold px-2 py-0.5 rounded-full mb-2 w-fit">Sob consulta — sujeito à disponibilidade</div>}
-                                  <div className="flex items-center gap-3">
+                                  {eq.onRequest && <div className="text-[10px] bg-yellow-100 text-yellow-700 font-bold px-2 py-0.5 rounded-full mb-2 w-fit">Sob consulta</div>}
+                                  {eq.maxQty > 1 ? (
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        onClick={() => handleEquipmentQuantity(eq.code, -1, eq.maxQty)}
+                                        disabled={qty === 0}
+                                        className={`w-8 h-8 rounded font-bold text-lg flex items-center justify-center transition-colors ${qty > 0 ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
+                                      >−</button>
+                                      <span className="font-black text-lg text-gray-900 w-5 text-center">{qty}</span>
+                                      <button
+                                        onClick={() => handleEquipmentQuantity(eq.code, 1, eq.maxQty)}
+                                        disabled={!canAdd || qty >= eq.maxQty}
+                                        className={`w-8 h-8 rounded font-bold text-lg flex items-center justify-center transition-colors ${canAdd && qty < eq.maxQty ? 'bg-[#ffcc00] hover:bg-[#e6b800] text-gray-900' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
+                                      >+</button>
+                                    </div>
+                                  ) : (
                                     <button
-                                      onClick={() => handleEquipmentQuantity(eq.code, -1, eq.maxQty)}
-                                      disabled={qty === 0}
-                                      className={`w-9 h-9 rounded-lg font-bold text-lg flex items-center justify-center transition-colors ${qty > 0 ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
-                                    >−</button>
-                                    <span className="font-black text-lg text-gray-900 w-6 text-center">{qty}</span>
-                                    <button
-                                      onClick={() => handleEquipmentQuantity(eq.code, 1, eq.maxQty)}
-                                      disabled={!canAdd || qty >= eq.maxQty}
-                                      className={`w-9 h-9 rounded-lg font-bold text-lg flex items-center justify-center transition-colors ${canAdd && qty < eq.maxQty ? 'bg-[#ffcc00] hover:bg-[#e6b800] text-gray-900' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
-                                    >+</button>
-                                    {qty > 0 && (
-                                      <span className="text-xs text-[#008d36] font-bold ml-2">✓ {qty}x adicionado</span>
-                                    )}
-                                  </div>
-                                </>
+                                      onClick={() => qty > 0 ? handleEquipmentQuantity(eq.code, -1, eq.maxQty) : handleEquipmentQuantity(eq.code, 1, eq.maxQty)}
+                                      className={`w-full font-bold py-2 rounded text-sm transition-colors ${qty > 0 ? "bg-gray-200 text-gray-600" : "bg-[#ffcc00] hover:bg-[#e6b800] text-gray-900"}`}
+                                    >{qty > 0 ? "Remover ✓" : "Adicionar"}</button>
+                                  )}
+                                </div>
                               )}
                             </div>
                           );
@@ -1307,6 +1312,7 @@ function VehiclesContent() {
                   )}
                 </>
               )}
+              </div> {/* close p-8 wrapper */}
             </div>
           )}
         </div>
