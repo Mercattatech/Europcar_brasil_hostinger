@@ -763,13 +763,15 @@ function VehiclesContent() {
                     const dailyBRL_POA = totalBRL_POA > 0 ? totalBRL_POA / bookingDurationDays : 0;
                     const dailyPOA = totalPricePOA > 0 ? totalPricePOA / bookingDurationDays : 0;
 
+                    const isPremium = code.startsWith('U') || code.startsWith('L') || car.specs?.carCategoryType?.toLowerCase().includes('premium');
+
                     return (
-                      <div key={`${code}-${idx}`} className={`bg-white rounded border flex flex-col transition-shadow ${isSelected ? "border-[#008d36] shadow-lg" : "border-gray-200 hover:shadow-md"}`}>
+                      <div key={`${code}-${idx}`} className={`bg-white rounded border flex flex-col transition-shadow ${isSelected ? "border-[#008d36] shadow-lg" : isPremium ? "border-[#c9a84c] hover:shadow-md" : "border-gray-200 hover:shadow-md"}`}>
                         
                         {/* Top row */}
                         <div className="flex p-5 gap-6">
-                          {/* Image */}
-                          <div className="w-[240px] shrink-0 flex items-center justify-center p-2">
+                          {/* Image - gold background for premium */}
+                          <div className={`w-[240px] shrink-0 flex items-center justify-center p-2 rounded-lg ${isPremium ? "bg-gradient-to-b from-[#f5ecd0] to-[#efe3c0]" : ""}`}>
                             <CarImage sample={sample} code={code} alt={sample || name} imageUrl={car.imageUrl} overrideUrl={carImageOverrides[code]} />
                           </div>
 
@@ -783,7 +785,7 @@ function VehiclesContent() {
                             {/* Tags row with tooltips */}
                             <div className="mt-2 mb-4 flex flex-wrap gap-2">
                               {/* Premium or OU SIMILAR tag */}
-                              {(code.startsWith('U') || code.startsWith('L') || car.specs?.carCategoryType?.toLowerCase().includes('premium')) ? (
+                              {isPremium ? (
                                 <span className="group relative inline-flex items-center gap-1.5 bg-gradient-to-r from-[#c9a84c] to-[#d4b85a] rounded-full px-3 py-1.5 text-[10px] font-black text-white uppercase cursor-help shadow-sm">
                                   <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/></svg>
                                   PREMIUM
