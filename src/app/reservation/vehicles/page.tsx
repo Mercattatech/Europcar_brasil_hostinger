@@ -91,6 +91,17 @@ function VehiclesContent() {
     return `${dt.getFullYear()}${String(dt.getMonth() + 1).padStart(2, "0")}${String(dt.getDate()).padStart(2, "0")}`;
   }, [searchParams, pickupDate]);
 
+  // Calculate duration in days
+  const bookingDurationDays = useMemo(() => {
+    if (!pickupDate || !returnDate || pickupDate.length < 8 || returnDate.length < 8) return 1;
+    const y1 = parseInt(pickupDate.slice(0, 4)), m1 = parseInt(pickupDate.slice(4, 6)) - 1, d1 = parseInt(pickupDate.slice(6, 8));
+    const y2 = parseInt(returnDate.slice(0, 4)), m2 = parseInt(returnDate.slice(4, 6)) - 1, d2 = parseInt(returnDate.slice(6, 8));
+    const dt1 = new Date(y1, m1, d1).getTime();
+    const dt2 = new Date(y2, m2, d2).getTime();
+    const diff = Math.ceil((dt2 - dt1) / (1000 * 3600 * 24));
+    return diff > 0 ? diff : 1;
+  }, [pickupDate, returnDate]);
+
   // contractID from sessionStorage
   const [sessionContractID, setSessionContractID] = useState("");
   useEffect(() => {
@@ -697,153 +708,160 @@ function VehiclesContent() {
                     // Calculate discount % ETO vs POA
                     const discountPct = hasETO && totalPricePOA > 0 ? Math.round((1 - totalPriceETO / totalPricePOA) * 100) : 0;
 
-                    return (
-                      <div key={`${code}-${idx}`} className={`bg-white rounded-lg border p-5 flex items-center gap-6 transition-shadow ${isSelected ? "border-[#008d36] shadow-lg" : "border-gray-200 hover:shadow-md"}`}>
-                        {/* Image */}
-                        <div className="w-[240px] shrink-0 relative flex flex-col items-center">
-                          {/* 2.1 Tags */}
-                          {(code.startsWith('U') || code.startsWith('L') || car.specs?.carCategoryType?.toLowerCase().includes('premium')) ? (
-                            <div className="group relative z-10 -mb-2">
-                              <div className="bg-gradient-to-r from-[#d4af37] to-[#aa8323] text-white text-[10px] font-black uppercase px-3 py-1 rounded-full shadow cursor-help flex items-center gap-1">
-                                Premium Brand Guaranteed
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" /></svg>
-                              </div>
-                              <div className="absolute hidden group-hover:block bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-[#c8b46e] text-white border border-[#b89b4e] text-[10px] p-3 rounded shadow-lg z-20 font-bold leading-relaxed">
-                                You'll get this model or another similar from a Premium brand: BMW, Audi, Mercedes, Tesla, Jaguar, Land Rover, Lexus, Porsche, Volvo or Alfa Romeo.
-                                {/* Dropdown triangle */}
-                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-[#c8b46e]"></div>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="group relative z-10 -mb-2">
-                              <div className="bg-white border border-gray-300 text-gray-700 text-[10px] font-black uppercase px-3 py-1 rounded-full shadow-sm cursor-help flex items-center gap-1">
-                                OU SIMILAR {car.specs?.carCategoryName ? car.specs.carCategoryName.split(',')[0].split(' ')[0] : 'MINI'}
-                                <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                              </div>
-                              <div className="absolute hidden group-hover:block bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-white text-gray-700 border border-gray-200 text-[10px] p-2 rounded shadow-lg z-20 text-center">
-                                Receberá este modelo ou um veículo semelhante, com o mesmo nível de características e conforto.
-                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-white drop-shadow"></div>
-                              </div>
-                            </div>
-                          )}
+                    const dailyBRL_POA = totalBRL_POA > 0 ? totalBRL_POA / bookingDurationDays : 0;
+                    const dailyPOA = totalPricePOA > 0 ? totalPricePOA / bookingDurationDays : 0;
 
-                          <div className="h-[150px] w-full bg-white flex items-center justify-center p-3 mt-1">
+                    return (
+                      <div key={`${code}-${idx}`} className={`bg-white rounded border flex flex-col transition-shadow overflow-hidden ${isSelected ? "border-[#008d36] shadow-lg" : "border-gray-200 hover:shadow-md"}`}>
+                        
+                        {/* Top row */}
+                        <div className="flex p-5 gap-6">
+                          {/* Image */}
+                          <div className="w-[240px] shrink-0 flex items-center justify-center p-2">
                             <CarImage sample={sample} code={code} alt={sample || name} imageUrl={car.imageUrl} overrideUrl={carImageOverrides[code]} />
+                          </div>
+
+                          {/* Info */}
+                          <div className="flex-1 flex flex-col justify-start">
+                            <h2 className="text-[22px] font-black text-gray-900 uppercase tracking-tight">{name}</h2>
+                            
+                            <div className="mt-2 mb-6">
+                              {(code.startsWith('U') || code.startsWith('L') || car.specs?.carCategoryType?.toLowerCase().includes('premium')) ? (
+                                <span className="inline-flex items-center gap-1.5 border border-[#b89b4e] rounded-full px-3 py-1 text-[10px] font-black text-[#aa8323] uppercase">
+                                  PREMIUM BRAND GUARANTEED
+                                  <svg className="w-3.5 h-3.5 bg-gray-300 text-white rounded-full p-[2px]" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 border border-gray-300 rounded-full px-3 py-1 text-[10px] font-black text-gray-900 uppercase">
+                                  OU SIMILAR {car.specs?.carCategoryName ? car.specs.carCategoryName.split(',')[0].split(' ')[0] : 'STANDARD'}
+                                  <svg className="w-3.5 h-3.5 bg-gray-300 text-white rounded-full p-[2px]" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
+                                </span>
+                              )}
+                            </div>
+
+                            {/* 2.2 Vehicle Specs Icons Row */}
+                            <div className="flex items-center gap-4 text-sm font-black text-gray-900 flex-wrap">
+                              <span className="flex items-center gap-1.5" title="Passageiros">
+                                <svg className="w-[18px] h-[18px] text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                                {car.specs?.carCategorySeats || car.carCategorySeats || "?"}
+                              </span>
+                              <span className="flex items-center gap-1.5" title="Portas">
+                                <svg className="w-[18px] h-[18px] text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-8 12H9v-2h2v2zm0-4H9V9h2v2z"/></svg>
+                                {car.specs?.carCategoryDoors || car.carCategoryDoors || "?"}
+                              </span>
+                              {car.specs?.carCategoryBaggageQuantity && (
+                                <span className="flex items-center gap-1.5" title="Malas">
+                                  <svg className="w-[18px] h-[18px] text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M17 6h-2V3c0-.55-.45-1-1-1h-4c-.55 0-1 .45-1 1v3H7c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2h2v2h-2V4z"/></svg>
+                                  {car.specs.carCategoryBaggageQuantity}
+                                </span>
+                              )}
+                              <span className="flex items-center gap-1.5" title="Transmissão">
+                                <svg className="w-[18px] h-[18px] text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v4h-2zm0 6h2v2h-2z"/></svg>
+                                {car.specs?.carCategoryAutomatic === "Y" || car.carCategoryAutomatic === "Y" ? "A" : "M"}
+                              </span>
+                              {(car.specs?.carCategoryAirCond === "Y" || car.carCategoryAirCond === "Y") && (
+                                <span className="flex items-center gap-1.5" title="Ar-condicionado">
+                                  <svg className="w-[18px] h-[18px] text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M17.3 11l-3.3-3.3c-.4-.4-1-.4-1.4 0s-.4 1 0 1.4L14.2 10.7 13.5 10H10V6.5l.7.7c.4.4 1 .4 1.4 0s.4-1 0-1.4l-3.3-3.3c-.4-.4-1-.4-1.4 0l-3.3 3.3c-.4.4-.4 1 0 1.4s1 .4 1.4 0l.7-.7V10H2.8l1.6-1.6c.4-.4.4-1 0-1.4s-1-.4-1.4 0l-3.3 3.3c-.4.4-.4 1 0 1.4s1 .4 1.4 0L2.8 13h3.5v3.5l-.7-.7c-.4-.4-1-.4-1.4 0s-.4 1 0 1.4l3.3 3.3c.4.4 1 .4 1.4 0s.4-1 0-1.4l-.7-.7V13h3.5l-1.6 1.6c-.4.4-.4 1 0 1.4s1 .4 1.4 0l3.3-3.3c.3-.4.3-1-.1-1.4zM12 12c-.6 0-1-.4-1-1s.4-1 1-1 1 .4 1 1-.4 1-1 1z"/></svg>
+                                  A/C
+                                </span>
+                              )}
+                              <span className="flex items-center gap-1.5" title="Idade mínima">
+                                <svg className="w-[18px] h-[18px] text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 14c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm7.5 3H4.5v-1c0-1.5 3-2.25 4.5-2.25s4.5.75 4.5 2.25v1z"/></svg>
+                                21
+                              </span>
+                            </div>
+
+                            {/* Mileage Check */}
+                            <div className="mt-6 text-[#008d36] flex items-center gap-2 text-sm text-gray-500">
+                              <svg className="w-[18px] h-[18px] text-[#008d36]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                              {car.mileageType === "Livre" ? "Quilometragem ilimitada" : `${car.mileageLimit || "3600"} ${car.mileageUnit} incluído`}
+                            </div>
+                          </div>
+
+                          {/* Price */}
+                          <div className="w-[200px] shrink-0 flex flex-col items-end justify-center text-right">
+                            <span className="text-[10px] text-gray-800 font-medium uppercase tracking-wider mb-2">PAGAR NO BALCÃO</span>
+                            <div className="flex flex-col items-end mb-1">
+                              <div className="text-3xl font-black text-gray-900 leading-none">
+                                {dailyBRL_POA > 0 ? `R$ ${fmtPrice(dailyBRL_POA)}` : `${currency} ${fmtPrice(dailyPOA)}`} <span className="text-xl font-normal text-gray-900">/ dia</span>
+                              </div>
+                              <div className="text-sm text-gray-400 font-medium mt-1">
+                                TOTAL {totalBRL_POA > 0 ? `R$ ${fmtPrice(totalBRL_POA)}` : `${currency} ${fmtPrice(totalPricePOA)}`}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => { setSelectedTariffType('POA'); handleSelectCar(car); }}
+                              className="w-full mt-4 bg-[#FFD100] hover:bg-[#F2C700] text-black font-black py-3 px-4 rounded text-base transition-colors"
+                            >
+                              {isSelected ? "Selecionado" : "Selecionar"}
+                            </button>
                           </div>
                         </div>
 
-                        {/* Info */}
-                        <div className="flex-1">
-                          <h2 className="text-lg font-black text-gray-900 uppercase">{name}</h2>
-                          <span className="text-[10px] bg-gray-100 text-gray-600 font-bold px-2 py-0.5 rounded-full">{code}</span>
-
-                          {/* 2.2 Vehicle Specs */}
-                          <div className="flex items-center gap-3 mt-3 text-sm font-bold text-gray-600 flex-wrap">
-                            <span title="Passageiros">👥 {car.specs?.carCategorySeats || car.carCategorySeats || "?"}</span>
-                            {car.specs?.carCategoryBaggageQuantity && <span title="Malas">🧳 {car.specs.carCategoryBaggageQuantity}</span>}
-                            <span title="Portas">🚪 {car.specs?.carCategoryDoors || car.carCategoryDoors || "?"}</span>
-                            <span title="Transmissão">⚙️ {car.specs?.carCategoryAutomatic === "Y" || car.carCategoryAutomatic === "Y" ? "A" : "M"}</span>
-                            {(car.specs?.carCategoryAirCond === "Y" || car.carCategoryAirCond === "Y") && <span title="Ar-condicionado">❄️ A/C</span>}
-                            {car.specs?.carCategoryCO2Quantity && <span title="CO2 g/km">💨 {car.specs.carCategoryCO2Quantity}</span>}
-                            {car.fuelTypeCode && <span title="Combustível">⛽ {car.fuelTypeCode}</span>}
-                          </div>
-
-                          {/* 2.3 Reservation Conditions */}
-                          <div className="flex flex-col gap-1 mt-3">
-                            {car.mileageType === "Livre" ? (
-                              <div className="flex items-center gap-2 text-[11px] font-bold text-[#008d36]">
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
-                                Quilometragem Ilimitada incluída
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2 text-[11px] font-bold text-[#008d36]">
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
-                                {car.mileageLimit || "3600"} {car.mileageUnit} incluído
+                        {/* Expandable Details */}
+                        <details className="group">
+                          <summary className="list-none flex items-center gap-1 cursor-pointer text-[#008d36] text-[15px] font-bold pl-[284px] pb-5 select-none hover:underline">
+                            <span className="group-open:hidden flex items-center gap-1">Mais detalhes <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg></span>
+                            <span className="hidden group-open:flex items-center gap-1">Menos detalhes <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 15l7-7 7 7" /></svg></span>
+                          </summary>
+                          <div className="bg-[#f9f9f9] p-8 flex flex-col gap-6">
+                            <h3 className="text-[22px] font-black text-gray-900">Detalhes completos do veículo</h3>
+                            
+                            <div className="flex items-center gap-x-8 gap-y-4 text-[15px] font-black text-gray-900 flex-wrap">
+                              <span className="flex items-center gap-2">
+                                <svg className="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                                {car.specs?.carCategorySeats || car.carCategorySeats || "?"} pessoas
+                              </span>
+                              <span className="flex items-center gap-2">
+                                <svg className="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-8 12H9v-2h2v2zm0-4H9V9h2v2z"/></svg>
+                                {car.specs?.carCategoryDoors || car.carCategoryDoors || "?"} portas
+                              </span>
+                              {(car.specs?.carCategoryAirCond === "Y" || car.carCategoryAirCond === "Y") && (
+                                <span className="flex items-center gap-2">
+                                  <svg className="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M17.3 11l-3.3-3.3c-.4-.4-1-.4-1.4 0s-.4 1 0 1.4L14.2 10.7 13.5 10H10V6.5l.7.7c.4.4 1 .4 1.4 0s.4-1 0-1.4l-3.3-3.3c-.4-.4-1-.4-1.4 0l-3.3 3.3c-.4.4-.4 1 0 1.4s1 .4 1.4 0l.7-.7V10H2.8l1.6-1.6c.4-.4.4-1 0-1.4s-1-.4-1.4 0l-3.3 3.3c-.4.4-.4 1 0 1.4s1 .4 1.4 0L2.8 13h3.5v3.5l-.7-.7c-.4-.4-1-.4-1.4 0s-.4 1 0 1.4l3.3 3.3c.4.4 1 .4 1.4 0s.4-1 0-1.4l-.7-.7V13h3.5l-1.6 1.6c-.4.4-.4 1 0 1.4s1 .4 1.4 0l3.3-3.3c.3-.4.3-1-.1-1.4zM12 12c-.6 0-1-.4-1-1s.4-1 1-1 1 .4 1 1-.4 1-1 1z"/></svg>
+                                  A/C
+                                </span>
+                              )}
+                              {car.specs?.carCategoryBaggageQuantity && (
+                                <span className="flex items-center gap-2">
+                                  <svg className="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M17 6h-2V3c0-.55-.45-1-1-1h-4c-.55 0-1 .45-1 1v3H7c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2h2v2h-2V4z"/></svg>
+                                  {car.specs.carCategoryBaggageQuantity} bagagens
+                                </span>
+                              )}
+                              <span className="flex items-center gap-2">
+                                <svg className="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v4h-2zm0 6h2v2h-2z"/></svg>
+                                {car.specs?.carCategoryAutomatic === "Y" || car.carCategoryAutomatic === "Y" ? "Automático" : "Manual"}
+                              </span>
+                              {car.specs?.carCategoryCO2Quantity && (
+                                <span className="flex items-center gap-2">
+                                  <span className="bg-[#FFD100] text-black text-[11px] font-black px-2 py-0.5 rounded">D</span>
+                                  Emissão de CO2: {car.specs.carCategoryCO2Quantity} g/km
+                                </span>
+                              )}
+                            </div>
+                            
+                            <div className="flex items-center gap-8 text-[15px] font-black text-gray-900 flex-wrap mt-1">
+                              <span className="flex items-center gap-2">
+                                <svg className="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 14c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm7.5 3H4.5v-1c0-1.5 3-2.25 4.5-2.25s4.5.75 4.5 2.25v1z"/></svg>
+                                Idade mínima do motorista: 21 anos
+                              </span>
+                            </div>
+                            
+                            {/* Further technical details if any exist in API */}
+                            {(car.specs?.carCategoryModelLength || car.specs?.carCategoryType) && (
+                              <div className="mt-4 border-t border-gray-200 pt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-gray-600">
+                                {car.specs?.carCategoryModelLength && <div><span className="font-bold">Comprimento:</span> {car.specs.carCategoryModelLength}m</div>}
+                                {car.specs?.carCategoryModelWidth && <div><span className="font-bold">Largura:</span> {car.specs.carCategoryModelWidth}m</div>}
+                                {car.specs?.carCategoryModelHeight && <div><span className="font-bold">Altura:</span> {car.specs.carCategoryModelHeight}m</div>}
+                                {car.specs?.carCategoryPowerHP && <div><span className="font-bold">Potência:</span> {car.specs.carCategoryPowerHP} HP</div>}
+                                {car.specs?.carCategoryModelWeight && <div><span className="font-bold">Peso:</span> {car.specs.carCategoryModelWeight} kg</div>}
+                                {car.specs?.carCategoryType && <div><span className="font-bold">Tipo:</span> {car.specs.carCategoryType}</div>}
+                                {sample && <div><span className="font-bold">Exemplo:</span> {sample}</div>}
                               </div>
                             )}
                             
-                            {(car.includedInsurances?.length > 0 || true) && (
-                              <div className="flex items-center gap-2 text-[11px] font-bold text-[#008d36]">
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
-                                Proteção básica incluída
-                              </div>
-                            )}
                           </div>
-                          
-                          {/* 2.4 Detalhes do Veículo Dropdown */}
-                          <details className="mt-4 group">
-                            <summary className="list-none flex items-center gap-1 cursor-pointer text-[#008d36] text-[11px] font-black hover:underline">
-                              Detalhes do veículo 
-                              <svg className="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
-                            </summary>
-                            <div className="mt-2 p-3 bg-gray-50 border border-gray-100 rounded text-xs text-gray-600 grid grid-cols-2 gap-x-4 gap-y-2">
-                              {car.specs?.carCategoryModelLength && <div><span className="font-bold">Comprimento:</span> {car.specs.carCategoryModelLength}m</div>}
-                              {car.specs?.carCategoryModelWidth && <div><span className="font-bold">Largura:</span> {car.specs.carCategoryModelWidth}m</div>}
-                              {car.specs?.carCategoryModelHeight && <div><span className="font-bold">Altura:</span> {car.specs.carCategoryModelHeight}m</div>}
-                              {car.specs?.carCategoryPowerHP && <div><span className="font-bold">Potência:</span> {car.specs.carCategoryPowerHP} HP ({car.specs.carCategoryPowerKW} KW)</div>}
-                              {car.specs?.carCategoryModelWeight && <div><span className="font-bold">Peso:</span> {car.specs.carCategoryModelWeight} kg</div>}
-                              {car.specs?.carCategoryType && <div><span className="font-bold">Tipo:</span> {car.specs.carCategoryType}</div>}
-                              {sample && <div className="col-span-2 text-[10px] text-gray-400 mt-1">Exemplo: {sample}</div>}
-                            </div>
-                          </details>
-                        </div>
-
-                        {/* Price + CTA — POA vs ETO */}
-                        <div className="w-[220px] shrink-0 flex flex-col items-stretch border-l border-gray-100 pl-5 gap-2">
-                          {/* POA Tariff */}
-                          <div className="border border-gray-200 rounded-lg p-3 hover:border-[#008d36] transition-colors">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-[9px] uppercase font-black text-gray-500 tracking-wider">Pagar na Retirada</span>
-                            </div>
-                            <div className="text-lg font-black text-gray-900">
-                              {totalBRL_POA > 0 ? `BRL ${fmtPrice(totalBRL_POA)}` : `${currency} ${fmtPrice(totalPricePOA)}`}
-                            </div>
-                            {totalBRL_POA > 0 && <span className="text-[10px] text-gray-400">Base: {currency} {fmtPrice(totalPricePOA)}</span>}
-                            <button
-                              onClick={() => { setSelectedTariffType('POA'); handleSelectCar(car); }}
-                              className={`w-full mt-2 font-bold py-2 rounded text-xs transition-colors ${
-                                isSelected && selectedTariffType === 'POA' ? "bg-[#008d36] text-white" : "bg-[#ffcc00] hover:bg-[#e6b800] text-gray-900"
-                              }`}
-                            >
-                              {isSelected && selectedTariffType === 'POA' ? "Retirada ✓" : "Pagar na Retirada"}
-                            </button>
-                          </div>
-
-                          {/* ETO Tariff — hidden for Brazilian stations */}
-                          {hasETO && stationCountry !== 'BR' && (
-                            <div className="border-2 border-[#e67e00] rounded-lg p-3 bg-orange-50/50 relative">
-                              {discountPct > 0 && (
-                                <span className="absolute -top-2.5 right-2 text-[9px] bg-[#e67e00] text-white px-2 py-0.5 rounded-full font-black">-{discountPct}%</span>
-                              )}
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-[9px] uppercase font-black text-[#e67e00] tracking-wider">Pague On-line</span>
-                                <span className="text-[9px] bg-[#e67e00]/10 text-[#e67e00] px-1.5 py-0.5 rounded font-bold">Sem IOF</span>
-                              </div>
-                              <div className="text-lg font-black text-gray-900">
-                                {totalBRL_ETO > 0 ? `BRL ${fmtPrice(totalBRL_ETO)}` : `${currency} ${fmtPrice(totalPriceETO)}`}
-                              </div>
-                              {totalBRL_ETO > 0 && <span className="text-[10px] text-gray-400">Base: {currency} {fmtPrice(totalPriceETO)}</span>}
-                              <button
-                                onClick={() => { 
-                                  setSelectedTariffType('ETO'); 
-                                  handleSelectCar({ 
-                                    ...car, 
-                                    ...etoCar, 
-                                    totalRateEstimate: totalPriceETO.toFixed(2),
-                                    totalRateEstimateInBookingCurrency: totalBRL_ETO.toFixed(2),
-                                    optionalInsurances: car.optionalInsurances, 
-                                    _etoCID: '56935466' 
-                                  }); 
-                                }}
-                                className={`w-full mt-2 font-bold py-2 rounded text-xs transition-colors ${
-                                  isSelected && selectedTariffType === 'ETO' ? "bg-[#e67e00] text-white" : "bg-[#e67e00] hover:bg-[#cc6f00] text-white"
-                                }`}
-                              >
-                                {isSelected && selectedTariffType === 'ETO' ? "Pago ✓" : "Pagar Agora"}
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                        </details>
                       </div>
                     );
                   })}
