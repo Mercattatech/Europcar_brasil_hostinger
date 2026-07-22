@@ -771,18 +771,19 @@ function VehiclesContent() {
                             <div className="mt-2 mb-4 flex flex-wrap gap-2">
                               {/* Premium or OU SIMILAR tag */}
                               {(code.startsWith('U') || code.startsWith('L') || car.specs?.carCategoryType?.toLowerCase().includes('premium')) ? (
-                                <span className="group relative inline-flex items-center gap-1.5 bg-[#1a472a] rounded-full px-3 py-1 text-[10px] font-black text-white uppercase cursor-help">
-                                  PREMIUM BRAND GUARANTEED
+                                <span className="group relative inline-flex items-center gap-1.5 bg-gradient-to-r from-[#c9a84c] to-[#d4b85a] rounded-full px-3 py-1.5 text-[10px] font-black text-white uppercase cursor-help shadow-sm">
+                                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/></svg>
+                                  PREMIUM
                                   <svg className="w-3.5 h-3.5 bg-white/30 text-white rounded-full p-[2px]" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
-                                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-gray-900 text-white text-[11px] font-normal normal-case rounded-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
-                                    Marca premium garantida. Você receberá exatamente o modelo exibido ou equivalente da mesma marca.
+                                  <span className="absolute top-full left-0 mt-2 w-72 bg-[#c9a84c] text-white text-[12px] font-medium normal-case rounded-lg p-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl leading-relaxed">
+                                    Você receberá este modelo ou outro similar de uma marca Premium: BMW, Audi, Mercedes, Tesla, Jaguar, Land Rover, Lexus, Porsche, Volvo ou Alfa Romeo.
                                   </span>
                                 </span>
                               ) : (
                                 <span className="group relative inline-flex items-center gap-1.5 border border-gray-300 rounded-full px-3 py-1 text-[10px] font-black text-gray-900 uppercase cursor-help">
                                   OU SIMILAR {name.split(',')[0].split(' ')[0]}
                                   <svg className="w-3.5 h-3.5 bg-gray-300 text-white rounded-full p-[2px]" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
-                                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-gray-900 text-white text-[11px] font-normal normal-case rounded-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
+                                  <span className="absolute top-full left-0 mt-2 w-64 bg-gray-900 text-white text-[11px] font-normal normal-case rounded-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
                                     Você receberá este modelo ou um veículo similar da mesma categoria com características equivalentes.
                                   </span>
                                 </span>
