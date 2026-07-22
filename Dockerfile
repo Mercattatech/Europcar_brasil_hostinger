@@ -48,7 +48,7 @@ ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholde
 
 # Roda o build do Next.js (gera .next/standalone)
 # NODE_OPTIONS limita o heap para evitar OOM no "Collecting build traces" em servidores com pouca RAM
-RUN NODE_OPTIONS=--max-old-space-size=1024 npm run build
+RUN NODE_OPTIONS=--max-old-space-size=2048 npm run build
 # =============================================================================
 # Stage 3 — Runner (imagem final leve)
 # =============================================================================
