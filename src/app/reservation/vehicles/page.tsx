@@ -1104,8 +1104,8 @@ function VehiclesContent() {
 
               <div className="p-8">
 
-              {/* Congrats message — show when ETO skipped OR premium protection added */}
-              {(selectedTariffType === 'ETO' && protectionsSkipped) || zeroExcessUpgrade ? (
+              {/* Congrats message — show ONLY when ETO skipped protections */}
+              {(selectedTariffType === 'ETO' && protectionsSkipped) ? (
                 <div className="border-2 border-[#008d36] rounded-xl p-10 text-center bg-green-50 mb-8">
                   <div className="w-20 h-20 bg-green-100 text-[#008d36] rounded-full flex items-center justify-center mx-auto mb-6">
                     <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
@@ -1234,7 +1234,7 @@ function VehiclesContent() {
                   })()}
 
                   {/* Proteções da API Europcar XRS — shown only for POA (pay at counter) */}
-                  {!zeroExcessUpgrade && selectedTariffType === 'POA' && selectedCar?.optionalInsurances?.length > 0 ? (
+                  {selectedTariffType === 'POA' && selectedCar?.optionalInsurances?.length > 0 ? (
                     <>
                       <h3 className="font-black text-lg text-gray-900 mb-6">Proteções disponíveis</h3>
                       <div className="grid grid-cols-2 gap-4 mb-8">
