@@ -579,7 +579,7 @@ function VehiclesContent() {
               <span className="text-[11px] font-bold text-[#008d36] uppercase">VEÍCULO</span>
             </div>
             <p className="text-[13px] text-gray-500 mt-2">
-              {selectedCar ? `${selectedCar.carCategoryName || selectedCar.carCategoryCode} ✓` : "Selecione um veículo abaixo."}
+              {selectedCar ? `${selectedCar.carCategorySample || carCategoryOverrides[selectedCar.carCategoryCode] || selectedCar.carCategoryName || selectedCar.carCategoryCode} ✓` : "Selecione um veículo abaixo."}
             </p>
           </div>
           {/* Step 3 */}
@@ -973,7 +973,7 @@ function VehiclesContent() {
               <div className="border border-green-200 rounded mb-8 bg-green-50 p-4 flex gap-4 items-center">
                 <div className="flex-1 border-r border-green-200">
                   <div className="text-[10px] uppercase text-green-700">Veículo</div>
-                  <div className="font-bold text-sm">{selectedCar?.carCategoryName || selectedCar?.carCategoryCode}</div>
+                  <div className="font-bold text-sm">{selectedCar?.carCategorySample || carCategoryOverrides[selectedCar?.carCategoryCode] || selectedCar?.carCategoryName || selectedCar?.carCategoryCode}</div>
                   <div className="text-xs text-green-700">{selectedCar?.currency} {fmtPrice(selectedCar?.totalRateEstimate)}</div>
                 </div>
                 {zeroExcessUpgrade && (

@@ -282,7 +282,8 @@ export default function CheckoutPage() {
   // --- Extract values from XRS car object ---
   const car = booking.car || {};
   const carCode = car.carCategoryCode || "";
-  const carName = carCategoryOverrides[carCode] || car.carCategoryName || car.name || "Veículo não identificado";
+  const carName = car.carCategorySample || carCategoryOverrides[carCode] || car.carCategoryName || car.name || "Veículo não identificado";
+  const carCategoryDesc = car.carCategoryName || "";
   const carSample = car.carCategorySample || "";
   const currency = car.currency || "EUR";
 
@@ -566,7 +567,7 @@ export default function CheckoutPage() {
               <div className="flex flex-col gap-0.5">
                 <span className="text-[10px] font-bold text-[#008d36] uppercase tracking-wider">Veículo</span>
                 <span className="font-black text-gray-900 text-sm uppercase leading-tight">{carName}</span>
-                {carSample && <span className="text-xs text-gray-400">{carSample} ou similar</span>}
+                {carCategoryDesc && <span className="text-xs text-gray-400">{carCategoryDesc}</span>}
                 {carCode && (
                   <span className="text-[10px] bg-gray-200 text-gray-600 font-bold px-2 py-0.5 rounded-full w-fit mt-0.5">{carCode}</span>
                 )}
@@ -908,7 +909,7 @@ export default function CheckoutPage() {
                 })()}
                 <h4 className="font-black text-lg text-gray-900 text-center uppercase mt-2">{carName}</h4>
                 {carCode && <span className="text-xs bg-gray-100 text-gray-500 font-bold px-2 py-0.5 rounded-full mt-1">{carCode}</span>}
-                {carSample && <span className="text-xs text-gray-400 mt-0.5">{carSample} ou similar</span>}
+                {carCategoryDesc && <span className="text-xs text-gray-400 mt-0.5">{carCategoryDesc}</span>}
               </div>
 
               {/* Locations + dates */}
