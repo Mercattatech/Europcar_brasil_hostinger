@@ -5,6 +5,8 @@ const nextConfig = {
   // Next.js 14: usa experimental.serverComponentsExternalPackages (renomeado para serverExternalPackages no Next.js 15)
   experimental: {
     serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs'],
+    cpus: 1,
+    workerThreads: false,
   },
   eslint: {
     // Warning: This allows production builds to successfully complete even if
