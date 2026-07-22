@@ -313,6 +313,7 @@ function VehiclesContent() {
             let mileageType = "Controlado";
             let mileageLimit = "";
             let mileageUnit = "km";
+            let extraMileageCost = "";
             const distance = r.distance?.$ || r.distance;
             if (distance) {
               if (distance.unlimitedDistance === "Y") {
@@ -320,6 +321,30 @@ function VehiclesContent() {
               } else if (distance.distanceValue) {
                 mileageLimit = distance.distanceValue;
                 mileageUnit = distance.unit === "M" ? "milhas" : "km";
+              }
+              if (distance.extraDistanceRate) {
+                extraMileageCost = distance.extraDistanceRate;
+              }
+            }
+
+            // Extract deductible/excess from included insurances
+            let deductibleAmount = "";
+            let deductibleCurrency = "";
+            const allInsForDeductible = insArr.map((ins: any) => ins.$ || ins);
+            // Look for CDW or basic protection with deductible
+            const cdwIns = allInsForDeductible.find((ins: any) => 
+              (ins.code === "CDW" || ins.code === "TP" || ins.code === "TPC" || ins.type === "M") && ins.deductible
+            );
+            if (cdwIns) {
+              deductibleAmount = cdwIns.deductible;
+              deductibleCurrency = cdwIns.deductibleCurrency || currency || "BRL";
+            }
+            // Fallback: check for any insurance with deductible
+            if (!deductibleAmount) {
+              const anyWithDeductible = allInsForDeductible.find((ins: any) => ins.deductible);
+              if (anyWithDeductible) {
+                deductibleAmount = anyWithDeductible.deductible;
+                deductibleCurrency = anyWithDeductible.deductibleCurrency || currency || "BRL";
               }
             }
 
@@ -332,6 +357,9 @@ function VehiclesContent() {
               mileageType,
               mileageLimit,
               mileageUnit,
+              extraMileageCost,
+              deductibleAmount,
+              deductibleCurrency,
               specs 
             });
           }
@@ -926,11 +954,11 @@ function VehiclesContent() {
                                 <h4 className="text-[17px] font-black text-gray-900 mb-4">Quilometragem</h4>
                                 <div className="flex items-start gap-2 text-sm text-gray-700 font-bold mb-2">
                                   <svg className="w-4 h-4 text-[#008d36] mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
-                                  <span>{car.mileageType === "Livre" ? "Quilometragem ilimitada" : `${car.mileageLimit || "5700"} km incluído`}</span>
+                                  <span>{car.mileageType === "Livre" ? "Quilometragem ilimitada" : `${car.mileageLimit || "?"} ${car.mileageUnit || "km"} incluído`}</span>
                                 </div>
-                                {car.mileageType !== "Livre" && (
+                                {car.mileageType !== "Livre" && car.extraMileageCost && (
                                   <div className="text-sm text-gray-500 pl-6">
-                                    Quilometragem adicional: {currency} {car.extraMileageCost || "0.37"}/km
+                                    Quilometragem adicional: {currency} {car.extraMileageCost}/{car.mileageUnit || "km"}
                                   </div>
                                 )}
                               </div>
@@ -938,16 +966,31 @@ function VehiclesContent() {
                               <div className="border-[2px] border-gray-100 bg-white rounded-xl p-5 flex flex-col justify-start">
                                 <span className="text-[10px] font-black text-[#e4002b] uppercase tracking-wider mb-1">INCLUÍDO</span>
                                 <h4 className="text-[17px] font-black text-gray-900 mb-2">Proteção básica</h4>
-                                <div className="text-sm font-bold text-gray-900 mb-4">Excesso: R$ 6.326,67</div>
+                                {car.deductibleAmount && (
+                                  <div className="text-sm font-bold text-gray-900 mb-4">
+                                    Excesso: {car.deductibleCurrency || currency} {parseFloat(car.deductibleAmount).toLocaleString("pt-BR", {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                  </div>
+                                )}
                                 <div className="flex flex-col gap-2">
-                                  <div className="flex items-start gap-2 text-sm text-gray-700 font-bold">
-                                    <svg className="w-4 h-4 text-[#008d36] mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
-                                    <span>Proteção contra danos por colisão</span>
-                                  </div>
-                                  <div className="flex items-start gap-2 text-sm text-gray-700 font-bold">
-                                    <svg className="w-4 h-4 text-[#008d36] mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
-                                    <span>Proteção contra roubo</span>
-                                  </div>
+                                  {car.includedInsurances && car.includedInsurances.length > 0 ? (
+                                    car.includedInsurances.map((ins: any, iIdx: number) => (
+                                      <div key={iIdx} className="flex items-start gap-2 text-sm text-gray-700 font-bold">
+                                        <svg className="w-4 h-4 text-[#008d36] mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                        <span>{ins.name || ins.description || ins.code || "Proteção incluída"}</span>
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <>
+                                      <div className="flex items-start gap-2 text-sm text-gray-700 font-bold">
+                                        <svg className="w-4 h-4 text-[#008d36] mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                        <span>Proteção contra danos por colisão</span>
+                                      </div>
+                                      <div className="flex items-start gap-2 text-sm text-gray-700 font-bold">
+                                        <svg className="w-4 h-4 text-[#008d36] mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                        <span>Proteção contra roubo</span>
+                                      </div>
+                                    </>
+                                  )}
                                 </div>
                                 <div className="flex items-start gap-2 text-xs text-gray-400 mt-4">
                                   <svg className="w-4 h-4 text-gray-300 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
