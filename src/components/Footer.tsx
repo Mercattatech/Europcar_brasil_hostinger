@@ -25,15 +25,7 @@ export default function Footer() {
 
   return (
     <>
-      <div className="w-full bg-white py-4 border-t border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 flex justify-center">
-          <img 
-            src="/awards-banner.png" 
-            alt="Europcar Awards" 
-            className="h-16 md:h-20 object-contain"
-          />
-        </div>
-      </div>
+
       <footer className="bg-[#1a1a1a] text-gray-400 border-t border-gray-800">
         {/* Main links grid */}
       <div className="max-w-6xl mx-auto px-4 py-10">

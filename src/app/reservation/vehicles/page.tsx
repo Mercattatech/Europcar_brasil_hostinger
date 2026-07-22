@@ -871,6 +871,40 @@ function VehiclesContent() {
                               </div>
                             )}
                             
+                            
+                            {/* Incluídos - Blocks as requested */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                              <div className="border-[2px] border-gray-100 bg-white rounded-xl p-5 flex flex-col justify-start">
+                                <span className="text-[10px] font-black text-[#e4002b] uppercase tracking-wider mb-1">INCLUÍDO</span>
+                                <h4 className="text-[17px] font-black text-gray-900 mb-4">Quilometragem</h4>
+                                <div className="flex items-start gap-2 text-sm text-gray-700 font-bold mb-2">
+                                  <svg className="w-4 h-4 text-[#008d36] mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                  <span>{car.mileageType === "Livre" ? "Quilometragem ilimitada" : `${car.mileageLimit || "5700"} km incluído`}</span>
+                                </div>
+                                {car.mileageType !== "Livre" && (
+                                  <div className="text-sm text-gray-500 pl-6">
+                                    Quilometragem adicional: {currency} {car.extraMileageCost || "0.37"}/km
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="border-[2px] border-gray-100 bg-white rounded-xl p-5 flex flex-col justify-start">
+                                <span className="text-[10px] font-black text-[#e4002b] uppercase tracking-wider mb-1">INCLUÍDO</span>
+                                <h4 className="text-[17px] font-black text-gray-900 mb-2">Proteção básica</h4>
+                                <div className="text-sm font-bold text-gray-900 mb-4">Excesso: R$ 6.326,67</div>
+                                <div className="flex flex-col gap-2">
+                                  <div className="flex items-start gap-2 text-sm text-gray-700 font-bold">
+                                    <svg className="w-4 h-4 text-[#008d36] mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                    <span>Proteção contra danos por colisão</span>
+                                  </div>
+                                  <div className="flex items-start gap-2 text-sm text-gray-700 font-bold">
+                                    <svg className="w-4 h-4 text-[#008d36] mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                    <span>Proteção contra roubo</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
                           </div>
                         </details>
                       </div>

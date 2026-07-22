@@ -200,7 +200,7 @@ export default function Home() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               {
-                nome: "Fiat Argo",
+                nome: "Renault Kwid",
                 categoria: "Econômico",
                 acriss: "EDMR",
                 assentos: 5,
@@ -210,7 +210,7 @@ export default function Home() {
                 img: "https://static.europcar.com/carvisuals/partners/835x557/EDMR_BR.png",
               },
               {
-                nome: "Volkswagen Polo",
+                nome: "Fiat Cronos",
                 categoria: "Compacto",
                 acriss: "CDMR",
                 assentos: 5,
@@ -220,7 +220,7 @@ export default function Home() {
                 img: "https://static.europcar.com/carvisuals/partners/835x557/CDMR_BR.png",
               },
               {
-                nome: "Chevrolet Onix Plus",
+                nome: "Volkswagen Virtus",
                 categoria: "Intermediário",
                 acriss: "IDMR",
                 assentos: 5,
@@ -240,7 +240,7 @@ export default function Home() {
                 img: "https://static.europcar.com/carvisuals/partners/835x557/IFAR_BR.png",
               },
               {
-                nome: "Toyota Corolla Cross",
+                nome: "Jeep Compass",
                 categoria: "SUV Premium",
                 acriss: "SFAR",
                 assentos: 5,
@@ -250,7 +250,7 @@ export default function Home() {
                 img: "https://static.europcar.com/carvisuals/partners/835x557/SFAR_BR.png",
               },
               {
-                nome: "Chevrolet Spin",
+                nome: "Citroen C4 Cactus",
                 categoria: "Minivan",
                 acriss: "SVAR",
                 assentos: 7,
