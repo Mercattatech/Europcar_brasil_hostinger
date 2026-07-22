@@ -723,7 +723,7 @@ function VehiclesContent() {
                     const dailyPOA = totalPricePOA > 0 ? totalPricePOA / bookingDurationDays : 0;
 
                     return (
-                      <div key={`${code}-${idx}`} className={`bg-white rounded border flex flex-col transition-shadow overflow-hidden ${isSelected ? "border-[#008d36] shadow-lg" : "border-gray-200 hover:shadow-md"}`}>
+                      <div key={`${code}-${idx}`} className={`bg-white rounded border flex flex-col transition-shadow ${isSelected ? "border-[#008d36] shadow-lg" : "border-gray-200 hover:shadow-md"}`}>
                         
                         {/* Top row */}
                         <div className="flex p-5 gap-6">
