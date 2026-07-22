@@ -128,25 +128,29 @@ export default function CheckoutPage() {
       .catch(() => {});
   }, []);
 
-  // When booking loads, resolve selected extras from XRS optionalInsurances (no DB needed)
+  // When booking loads, resolve selected extras from xrsInsurances (real getQuote data)
   useEffect(() => {
     if (!booking) return;
     const extrasMap: Record<string, number> = booking.extras || {};
     const selectedCodes = Object.keys(extrasMap).filter(k => extrasMap[k] > 0);
     if (selectedCodes.length === 0) { setExtrasDetails([]); return; }
 
-    // optionalInsurances are stored on booking.car by the vehicles page
+    // xrsInsurances now has { code, name, price, priceBRL } from getQuote
+    const xrsIns: any[] = booking.xrsInsurances || [];
+    // Fallback: optionalInsurances from booking.car (old format)
     const allInsurances: any[] = booking.car?.optionalInsurances || [];
     const resolved = selectedCodes.map(code => {
+      const qi = xrsIns.find((i: any) => i.code === code);
       const ins = allInsurances.find((i: any) => i.code === code);
-      if (!ins) return null;
+      const priceBRL = qi?.priceBRL || parseFloat(ins?.priceInBookingCurrency || ins?.price || "0");
       return {
         id: code,
-        name: code,
-        pricePerDay: parseFloat(ins.priceInBookingCurrency || ins.price || "0"),
-        pricePerDayEUR: parseFloat(ins.price || "0"),
+        name: qi?.name || code,
+        pricePerDay: priceBRL, // total price (rentalPriceInBookingCurrencyAI is already total)
+        pricePerDayEUR: qi?.price || parseFloat(ins?.price || "0"),
         qty: extrasMap[code],
-        ins,
+        isTotal: !!qi, // if from quoteInsurances, priceBRL is already total (not per day)
+        ins: ins || qi,
       };
     }).filter(Boolean);
     setExtrasDetails(resolved);
@@ -351,7 +355,7 @@ export default function CheckoutPage() {
     setEmailError("");
 
     setLoading(true);
-    const extrasTotalBRL = extrasDetails.reduce((sum: number, ex: any) => sum + ex.pricePerDay * ex.qty, 0) * days;
+    const extrasTotalBRL = extrasDetails.reduce((sum: number, ex: any) => sum + (ex.isTotal ? ex.pricePerDay * ex.qty : ex.pricePerDay * ex.qty * days), 0);
     const equipTotalBRL = (booking?.xrsEquipment || []).reduce((sum: number, eq: any) => {
       const p = parseFloat(eq.priceBRL || 0);
       return sum + p * (eq.qty || 1) * days;

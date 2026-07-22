@@ -172,6 +172,10 @@ function VehiclesContent() {
   const [loadingEquipment, setLoadingEquipment] = useState(false);
   // Equipment prices fetched from getQuote: { code: { price, priceBRL, currency } }
   const [equipmentPrices, setEquipmentPrices] = useState<Record<string, { price: number; priceBRL: number; currency: string }>>({});
+  // Quote insurances from getQuote API (real data for the selected vehicle)
+  const [quoteInsurances, setQuoteInsurances] = useState<any[]>([]);
+  // Quote mileage data from getQuote API
+  const [quoteMileage, setQuoteMileage] = useState<{ includedKm: number; totalIncludedDist: number; extraKmPrice: number; extraKmPriceBRL: number; includedKmType: string; currency: string } | null>(null);
 
   // ETO protection skip state
   const [protectionsSkipped, setProtectionsSkipped] = useState(false);
@@ -450,7 +454,7 @@ function VehiclesContent() {
     }
   }, [currentStep, dbExtras.length, xrsEquipment.length]);
 
-  // Fetch equipment prices from getQuote when entering Step 3
+  // Fetch equipment prices + insurances + mileage from getQuote when entering Step 3
   useEffect(() => {
     if (currentStep !== 3 || !selectedCar || Object.keys(equipmentPrices).length > 0) return;
     const carCategory = selectedCar.carCategoryCode;
@@ -483,25 +487,65 @@ function VehiclesContent() {
       .then(data => {
         const reservation = data?.message?.serviceResponse?.reservation;
         const quote = reservation?.quote;
-        // equipmentList is under reservation, NOT under quote
+        const quoteAttrs = quote?.$ || quote || {};
+
+        // === Equipment prices ===
         const eqList = reservation?.equipmentList?.equipment;
-        if (!eqList) return;
-        const items = Array.isArray(eqList) ? eqList : [eqList];
-        const prices: Record<string, { price: number; priceBRL: number; currency: string }> = {};
-        for (const item of items) {
-          const a = item.$ || item;
-          const code = a.code || '';
-          if (code) {
-            prices[code] = {
-              price: parseFloat(a.price || '0'),
-              priceBRL: parseFloat(a.priceInBookingCurrency || '0'),
-              currency: quote?.$?.currency || 'EUR',
-            };
+        if (eqList) {
+          const items = Array.isArray(eqList) ? eqList : [eqList];
+          const prices: Record<string, { price: number; priceBRL: number; currency: string }> = {};
+          for (const item of items) {
+            const a = item.$ || item;
+            const code = a.code || '';
+            if (code) {
+              prices[code] = {
+                price: parseFloat(a.price || '0'),
+                priceBRL: parseFloat(a.priceInBookingCurrency || '0'),
+                currency: quoteAttrs.currency || 'EUR',
+              };
+            }
           }
+          setEquipmentPrices(prices);
         }
-        setEquipmentPrices(prices);
+
+        // === Insurance list from getQuote (all types) ===
+        const rawIns = quote?.insuranceList?.insurance || [];
+        const insArr: any[] = Array.isArray(rawIns) ? rawIns : [rawIns];
+        const parsedInsurances = insArr.map((ins: any) => {
+          const a = ins.$ || ins;
+          return {
+            code: a.code || '',
+            descr: a.descr || '',
+            type: a.type || 'O', // O=Optional, I=Included, M=Mandatory
+            price: parseFloat(a.price || '0'),
+            priceInBookingCurrency: parseFloat(a.priceInBookingCurrency || '0'),
+            rentalPriceAI: parseFloat(a.rentalPriceAI || '0'),
+            rentalPriceInBookingCurrencyAI: parseFloat(a.rentalPriceInBookingCurrencyAI || '0'),
+            excessWithPOM: parseFloat(a.excessWithPOM || '0'),
+            bkExcessWithPOM: parseFloat(a.bkExcessWithPOM || '0'),
+          };
+        }).filter((ins: any) => ins.code);
+        console.log('[Step3] Quote insurances:', parsedInsurances.length, parsedInsurances.map((i: any) => i.code));
+        setQuoteInsurances(parsedInsurances);
+
+        // === Mileage data ===
+        const includedKm = parseInt(quoteAttrs.includedKm || '0');
+        const totalIncludedDist = parseInt(quoteAttrs.totalIncludedDist || '0');
+        const extraKmPrice = parseFloat(quoteAttrs.extraKmPrice || '0');
+        const exchangeRate = parseFloat(quoteAttrs.exchangeRate || '1');
+        const extraKmPriceBRL = extraKmPrice * exchangeRate;
+        if (includedKm > 0 || totalIncludedDist > 0) {
+          setQuoteMileage({
+            includedKm,
+            totalIncludedDist,
+            extraKmPrice,
+            extraKmPriceBRL,
+            includedKmType: quoteAttrs.includedKmType || 'D',
+            currency: quoteAttrs.currency || 'EUR',
+          });
+        }
       })
-      .catch(err => console.warn('[Step3] Equipment price fetch failed:', err))
+      .catch(err => console.warn('[Step3] getQuote fetch failed:', err))
       .finally(() => setLoadingEquipment(false));
   }, [currentStep, selectedCar, equipmentPrices, pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, selectedTariffType, effectiveContractID]);
 
@@ -1067,7 +1111,7 @@ function VehiclesContent() {
               <div className="border-b border-gray-200 p-6 flex items-center justify-between gap-6">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <button onClick={() => setCurrentStep(2)} className="text-[#008d36] font-bold hover:underline text-sm">← Voltar</button>
+                    <button onClick={() => { setCurrentStep(2); setEquipmentPrices({}); setQuoteInsurances([]); setQuoteMileage(null); }} className="text-[#008d36] font-bold hover:underline text-sm">← Voltar</button>
                   </div>
                   <h2 className="text-2xl font-black text-gray-900">Escolha sua proteção e seus extras</h2>
                 </div>
@@ -1088,11 +1132,15 @@ function VehiclesContent() {
                       const meta = xrsEquipment.find((e: any) => e.code === code);
                       return { code, qty, name: meta?.name || code, icon: meta?.icon || '📦', price: ep?.price || 0, priceBRL: ep?.priceBRL || 0, currency: ep?.currency || 'EUR' };
                     });
-                    const xrsInsurancesPayload = selectedInsuranceCodes.map(code => ({ code }));
+                    const xrsInsurancesPayload = selectedInsuranceCodes.map(code => {
+                      const qi = quoteInsurances.find((i: any) => i.code === code);
+                      const insNamesPT: Record<string, string> = { WWI: 'Proteção de para-brisas, vidros, faróis e pneus', THW: 'Proteção contra Roubo', STHW: 'Super Proteção contra Roubo', SPTHW: 'Proteção Total contra Roubo', SPCDW: 'Proteção Total contra Danos e Acidentes', SCDW: 'Super Proteção contra Danos', RSA: 'Assistência na estrada', PREMPRE: 'Proteção Plus', PREMPLUS: 'Proteção Premium Plus', PREMIUM: 'Proteção Premium', PAI: 'Proteção para acidentes pessoais', MEDIUM: 'Proteção Média', INTERIOR: 'Cobertura de danos ao interior', AWC: 'Cobertura estradas não pavimentadas', CDW: 'Proteção contra Colisão', LDW: 'Proteção Básica', PEP: 'Proteção de Efeitos Pessoais', APP: 'Proteção de Aparência' };
+                      return { code, name: insNamesPT[code] || qi?.descr || code, price: qi?.rentalPriceAI || 0, priceBRL: qi?.rentalPriceInBookingCurrencyAI || 0 };
+                    });
                     const cidForTariff = selectedTariffType === 'ETO'
                       ? (zeroExcessUpgrade ? '56935495' : (selectedCar?._etoCID || '56935466'))
                       : (effectiveContractID || '57269673');
-                    const payload = { car: selectedCar, extras: selectedExtrasMap, xrsEquipment: xrsEquipmentPayload, xrsInsurances: xrsInsurancesPayload, pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, contractID: cidForTariff, tariffType: selectedTariffType, zeroExcess: zeroExcessUpgrade, driverCountry, driverCountryName, stationCountry };
+                    const payload = { car: selectedCar, extras: selectedExtrasMap, xrsEquipment: xrsEquipmentPayload, xrsInsurances: xrsInsurancesPayload, pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, contractID: cidForTariff, tariffType: selectedTariffType, zeroExcess: zeroExcessUpgrade, driverCountry, driverCountryName, stationCountry, quoteMileage };
                     sessionStorage.setItem("europcar_booking", JSON.stringify(payload));
                     window.location.href = "/checkout";
                   }}
@@ -1120,11 +1168,15 @@ function VehiclesContent() {
                         const meta2 = xrsEquipment.find((e: any) => e.code === code);
                         return { code, qty, name: meta2?.name || code, icon: meta2?.icon || '📦', price: ep2?.price || 0, priceBRL: ep2?.priceBRL || 0, currency: ep2?.currency || 'EUR' };
                       });
-                      const xrsInsurancesPayload2 = selectedInsuranceCodes2.map(code => ({ code }));
+                      const xrsInsurancesPayload2 = selectedInsuranceCodes2.map(code => {
+                        const qi = quoteInsurances.find((i: any) => i.code === code);
+                        const insNamesPT: Record<string, string> = { WWI: 'Proteção de para-brisas, vidros, faróis e pneus', THW: 'Proteção contra Roubo', STHW: 'Super Proteção contra Roubo', SPTHW: 'Proteção Total contra Roubo', SPCDW: 'Proteção Total contra Danos e Acidentes', SCDW: 'Super Proteção contra Danos', RSA: 'Assistência na estrada', PREMPRE: 'Proteção Plus', PREMPLUS: 'Proteção Premium Plus', PREMIUM: 'Proteção Premium', PAI: 'Proteção para acidentes pessoais', MEDIUM: 'Proteção Média', INTERIOR: 'Cobertura de danos ao interior', AWC: 'Cobertura estradas não pavimentadas' };
+                        return { code, name: insNamesPT[code] || qi?.descr || code, price: qi?.rentalPriceAI || 0, priceBRL: qi?.rentalPriceInBookingCurrencyAI || 0 };
+                      });
                       const cidForTariff = selectedTariffType === 'ETO'
                         ? (zeroExcessUpgrade ? '56935495' : (selectedCar?._etoCID || '56935466'))
                         : (zeroExcessUpgrade ? '56935495' : (effectiveContractID || '57269673'));
-                      const payload = { car: selectedCar, extras: selectedExtrasMap, xrsEquipment: xrsEquipmentPayload2, xrsInsurances: xrsInsurancesPayload2, pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, contractID: cidForTariff, tariffType: selectedTariffType, zeroExcess: zeroExcessUpgrade, driverCountry, driverCountryName, stationCountry };
+                      const payload = { car: selectedCar, extras: selectedExtrasMap, xrsEquipment: xrsEquipmentPayload2, xrsInsurances: xrsInsurancesPayload2, pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, contractID: cidForTariff, tariffType: selectedTariffType, zeroExcess: zeroExcessUpgrade, driverCountry, driverCountryName, stationCountry, quoteMileage };
                       sessionStorage.setItem("europcar_booking", JSON.stringify(payload));
                       window.location.href = "/checkout";
                     }}
@@ -1233,43 +1285,160 @@ function VehiclesContent() {
                     );
                   })()}
 
-                  {/* Proteções da API Europcar XRS — shown only for POA (pay at counter) */}
-                  {selectedTariffType === 'POA' && selectedCar?.optionalInsurances?.length > 0 ? (
+                  {/* 🛡️ Proteções da API getQuote — Real data for selected vehicle */}
+                  {quoteInsurances.length > 0 ? (() => {
+                    // Insurance name and description maps (Portuguese)
+                    const insNamesPT: Record<string, string> = {
+                      WWI: 'Proteção de para-brisas, vidros, faróis e pneus',
+                      THW: 'Proteção contra Roubo (THW)',
+                      STHW: 'Super Proteção contra Roubo',
+                      SPTHW: 'Proteção Total contra Roubo',
+                      SPCDW: 'Proteção Total contra Danos e Acidentes',
+                      SL: 'Sem Proteção (Stand Liable)',
+                      SCDW: 'Super Proteção contra Danos (SCDW)',
+                      RSA: 'Assistência na estrada',
+                      PREMPRE: 'Proteção Plus',
+                      PREMPLUS: 'Proteção Premium Plus',
+                      PREMIUM: 'Proteção Premium',
+                      PAI: 'Proteção para acidentes pessoais',
+                      MEDIUM: 'Proteção Média',
+                      INTERIOR: 'Cobertura de danos ao interior',
+                      AWC: 'Cobertura de estradas não pavimentadas',
+                      CDW: 'Proteção contra Danos por Colisão',
+                      LDW: 'Proteção Básica (LDW)',
+                      TPL: 'Responsabilidade Civil',
+                      ECOLOGIC: 'Contribuição Ambiental',
+                      PEP: 'Proteção de Efeitos Pessoais',
+                      APP: 'Proteção de Aparência',
+                    };
+                    const insDescPT: Record<string, string> = {
+                      WWI: 'Reduz a zero a sua responsabilidade financeira por danos ao para-brisas, vidros, faróis e pneus.',
+                      THW: 'Proteção contra roubo do veículo com franquia reduzida.',
+                      STHW: 'Super proteção contra roubo com franquia ainda menor.',
+                      SPTHW: 'Proteção total contra roubo — franquia zero.',
+                      SPCDW: 'Proteção total contra danos e acidentes — franquia zero, cobertura completa.',
+                      SL: 'Sem proteção adicional. Você assume toda a responsabilidade financeira.',
+                      SCDW: 'Redução adicional da franquia em caso de danos ao veículo.',
+                      RSA: 'Todo o caminho consigo, a qualquer hora, em qualquer dia. Com a assistência na estrada terá auxílio sempre que precisar.',
+                      PREMPRE: 'Pacote de proteção completo com franquia zero para maiores de 23 anos.',
+                      PREMPLUS: 'Pacote premium estendido com cobertura máxima e assistência.',
+                      PREMIUM: 'Pacote Premium com proteção completa contra danos e roubo.',
+                      PAI: 'Oferece indenização para motorista e passageiros em caso de morte ou lesão e cobertura para despesas médicas.',
+                      MEDIUM: 'Pacote de proteção com franquia reduzida contra danos e roubo.',
+                      INTERIOR: 'Cobertura de danos ao interior do veículo.',
+                      AWC: 'Cobertura para condução em estradas não pavimentadas ou de terra.',
+                      CDW: 'Proteção contra danos por colisão com franquia.',
+                      LDW: 'Proteção básica incluindo danos e roubo com franquia padrão.',
+                      TPL: 'Seguro obrigatório de responsabilidade civil.',
+                      ECOLOGIC: 'Contribuição ambiental obrigatória.',
+                      PEP: 'Cobertura para bagagens e pertences pessoais.',
+                      APP: 'Proteção contra danos estéticos ao veículo.',
+                    };
+                    // Icon mapping using sprite sheet position (4x4 grid)
+                    const insIconEmoji: Record<string, string> = {
+                      WWI: '🔧', THW: '🔒', STHW: '🔐', SPTHW: '🛡️',
+                      SPCDW: '✅', SL: '⚠️', SCDW: '🛡️', RSA: '🚑',
+                      PREMPRE: '⭐', PREMPLUS: '👑', PREMIUM: '🏆',
+                      PAI: '🩺', MEDIUM: '🛡️', INTERIOR: '💺', AWC: '🛤️',
+                      CDW: '🚗', LDW: '📋', TPL: '📄', ECOLOGIC: '🌿',
+                      PEP: '🧳', APP: '🎨',
+                    };
+                    // Filter: show Optional (O) and Included (I). Hide Mandatory (M) and SL (Stand Liable = no protection)
+                    const displayInsurances = quoteInsurances.filter(ins => ins.type !== 'M' && ins.code !== 'SL');
+                    return (
+                      <>
+                        <h3 className="font-black text-lg text-gray-900 mb-6">Proteções</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                          {displayInsurances.map((ins: any) => {
+                            const insId = ins.code;
+                            const sel = selectedExtrasMap[insId] > 0;
+                            const isIncluded = ins.type === 'I';
+                            const totalBRL = ins.rentalPriceInBookingCurrencyAI || 0;
+                            const isAvailable = totalBRL > 0 || isIncluded;
+                            const excessBRL = ins.bkExcessWithPOM || 0;
+                            const name = insNamesPT[insId] || ins.descr || insId;
+                            const desc = insDescPT[insId] || ins.descr || 'Proteção adicional.';
+                            const icon = insIconEmoji[insId] || '🛡️';
+                            return (
+                              <div key={insId} className={`border rounded-xl p-4 transition-all flex flex-col ${sel ? 'border-[#008d36] bg-green-50 shadow-md' : isIncluded ? 'border-green-300 bg-green-50/50' : !isAvailable ? 'border-gray-100 bg-gray-50 opacity-60' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'}`}>
+                                {/* Icon */}
+                                <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-2xl mb-3 shrink-0">
+                                  {icon}
+                                </div>
+                                {/* Name */}
+                                <h4 className="font-bold text-sm text-gray-900 mb-1 leading-tight">{name}</h4>
+                                {/* Description (truncated) */}
+                                <p className="text-xs text-gray-500 mb-3 line-clamp-3 flex-1">{desc}</p>
+                                {/* Excess info */}
+                                {ins.excessWithPOM !== undefined && ins.excessWithPOM === 0 && !isIncluded && insId !== 'RSA' && insId !== 'PAI' && (
+                                  <span className="text-[9px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full mb-2 self-start">SEM FRANQUIA</span>
+                                )}
+                                {excessBRL > 0 && !isIncluded && (
+                                  <span className="text-[9px] text-gray-400 mb-2">Franquia: R$ {fmtPrice(excessBRL)}</span>
+                                )}
+                                {/* Price */}
+                                <div className="mt-auto">
+                                  {isIncluded ? (
+                                    <div className="text-sm font-bold text-[#008d36] mb-2">Incluída</div>
+                                  ) : isAvailable ? (
+                                    <div className="mb-2">
+                                      <span className="text-lg font-black text-gray-900">R$ {fmtPrice(totalBRL)}</span>
+                                      <span className="text-xs text-gray-400 font-normal"> / total</span>
+                                    </div>
+                                  ) : (
+                                    <div className="text-xs text-orange-500 font-bold mb-2">Indisponível</div>
+                                  )}
+                                  {/* Button */}
+                                  {isIncluded ? (
+                                    <div className="w-full text-center font-bold py-2 rounded text-sm bg-green-100 text-[#008d36]">✓ Incluída</div>
+                                  ) : isAvailable ? (
+                                    <button
+                                      onClick={() => sel ? handleExtraQuantity(insId, -1) : handleExtraQuantity(insId, 1)}
+                                      className={`w-full font-bold py-2.5 rounded-lg text-sm transition-all ${sel ? 'bg-[#008d36] text-white shadow-md' : 'bg-[#ffcc00] hover:bg-[#e6b800] text-gray-900'}`}
+                                    >
+                                      {sel ? '✓ Adicionado' : 'Adicionar'}
+                                    </button>
+                                  ) : (
+                                    <div className="w-full text-center font-bold py-2 rounded text-sm bg-gray-100 text-gray-400">Indisponível</div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    );
+                  })() : (
+                    <p className="text-gray-400 text-sm py-4">Carregando proteções disponíveis...</p>
+                  )}
+
+                  {/* 🚗 Quilometragem Incluída */}
+                  {quoteMileage && (
                     <>
-                      <h3 className="font-black text-lg text-gray-900 mb-6">Proteções disponíveis</h3>
-                      <div className="grid grid-cols-2 gap-4 mb-8">
-                        {selectedCar.optionalInsurances.map((ins: any) => {
-                          const insId = ins.code;
-                          const sel = selectedExtrasMap[insId] > 0;
-                          const pricePerDay = parseFloat(ins.price || "0");
-                          const priceBRLPerDay = parseFloat(ins.priceInBookingCurrency || "0");
-                          const totalPrice = pricePerDay * bookingDurationDays;
-                          const totalPriceBRL = priceBRLPerDay * bookingDurationDays;
-                          const insNames: Record<string, string> = { TPL: "Seguro de Responsabilidade Civil", LDW: "Proteção contra Danos e Roubo (LDW)", CDW: "Proteção contra Danos por Colisão (CDW)", THW: "Proteção contra Roubo (THW)", SCDW: "Super Proteção CDW", SPCDW: "Super Proteção CDW Premium", STHW: "Super Proteção THW", SPTHW: "Super Proteção THW Premium", MEDIUM: "Cobertura Média", PREMIUM: "Cobertura Premium", PREMPRE: "Premium Pré-pago", PREMUP: "Upgrade Premium", RSA: "Assistência na Estrada (RSA)", APP: "Proteção de Aparência", PAI: "Proteção de Acidentes Pessoais (PAI)", PEP: "Proteção de Efeitos Pessoais (PEP)" };
-                          const insDesc: Record<string, string> = { TPL: "Seguro obrigatório de Responsabilidade Civil perante terceiros.", LDW: `CDW + THW: limita responsabilidade. Franquia: ${selectedCar?.currency || 'EUR'} ${ins.excessWithPOM || "—"}.`, CDW: `Proteção contra Colisão. Franquia: ${selectedCar?.currency || 'EUR'} ${ins.excessWithPOM || "—"}.`, THW: `Proteção contra Roubo. Franquia: ${selectedCar?.currency || 'EUR'} ${ins.excessWithPOM || "—"}.`, SCDW: "Super CDW: franquia zero para danos.", SPCDW: "Super CDW Premium: franquia zero incluindo pneus e vidros.", STHW: "Super THW: franquia zero para roubo.", SPTHW: "Super THW Premium: franquia zero com cobertura estendida.", MEDIUM: `Cobertura Média com franquia reduzida. Franquia: ${selectedCar?.currency || 'EUR'} ${ins.excessWithPOM || "—"}.`, PREMIUM: "Cobertura Premium: proteção completa sem franquia.", PREMPRE: "Premium Pré-paga com desconto.", PREMUP: "Upgrade para proteção máxima.", RSA: "Assistência na Estrada 24h.", APP: "Cobre danos estéticos ao veículo.", PAI: "Cobre despesas médicas em acidentes.", PEP: "Cobre bagagens e pertences pessoais." };
-                          return (
-                            <div key={insId} className={`border rounded-lg p-5 transition-colors ${sel ? "border-[#008d36] bg-green-50" : "border-gray-200 hover:border-gray-300"}`}>
-                              <div className="flex justify-between items-start mb-2">
-                                <h4 className="font-black text-gray-900">{insNames[insId] || ins.name || insId}</h4>
-                                {insId !== 'TPL' && ins.excessWithPOM && parseFloat(ins.excessWithPOM) === 0 && <span className="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">SEM FRANQUIA</span>}
-                              </div>
-                              <div className="text-xl font-black text-gray-900 mb-1">
-                                {selectedCar?.currency || 'EUR'} {pricePerDay.toFixed(2)}
-                                <span className="text-xs text-gray-400 font-normal"> /dia</span>
-                              </div>
-                              <div className="text-xs text-green-700 font-bold mb-2">
-                                Total com proteção: R$ {(totalPriceBRL > 0 ? totalPriceBRL : totalPrice).toFixed(2).replace(".", ",")}
-                              </div>
-                              <p className="text-sm text-gray-500 mb-4">{insDesc[insId] || ins.description || "Proteção adicional."}</p>
-                              <button onClick={() => sel ? handleExtraQuantity(insId, -1) : handleExtraQuantity(insId, 1)} className={`w-full font-bold py-2 rounded text-sm transition-colors ${sel ? "bg-gray-200 text-gray-600" : "bg-[#ffcc00] hover:bg-[#e6b800] text-gray-900"}`}>{sel ? "Remover ✓" : "Adicionar"}</button>
+                      <h3 className="font-black text-lg text-gray-900 mb-4 mt-2">Quilometragem</h3>
+                      <div className="border border-gray-200 rounded-xl p-5 mb-8 flex items-center gap-5">
+                        <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center text-2xl shrink-0 shadow-md">🛣️</div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-1">
+                            <div className="flex items-center gap-2">
+                              <svg className="w-5 h-5 text-[#008d36]" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                              <span className="font-bold text-gray-900">{quoteMileage.totalIncludedDist.toLocaleString('pt-BR')} km</span>
                             </div>
-                          );
-                        })}
+                            <span className="text-sm text-gray-500">
+                              ({quoteMileage.includedKm} km/{quoteMileage.includedKmType === 'D' ? 'dia' : 'período'})
+                            </span>
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            Quilometragem adicional: <span className="font-bold text-gray-700">R$ {fmtPrice(quoteMileage.extraKmPriceBRL)}/km</span>
+                            <span className="text-xs text-gray-400 ml-1">({quoteMileage.currency} {fmtPrice(quoteMileage.extraKmPrice)}/km)</span>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="text-sm font-bold text-[#008d36]">Incluído</span>
+                        </div>
                       </div>
                     </>
-                  ) : selectedTariffType === 'POA' ? (
-                    <p className="text-gray-400 text-sm py-4">Nenhuma proteção disponível para este veículo.</p>
-                  ) : null}
+                  )}
 
                   {/* 🧳 Acessórios e Equipamentos (XRS API) */}
                   {xrsEquipment.length > 0 && (

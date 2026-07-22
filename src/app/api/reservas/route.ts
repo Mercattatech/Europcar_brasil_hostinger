@@ -514,15 +514,15 @@ export async function POST(request: Request) {
 
         // Also send detailed HTML confirmation with equipment & extras
         try {
-          const insNames: Record<string, string> = {
-            TPL: 'Resp. Civil', LDW: 'Danos e Roubo', CDW: 'Colisão', THW: 'Roubo',
-            SCDW: 'Super CDW', PAI: 'Acidentes Pessoais', PEP: 'Efeitos Pessoais',
-            RSA: 'Assistência na Estrada', APP: 'Proteção de Aparência',
-          };
+          // Use xrsInsurances which now has real names and prices from getQuote
+          const xrsInsArr: any[] = Array.isArray(xrsInsurances) ? xrsInsurances : [];
           const extrasMap = bookingData.extras || {};
           const extrasArr = Object.entries(extrasMap)
             .filter(([, v]: any) => v > 0)
-            .map(([code, qty]: any) => ({ code, name: insNames[code] || code, qty }));
+            .map(([code, qty]: any) => {
+              const qi = xrsInsArr.find((i: any) => i.code === code);
+              return { code, name: qi?.name || code, qty, priceBRL: qi?.priceBRL || 0 };
+            });
 
           sendBookingConfirmation({
             toEmail: customerData.email,

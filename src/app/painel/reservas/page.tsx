@@ -422,15 +422,22 @@ export default function PainelReservas() {
                                            )}
 
                                            <div className="border-t border-gray-700/50 my-2"></div>
-                                           <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Extras Selecionados</p>
+                                           <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Proteções Selecionadas</p>
                                            {parsed?.booking?.extras && Object.keys(parsed.booking.extras).filter((k: string) => parsed.booking.extras[k] > 0).length > 0 ? (
                                               <div className="flex flex-wrap gap-1">
-                                                 {Object.entries(parsed.booking.extras).filter(([, v]: any) => v > 0).map(([code, qty]: any) => (
-                                                    <span key={code} className="bg-gray-800 text-gray-300 text-[10px] font-bold px-2 py-1 rounded">{code} x{qty}</span>
-                                                 ))}
+                                                 {Object.entries(parsed.booking.extras).filter(([, v]: any) => v > 0).map(([code, qty]: any) => {
+                                                    const qi = (parsed?.booking?.xrsInsurances || []).find((i: any) => i.code === code);
+                                                    const name = qi?.name || code;
+                                                    const priceBRL = qi?.priceBRL || 0;
+                                                    return (
+                                                       <span key={code} className="bg-green-900/40 text-green-300 text-[10px] font-bold px-2 py-1 rounded">
+                                                          🛡️ {name} x{qty}{priceBRL > 0 && ` (R$${parseFloat(priceBRL).toFixed(2)})`}
+                                                       </span>
+                                                    );
+                                                 })}
                                               </div>
                                            ) : (
-                                              <p className="text-gray-500 text-xs italic">Nenhum extra selecionado</p>
+                                              <p className="text-gray-500 text-xs italic">Nenhuma proteção selecionada</p>
                                            )}
 
                                            {/* Acessórios / Equipment */}

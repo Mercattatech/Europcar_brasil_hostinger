@@ -14,7 +14,7 @@ interface BookingConfirmationData {
   totalBRL?: number;
   isOnRequest?: boolean;
   xrsEquipment?: Array<{ code: string; name?: string; icon?: string; qty: number; price?: number; priceBRL?: number; currency?: string }>;
-  extras?: Array<{ code: string; name?: string; qty: number }>;
+  extras?: Array<{ code: string; name?: string; qty: number; priceBRL?: number }>;
 }
 
 function formatXRSDate(d: string): string {
@@ -131,8 +131,10 @@ export async function sendBookingConfirmation(data: BookingConfirmationData) {
         <strong style="color:#166534;font-size:13px;">🛡️ Proteções Adicionais</strong>
         <table style="width:100%;border-collapse:collapse;margin-top:8px;">
           ${data.extras.map(ex => {
+            const pBRL = ex.priceBRL || 0;
             return `<tr>
-              <td style="padding:4px 0;color:#374151;font-size:13px;">${ex.name || ex.code} ×${ex.qty}</td>
+              <td style="padding:4px 0;color:#374151;font-size:13px;">🛡️ ${ex.name || ex.code} ×${ex.qty}</td>
+              <td style="padding:4px 0;color:#374151;font-size:13px;text-align:right;font-weight:bold;">${pBRL > 0 ? `R$ ${pBRL.toFixed(2).replace('.', ',')}` : ''}</td>
             </tr>`;
           }).join('')}
         </table>
