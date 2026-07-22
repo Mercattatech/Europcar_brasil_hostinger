@@ -734,18 +734,59 @@ function VehiclesContent() {
 
                           {/* Info */}
                           <div className="flex-1 flex flex-col justify-start">
-                            <h2 className="text-[22px] font-black text-gray-900 uppercase tracking-tight">{name}</h2>
+                            {/* Car name: use sample (AUDI A3 SPORTBACK) as main title */}
+                            <h2 className="text-[22px] font-black text-gray-900 uppercase tracking-tight">
+                              {sample || name}
+                            </h2>
                             
-                            <div className="mt-2 mb-6">
+                            {/* Tags row with tooltips */}
+                            <div className="mt-2 mb-4 flex flex-wrap gap-2">
+                              {/* Premium or OU SIMILAR tag */}
                               {(code.startsWith('U') || code.startsWith('L') || car.specs?.carCategoryType?.toLowerCase().includes('premium')) ? (
-                                <span className="inline-flex items-center gap-1.5 border border-[#b89b4e] rounded-full px-3 py-1 text-[10px] font-black text-[#aa8323] uppercase">
+                                <span className="group relative inline-flex items-center gap-1.5 bg-[#1a472a] rounded-full px-3 py-1 text-[10px] font-black text-white uppercase cursor-help">
                                   PREMIUM BRAND GUARANTEED
-                                  <svg className="w-3.5 h-3.5 bg-gray-300 text-white rounded-full p-[2px]" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
+                                  <svg className="w-3.5 h-3.5 bg-white/30 text-white rounded-full p-[2px]" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
+                                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-gray-900 text-white text-[11px] font-normal normal-case rounded-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
+                                    Marca premium garantida. Você receberá exatamente o modelo exibido ou equivalente da mesma marca.
+                                  </span>
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1.5 border border-gray-300 rounded-full px-3 py-1 text-[10px] font-black text-gray-900 uppercase">
-                                  {sample ? `${sample} OU SIMILAR` : `OU SIMILAR ${car.specs?.carCategoryName ? car.specs.carCategoryName.split(',')[0].split(' ')[0] : 'STANDARD'}`}
+                                <span className="group relative inline-flex items-center gap-1.5 border border-gray-300 rounded-full px-3 py-1 text-[10px] font-black text-gray-900 uppercase cursor-help">
+                                  OU SIMILAR {name.split(',')[0].split(' ')[0]}
                                   <svg className="w-3.5 h-3.5 bg-gray-300 text-white rounded-full p-[2px]" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
+                                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-gray-900 text-white text-[11px] font-normal normal-case rounded-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
+                                    Você receberá este modelo ou um veículo similar da mesma categoria com características equivalentes.
+                                  </span>
+                                </span>
+                              )}
+
+                              {/* Category type tag from API */}
+                              {car.specs?.carCategoryType && (
+                                <span className="group relative inline-flex items-center gap-1.5 bg-gray-100 rounded-full px-3 py-1 text-[10px] font-black text-gray-600 uppercase cursor-help">
+                                  {car.specs.carCategoryType}
+                                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-gray-900 text-white text-[11px] font-normal normal-case rounded-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
+                                    Tipo de veículo: {car.specs.carCategoryType}
+                                  </span>
+                                </span>
+                              )}
+
+                              {/* Fuel type tag */}
+                              {car.specs?.carCategoryFuelType && (
+                                <span className="group relative inline-flex items-center gap-1.5 bg-blue-50 rounded-full px-3 py-1 text-[10px] font-black text-blue-700 uppercase cursor-help">
+                                  {car.specs.carCategoryFuelType === 'D' ? 'Diesel' : car.specs.carCategoryFuelType === 'E' ? 'Elétrico' : car.specs.carCategoryFuelType === 'H' ? 'Híbrido' : 'Gasolina'}
+                                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-40 bg-gray-900 text-white text-[11px] font-normal normal-case rounded-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
+                                    Tipo de combustível do veículo
+                                  </span>
+                                </span>
+                              )}
+
+                              {/* Model Choice tag */}
+                              {car.specs?.carCategoryModelGuaranteed === 'Y' && (
+                                <span className="group relative inline-flex items-center gap-1.5 bg-purple-50 rounded-full px-3 py-1 text-[10px] font-black text-purple-700 uppercase cursor-help">
+                                  Model Choice
+                                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-gray-900 text-white text-[11px] font-normal normal-case rounded-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
+                                    Modelo garantido — você receberá exatamente este veículo.
+                                  </span>
                                 </span>
                               )}
                             </div>
@@ -776,16 +817,22 @@ function VehiclesContent() {
                                   A/C
                                 </span>
                               )}
-                              <span className="flex items-center gap-1.5" title="Idade mínima">
+                              <span className="flex items-center gap-1.5" title="Idade mínima do motorista">
                                 <svg className="w-[18px] h-[18px] text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 14c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm7.5 3H4.5v-1c0-1.5 3-2.25 4.5-2.25s4.5.75 4.5 2.25v1z"/></svg>
-                                21
+                                {car.specs?.carCategoryMinDriverAge || "18"}
                               </span>
                             </div>
 
-                            {/* Mileage Check */}
-                            <div className="mt-6 text-[#008d36] flex items-center gap-2 text-sm text-gray-500">
-                              <svg className="w-[18px] h-[18px] text-[#008d36]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
-                              {car.mileageType === "Livre" ? "Quilometragem ilimitada" : `${car.mileageLimit || "3600"} ${car.mileageUnit} incluído`}
+                            {/* Mileage + Protection Checks */}
+                            <div className="flex flex-col gap-1 mt-4">
+                              <div className="text-[#008d36] flex items-center gap-2 text-sm font-bold">
+                                <svg className="w-[16px] h-[16px] text-[#008d36]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                {car.mileageType === "Livre" ? "Quilometragem ilimitada" : `${car.mileageLimit || "5700"} km incluído`}
+                              </div>
+                              <div className="text-[#008d36] flex items-center gap-2 text-sm font-bold">
+                                <svg className="w-[16px] h-[16px] text-[#008d36]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                Proteção básica incluída
+                              </div>
                             </div>
                           </div>
 
@@ -818,6 +865,7 @@ function VehiclesContent() {
                           <div className="bg-[#f9f9f9] p-8 flex flex-col gap-6">
                             <h3 className="text-[22px] font-black text-gray-900">Detalhes completos do veículo</h3>
                             
+                            {/* Full specs row matching official site */}
                             <div className="flex items-center gap-x-8 gap-y-4 text-[15px] font-black text-gray-900 flex-wrap">
                               <span className="flex items-center gap-2">
                                 <svg className="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
@@ -829,8 +877,14 @@ function VehiclesContent() {
                               </span>
                               {(car.specs?.carCategoryAirCond === "Y" || car.carCategoryAirCond === "Y") && (
                                 <span className="flex items-center gap-2">
-                                  <svg className="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M17.3 11l-3.3-3.3c-.4-.4-1-.4-1.4 0s-.4 1 0 1.4L14.2 10.7 13.5 10H10V6.5l.7.7c.4.4 1 .4 1.4 0s.4-1 0-1.4l-3.3-3.3c-.4-.4-1-.4-1.4 0l-3.3 3.3c-.4.4-.4 1 0 1.4s1 .4 1.4 0l.7-.7V10H2.8l1.6-1.6c.4-.4.4-1 0-1.4s-1-.4-1.4 0l-3.3 3.3c-.4.4-.4 1 0 1.4s1 .4 1.4 0L2.8 13h3.5v3.5l-.7-.7c-.4-.4-1-.4-1.4 0s-.4 1 0 1.4l3.3 3.3c.4.4 1 .4 1.4 0s.4-1 0-1.4l-.7-.7V13h3.5l-1.6 1.6c-.4.4-.4 1 0 1.4s1 .4 1.4 0l3.3-3.3c.3-.4.3-1-.1-1.4zM12 12c-.6 0-1-.4-1-1s.4-1 1-1 1 .4 1 1-.4 1-1 1z"/></svg>
+                                  <svg className="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M22 11h-4.17l3.24-3.24-1.41-1.42L15 11h-2V9l4.66-4.66-1.42-1.41L13 6.17V2h-2v4.17L7.76 2.93 6.34 4.34 11 9v2H9L4.34 6.34 2.93 7.76 6.17 11H2v2h4.17l-3.24 3.24 1.41 1.42L9 13h2v2l-4.66 4.66 1.42 1.41L11 17.83V22h2v-4.17l3.24 3.24 1.42-1.41L13 15v-2h2l4.66 4.66 1.41-1.42L17.83 13H22z"/></svg>
                                   A/C
+                                </span>
+                              )}
+                              {car.specs?.carCategoryPowerHP && (
+                                <span className="flex items-center gap-2">
+                                  <svg className="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
+                                  {car.specs.carCategoryPowerHP}CV
                                 </span>
                               )}
                               {car.specs?.carCategoryBaggageQuantity && (
@@ -843,37 +897,30 @@ function VehiclesContent() {
                                 <svg className="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v4h-2zm0 6h2v2h-2z"/></svg>
                                 {car.specs?.carCategoryAutomatic === "Y" || car.carCategoryAutomatic === "Y" ? "Automático" : "Manual"}
                               </span>
+                              {car.specs?.carCategoryPowerKW && (
+                                <span className="flex items-center gap-2">
+                                  <svg className="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                                  {car.specs.carCategoryPowerKW} kW
+                                </span>
+                              )}
+                            </div>
+                            
+                            {/* CO2 + Age row */}
+                            <div className="flex items-center gap-8 text-[15px] font-black text-gray-900 flex-wrap">
                               {car.specs?.carCategoryCO2Quantity && (
                                 <span className="flex items-center gap-2">
                                   <span className="bg-[#FFD100] text-black text-[11px] font-black px-2 py-0.5 rounded">D</span>
                                   Emissão de CO2: {car.specs.carCategoryCO2Quantity} g/km
                                 </span>
                               )}
-                            </div>
-                            
-                            <div className="flex items-center gap-8 text-[15px] font-black text-gray-900 flex-wrap mt-1">
                               <span className="flex items-center gap-2">
                                 <svg className="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 14c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm7.5 3H4.5v-1c0-1.5 3-2.25 4.5-2.25s4.5.75 4.5 2.25v1z"/></svg>
-                                Idade mínima do motorista: 21 anos
+                                Idade mínima do motorista: {car.specs?.carCategoryMinDriverAge || "18"} anos
                               </span>
                             </div>
                             
-                            {/* Further technical details if any exist in API */}
-                            {(car.specs?.carCategoryModelLength || car.specs?.carCategoryType) && (
-                              <div className="mt-4 border-t border-gray-200 pt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-gray-600">
-                                {car.specs?.carCategoryModelLength && <div><span className="font-bold">Comprimento:</span> {car.specs.carCategoryModelLength}m</div>}
-                                {car.specs?.carCategoryModelWidth && <div><span className="font-bold">Largura:</span> {car.specs.carCategoryModelWidth}m</div>}
-                                {car.specs?.carCategoryModelHeight && <div><span className="font-bold">Altura:</span> {car.specs.carCategoryModelHeight}m</div>}
-                                {car.specs?.carCategoryPowerHP && <div><span className="font-bold">Potência:</span> {car.specs.carCategoryPowerHP} HP</div>}
-                                {car.specs?.carCategoryModelWeight && <div><span className="font-bold">Peso:</span> {car.specs.carCategoryModelWeight} kg</div>}
-                                {car.specs?.carCategoryType && <div><span className="font-bold">Tipo:</span> {car.specs.carCategoryType}</div>}
-                                {sample && <div><span className="font-bold">Exemplo:</span> {sample}</div>}
-                              </div>
-                            )}
-                            
-                            
-                            {/* Incluídos - Blocks as requested */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                            {/* Incluídos - Quilometragem + Proteção blocks */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                               <div className="border-[2px] border-gray-100 bg-white rounded-xl p-5 flex flex-col justify-start">
                                 <span className="text-[10px] font-black text-[#e4002b] uppercase tracking-wider mb-1">INCLUÍDO</span>
                                 <h4 className="text-[17px] font-black text-gray-900 mb-4">Quilometragem</h4>
@@ -901,6 +948,10 @@ function VehiclesContent() {
                                     <svg className="w-4 h-4 text-[#008d36] mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
                                     <span>Proteção contra roubo</span>
                                   </div>
+                                </div>
+                                <div className="flex items-start gap-2 text-xs text-gray-400 mt-4">
+                                  <svg className="w-4 h-4 text-gray-300 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
+                                  Você poderá fazer upgrade da proteção depois de selecionar este veículo
                                 </div>
                               </div>
                             </div>
