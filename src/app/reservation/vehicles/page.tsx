@@ -880,23 +880,60 @@ function VehiclesContent() {
                             </div>
                           </div>
 
-                          {/* Price */}
-                          <div className="w-[200px] shrink-0 flex flex-col items-end justify-center text-right">
-                            <span className="text-[10px] text-gray-800 font-medium uppercase tracking-wider mb-2">PAGAR NO BALCÃO</span>
-                            <div className="flex flex-col items-end mb-1">
-                              <div className="text-3xl font-black text-gray-900 leading-none">
-                                {dailyBRL_POA > 0 ? `R$ ${fmtPrice(dailyBRL_POA)}` : `${currency} ${fmtPrice(dailyPOA)}`} <span className="text-xl font-normal text-gray-900">/ dia</span>
+                          {/* Price columns */}
+                          <div className={`shrink-0 flex ${hasETO ? 'gap-4' : ''} items-stretch justify-end`}>
+                            {/* POA - Pay at Counter */}
+                            <div className={`${hasETO ? 'w-[180px]' : 'w-[200px]'} flex flex-col items-end justify-center text-right`}>
+                              <span className="text-[10px] text-gray-800 font-medium uppercase tracking-wider mb-2">PAGAR NO BALCÃO</span>
+                              <div className="flex flex-col items-end mb-1">
+                                <div className="text-3xl font-black text-gray-900 leading-none">
+                                  {dailyBRL_POA > 0 ? `R$ ${fmtPrice(dailyBRL_POA)}` : `${currency} ${fmtPrice(dailyPOA)}`} <span className="text-xl font-normal text-gray-900">/ dia</span>
+                                </div>
+                                <div className="text-sm text-gray-400 font-medium mt-1">
+                                  TOTAL {totalBRL_POA > 0 ? `R$ ${fmtPrice(totalBRL_POA)}` : `${currency} ${fmtPrice(totalPricePOA)}`}
+                                </div>
                               </div>
-                              <div className="text-sm text-gray-400 font-medium mt-1">
-                                TOTAL {totalBRL_POA > 0 ? `R$ ${fmtPrice(totalBRL_POA)}` : `${currency} ${fmtPrice(totalPricePOA)}`}
-                              </div>
+                              <button
+                                onClick={() => { setSelectedTariffType('POA'); handleSelectCar(car); }}
+                                className="w-full mt-4 bg-[#FFD100] hover:bg-[#F2C700] text-black font-black py-3 px-4 rounded text-base transition-colors"
+                              >
+                                {isSelected && selectedTariffType === 'POA' ? "Selecionado" : "Selecionar"}
+                              </button>
                             </div>
-                            <button
-                              onClick={() => { setSelectedTariffType('POA'); handleSelectCar(car); }}
-                              className="w-full mt-4 bg-[#FFD100] hover:bg-[#F2C700] text-black font-black py-3 px-4 rounded text-base transition-colors"
-                            >
-                              {isSelected ? "Selecionado" : "Selecionar"}
-                            </button>
+
+                            {/* ETO - Pay Now (with markup) */}
+                            {hasETO && (() => {
+                              const dailyBRL_ETO = totalBRL_ETO > 0 ? totalBRL_ETO / bookingDurationDays : 0;
+                              const dailyETO = totalPriceETO > 0 ? totalPriceETO / bookingDurationDays : 0;
+                              return (
+                                <div className="w-[190px] flex flex-col items-end justify-center text-right bg-green-50 border border-green-200 rounded-lg p-3 relative">
+                                  {discountPct > 0 && (
+                                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-[#008d36] text-white text-[10px] font-black px-2 py-0.5 rounded-full whitespace-nowrap">
+                                      {discountPct}% MAIS BARATO
+                                    </span>
+                                  )}
+                                  <span className="text-[10px] text-[#008d36] font-bold uppercase tracking-wider mb-2">PAGAR AGORA</span>
+                                  <div className="flex flex-col items-end mb-1">
+                                    <div className="text-3xl font-black text-[#008d36] leading-none">
+                                      {dailyBRL_ETO > 0 ? `R$ ${fmtPrice(dailyBRL_ETO)}` : `${currency} ${fmtPrice(dailyETO)}`} <span className="text-xl font-normal text-[#008d36]">/ dia</span>
+                                    </div>
+                                    <div className="text-sm text-green-600 font-medium mt-1">
+                                      TOTAL {totalBRL_ETO > 0 ? `R$ ${fmtPrice(totalBRL_ETO)}` : `${currency} ${fmtPrice(totalPriceETO)}`}
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={() => {
+                                      setSelectedTariffType('ETO');
+                                      const merged = { ...car, ...etoCar, totalRateEstimate: totalPriceETO.toFixed(2), totalRateEstimateInBookingCurrency: totalBRL_ETO.toFixed(2), optionalInsurances: car.optionalInsurances, imageUrl: car.imageUrl, _etoCID: '56935466' };
+                                      handleSelectCar(merged);
+                                    }}
+                                    className="w-full mt-4 bg-[#008d36] hover:bg-[#007530] text-white font-black py-3 px-4 rounded text-base transition-colors"
+                                  >
+                                    {isSelected && selectedTariffType === 'ETO' ? "Selecionado ✓" : "Pagar Agora"}
+                                  </button>
+                                </div>
+                              );
+                            })()}
                           </div>
                         </div>
 
