@@ -314,16 +314,23 @@ function VehiclesContent() {
             let mileageLimit = "";
             let mileageUnit = "km";
             let extraMileageCost = "";
-            const distance = r.distance?.$ || r.distance;
+            const distanceRaw = r.distance;
+            const distance = distanceRaw?.$ || distanceRaw;
             if (distance) {
-              if (distance.unlimitedDistance === "Y") {
+              if (distance.unlimitedDistance === "Y" || distance.unlimited === "Y" || distance.unlimitedMileage === "Y") {
                 mileageType = "Livre";
-              } else if (distance.distanceValue) {
-                mileageLimit = distance.distanceValue;
-                mileageUnit = distance.unit === "M" ? "milhas" : "km";
+              } else {
+                // Try multiple possible field names from XRS
+                const distVal = distance.distanceValue || distance.includedDistance || distance.quantity || distance.freeDistance || distance.value || distance.includedKm || "";
+                if (distVal) {
+                  mileageLimit = String(distVal);
+                }
+                mileageUnit = (distance.unit === "M" || distance.distUnit === "M") ? "milhas" : "km";
               }
-              if (distance.extraDistanceRate) {
-                extraMileageCost = distance.extraDistanceRate;
+              // Extra mileage cost
+              const extraRate = distance.extraDistanceRate || distance.extraMileageRate || distance.surchargeRate || "";
+              if (extraRate) {
+                extraMileageCost = String(extraRate);
               }
             }
 
@@ -348,6 +355,11 @@ function VehiclesContent() {
               }
             }
 
+            // Debug: log distance object to find field names
+            if (distance && !mileageLimit && mileageType !== "Livre") {
+              console.log(`[Distance Debug] Code: ${attrs.carCategoryCode}`, JSON.stringify(distance));
+            }
+
             const specs = specsMap[attrs.carCategoryCode] || {};
             allRates.push({ 
               ...attrs, 
@@ -360,6 +372,7 @@ function VehiclesContent() {
               extraMileageCost,
               deductibleAmount,
               deductibleCurrency,
+              distanceRaw: distance ? JSON.stringify(distance) : "",
               specs 
             });
           }
@@ -856,7 +869,7 @@ function VehiclesContent() {
                             <div className="flex flex-col gap-1 mt-4">
                               <div className="text-[#008d36] flex items-center gap-2 text-sm font-bold">
                                 <svg className="w-[16px] h-[16px] text-[#008d36]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
-                                {car.mileageType === "Livre" ? "Quilometragem ilimitada" : `${car.mileageLimit || "5700"} km incluído`}
+                                {car.mileageType === "Livre" ? "Quilometragem ilimitada" : car.mileageLimit ? `${car.mileageLimit} ${car.mileageUnit || "km"} incluído` : "Quilometragem incluída"}
                               </div>
                               <div className="text-[#008d36] flex items-center gap-2 text-sm font-bold">
                                 <svg className="w-[16px] h-[16px] text-[#008d36]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
@@ -955,7 +968,7 @@ function VehiclesContent() {
                                 <h4 className="text-[17px] font-black text-gray-900 mb-4">Quilometragem</h4>
                                 <div className="flex items-start gap-2 text-sm text-gray-700 font-bold mb-2">
                                   <svg className="w-4 h-4 text-[#008d36] mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
-                                  <span>{car.mileageType === "Livre" ? "Quilometragem ilimitada" : `${car.mileageLimit || "?"} ${car.mileageUnit || "km"} incluído`}</span>
+                                  <span>{car.mileageType === "Livre" ? "Quilometragem ilimitada" : car.mileageLimit ? `${car.mileageLimit} ${car.mileageUnit || "km"} incluído` : "Quilometragem incluída"}</span>
                                 </div>
                                 {car.mileageType !== "Livre" && car.extraMileageCost && (
                                   <div className="text-sm text-gray-500 pl-6">
