@@ -1670,9 +1670,14 @@ function VehiclesContent() {
                               <div className={`w-12 h-12 shrink-0 flex items-center justify-center rounded-lg text-3xl bg-gray-50 border border-gray-100 ${isUnavailable ? 'opacity-40 grayscale' : ''}`}>
                                 {eq.icon || '📦'}
                               </div>
-                              <h4 className={`text-sm font-bold leading-tight ${isUnavailable ? 'text-gray-400' : 'text-gray-900'}`}>
+                              <div className="flex flex-col flex-1 min-w-0">
+                                <h4 className={`text-sm font-bold leading-tight mb-1 ${isUnavailable ? 'text-gray-400' : 'text-gray-900'}`}>
                                 {eq.name}
-                              </h4>
+                                </h4>
+                                <span className="self-start text-[10px] font-black uppercase tracking-widest bg-gray-100 text-gray-500 px-2 py-0.5 rounded border border-gray-200">
+                                  {eq.code}
+                                </span>
+                              </div>
                             </div>
 
                             {/* Description */}
