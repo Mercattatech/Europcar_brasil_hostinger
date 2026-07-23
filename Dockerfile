@@ -11,11 +11,9 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma/
 
-# Instala todas as dependências (incluindo devDependencies para o build)
+# Instala todas as dependências (incluindo devDependências para o build)
+# NOTA: 'npm ci' já executa 'prisma generate' via postinstall — sem duplicação.
 RUN npm ci
-
-# Gera o Prisma Client para a arquitetura correta do container
-RUN npx prisma generate
 
 # =============================================================================
 # Stage 2 — Build
