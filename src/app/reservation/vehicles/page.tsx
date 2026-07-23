@@ -1407,7 +1407,9 @@ function VehiclesContent() {
                   })()}
 
                   {/* 🛡️ Proteções da API getQuote — Real data for selected vehicle */}
-                  {quoteInsurances.length > 0 ? (() => {
+                  {/* For ETO (Pagar Agora) on international stations, hide the package cards —
+                      only the Zero Excess banner above is shown. */}
+                  {!(selectedTariffType === 'ETO' && selectedCar?.currency && selectedCar.currency !== 'BRL') && quoteInsurances.length > 0 ? (() => {
                     // Insurance name and description maps (Portuguese)
                     const insNamesPT: Record<string, string> = {
                       WWI: 'Proteção de para-brisas, vidros, faróis e pneus',
