@@ -1514,143 +1514,94 @@ function VehiclesContent() {
                      return (
                       <>
                         <h3 className="font-extrabold text-2xl text-gray-900 mb-2">Proteções</h3>
-                        <p className="text-sm text-gray-500 mb-6">Escolha o pacote de proteção para sua viagem. Os valores são somados e incluídos no total.</p>
+                        <p className="text-sm text-gray-500 mb-6">Selecione as proteções desejadas. Os valores são somados e incluídos no total.</p>
 
-                        {/* Package detail descriptions for MEDIUM/PREMIUM bundle codes (Brazil stations) */}
-                        {/* Maps a bundle code to its individual inclusions shown as bullets */}
-                        {(() => {
-                          // When API returns MEDIUM or PREMIUM as a single code, we expand it to bullet-level detail
-                          const BUNDLE_DETAILS: Record<string, string[]> = {
-                            MEDIUM: [
-                              'Proteção contra Danos por Colisão com franquia reduzida',
-                              'Proteção contra Roubo com franquia reduzida',
-                              'Responsabilidade Civil obrigatória inclusa',
-                              'Assistência na estrada 24h',
-                              'Franquia reduzida em caso de acidente',
-                            ],
-                            PREMIUM: [
-                              'Proteção Total contra Danos — franquia zero',
-                              'Proteção Total contra Roubo — franquia zero',
-                              'Responsabilidade Civil obrigatória inclusa',
-                              'Assistência na estrada 24h',
-                              'Proteção de para-brisas, vidros e faróis',
-                              'Proteção para acidentes pessoais (motorista e passageiros)',
-                              'Proteção de efeitos pessoais e bagagens',
-                            ],
-                          };
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                          {quoteInsurances
+                            .filter((ins: any) => ins.type !== 'M' && ins.code !== 'SL')
+                            .map((ins: any) => {
+                              const insId = ins.code;
+                              const sel = selectedExtrasMap[insId] > 0;
+                              const isIncluded = ins.type === 'I';
+                              const totalBRL = ins.rentalPriceInBookingCurrencyAI || 0;
+                              const isAvailable = totalBRL > 0 || isIncluded;
+                              const excessBRL = ins.bkExcessWithPOM || 0;
+                              const name = insNamesPT[insId] || ins.descr || insId;
+                              const desc = insDescPT[insId] || ins.descr || 'Proteção adicional.';
+                              const icon = insIconEmoji[insId] || '🛡️';
+                              const TRUNCATE_AT = 90;
+                              const isLong = desc.length > TRUNCATE_AT;
+                              const shortDesc = isLong ? desc.slice(0, TRUNCATE_AT) + '...' : desc;
+                              return (
+                                <article
+                                  key={insId}
+                                  className={`bg-white p-5 flex flex-col justify-between h-full rounded-lg transition-shadow duration-200 cursor-default
+                                    ${sel ? 'border-2 border-[#008d36] shadow-md' : 'border border-gray-200 hover:shadow-md'}`}
+                                >
+                                  {/* Top content */}
+                                  <div className="flex flex-col">
+                                    {/* Icon + Title + Code tag */}
+                                    <div className="flex items-start gap-3 mb-3">
+                                      <div className="w-14 h-14 flex-shrink-0 flex items-center justify-center text-3xl bg-gray-50 rounded-lg border border-gray-100">
+                                        {icon}
+                                      </div>
+                                      <div className="flex flex-col flex-1 min-w-0">
+                                        <h2 className="text-[0.95rem] font-bold leading-tight text-gray-900 mb-1">{name}</h2>
+                                        {/* Code tag */}
+                                        <span className="self-start text-[10px] font-black uppercase tracking-widest bg-gray-100 text-gray-500 px-2 py-0.5 rounded border border-gray-200">
+                                          {insId}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    {/* Description */}
+                                    <div className="text-gray-500 text-xs leading-relaxed mb-3">
+                                      <p>{shortDesc}</p>
+                                    </div>
+                                    {/* Excess / zero excess badge */}
+                                    {excessBRL > 0 && !isIncluded && (
+                                      <p className="text-xs text-gray-400 mb-1">Franquia: R$ {fmtPrice(excessBRL)}</p>
+                                    )}
+                                    {ins.excessWithPOM === 0 && !isIncluded && insId !== 'RSA' && insId !== 'PAI' && (
+                                      <span className="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full mb-2 self-start uppercase tracking-wide">Sem franquia</span>
+                                    )}
+                                  </div>
 
-                          return (
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-6">
-                              {packages.map(pkg => {
-                                const isSelected = selectedProtectionPackage === pkg.id;
-                                const isExpanded = expandedPackages.has(pkg.id);
-                                const toggleExpand = (e: React.MouseEvent) => {
-                                  e.stopPropagation();
-                                  setExpandedPackages(prev => {
-                                    const next = new Set(prev);
-                                    if (next.has(pkg.id)) next.delete(pkg.id);
-                                    else next.add(pkg.id);
-                                    return next;
-                                  });
-                                };
-
-                                // Build the list of items to show
-                                // For each member, if it has a bundle detail expansion, use that; else use the name
-                                const allMembers = [...pkg.extraMembers, ...pkg.members];
-                                const expandedItems: { key: string; label: string }[] = [];
-                                for (const ins of allMembers) {
-                                  const bundleLines = BUNDLE_DETAILS[ins.code];
-                                  if (bundleLines) {
-                                    bundleLines.forEach((line, i) => expandedItems.push({ key: `${ins.code}-${i}`, label: line }));
-                                  } else {
-                                    expandedItems.push({ key: ins.code, label: insNamesPT[ins.code] || ins.descr || ins.code });
-                                  }
-                                }
-
-                                const VISIBLE = 6;
-                                const visibleItems = isExpanded ? expandedItems : expandedItems.slice(0, VISIBLE);
-                                const hiddenCount = expandedItems.length - VISIBLE;
-
-                                return (
-                                  <div
-                                    key={pkg.id}
-                                    onClick={() => handleSelectPackage(pkg.id, pkg.members)}
-                                    className={`relative rounded-xl border-2 cursor-pointer flex flex-col overflow-hidden transition-all duration-200
-                                      ${isSelected ? `${pkg.color} shadow-lg scale-[1.01]` : 'border-gray-200 hover:border-gray-300 hover:shadow-md'}`}
-                                  >
-                                    {pkg.badge && (
-                                      <div className={`absolute top-3 right-3 text-[10px] font-black tracking-widest px-2 py-0.5 rounded-full
-                                        ${pkg.id === 'premium' ? 'bg-yellow-400 text-yellow-900' : 'bg-[#008d36] text-white'}`}>
-                                        {pkg.badge}
+                                  {/* Bottom: price + button */}
+                                  <div className="mt-auto">
+                                    <div className="mb-3">
+                                      {isIncluded ? (
+                                        <span className="text-base font-extrabold text-[#008d36]">Incluída</span>
+                                      ) : isAvailable ? (
+                                        <>
+                                          <span className="text-xl font-extrabold text-gray-900">R$ {fmtPrice(totalBRL)}</span>
+                                          <span className="text-gray-500 font-medium text-sm"> / total</span>
+                                        </>
+                                      ) : (
+                                        <span className="text-sm font-bold text-orange-400">Indisponível</span>
+                                      )}
+                                    </div>
+                                    {isIncluded ? (
+                                      <div className="w-full text-center font-bold py-2.5 rounded-md text-sm bg-green-100 text-[#008d36]">
+                                        ✓ Incluída
+                                      </div>
+                                    ) : isAvailable ? (
+                                      <button
+                                        onClick={() => sel ? handleExtraQuantity(insId, -1) : handleExtraQuantity(insId, 1)}
+                                        className={`w-full py-2.5 rounded-md font-bold text-sm transition-colors
+                                          ${sel ? 'bg-[#008d36] text-white' : 'bg-[#FFD100] hover:bg-[#f2c800] text-black'}`}
+                                      >
+                                        {sel ? '✓ Adicionado — Remover' : 'Adicionar'}
+                                      </button>
+                                    ) : (
+                                      <div className="w-full text-center font-bold py-2.5 rounded-md text-sm bg-gray-100 text-gray-400">
+                                        Indisponível
                                       </div>
                                     )}
-                                    <div className={`p-4 pb-3 ${isSelected ? pkg.headerBg : 'bg-gray-50'} transition-colors`}>
-                                      <div className="text-2xl mb-1">{pkg.icon}</div>
-                                      <h4 className={`text-lg font-black ${isSelected ? 'text-white' : 'text-gray-900'}`}>{pkg.label}</h4>
-                                      <p className={`text-xs font-medium ${isSelected ? 'text-white/80' : 'text-gray-500'}`}>{pkg.sublabel}</p>
-                                    </div>
-                                    <div className="bg-white p-4 flex flex-col flex-1">
-                                      <p className="text-xs text-gray-500 mb-3 leading-relaxed">{pkg.description}</p>
-                                      <ul className="space-y-1.5 mb-1 flex-1">
-                                        {visibleItems.map(item => (
-                                          <li key={item.key} className="flex items-start gap-2 text-xs text-gray-700">
-                                            <span className="text-[#008d36] font-bold mt-0.5">✓</span>
-                                            <span>{item.label}</span>
-                                          </li>
-                                        ))}
-                                        {expandedItems.length === 0 && <li className="text-xs text-gray-400 italic">Proteção padrão incluída na tarifa</li>}
-                                      </ul>
-                                      {/* Expandable toggle */}
-                                      {hiddenCount > 0 && (
-                                        <button
-                                          onClick={toggleExpand}
-                                          className="mt-1 mb-3 text-xs text-[#008d36] font-semibold underline underline-offset-2 text-left hover:text-[#006b2a] transition-colors"
-                                        >
-                                          {isExpanded ? '▲ Ver menos' : `+ ${hiddenCount} mais...`}
-                                        </button>
-                                      )}
-                                      <div className="border-t border-gray-100 pt-3 mt-auto">
-                                        {pkg.isFree ? (
-                                          <p className="text-base font-extrabold text-[#008d36]">Já incluído</p>
-                                        ) : (
-                                          <><span className="text-2xl font-extrabold text-gray-900">R$ {fmtPrice(pkg.total)}</span><span className="text-sm text-gray-500 font-medium"> / total</span></>
-                                        )}
-                                      </div>
-                                      <button
-                                        onClick={e => { e.stopPropagation(); handleSelectPackage(pkg.id, pkg.members); }}
-                                        className={`mt-3 w-full py-2.5 rounded-lg font-bold text-sm transition-all
-                                          ${isSelected
-                                            ? pkg.id === 'premium' ? 'bg-yellow-400 text-yellow-900' : pkg.id === 'medium' ? 'bg-[#008d36] text-white' : 'bg-gray-800 text-white'
-                                            : 'bg-[#FFD100] hover:bg-[#f2c800] text-black'
-                                          }`}
-                                      >
-                                        {isSelected ? '✓ Pacote selecionado' : `Selecionar ${pkg.label}`}
-                                      </button>
-                                    </div>
                                   </div>
-                                );
-                              })}
-                            </div>
-                          );
-                        })()}
-
-                        {selectedProtectionPackage !== 'none' && (() => {
-                          const pkg = packages.find(p => p.id === selectedProtectionPackage);
-                          if (!pkg) return null;
-                          const optCount = pkg.members.filter((ins: any) => ins.type === 'O').length;
-                          return (
-                            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl flex items-start gap-3">
-                              <span className="text-2xl">✅</span>
-                              <div className="flex-1">
-                                <p className="font-bold text-gray-900 text-sm">Pacote {pkg.label} selecionado</p>
-                                <p className="text-xs text-gray-600 mt-0.5">
-                                  {optCount > 0 ? `${optCount} proteção(ões) adicionada(s)` : 'Apenas proteção básica incluída na tarifa'}
-                                  {pkg.total > 0 && ` · Total adicional: R$ ${fmtPrice(pkg.total)}`}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })()}
+                                </article>
+                              );
+                            })}
+                        </div>
                       </>
                     );
                   })() : (
@@ -1714,8 +1665,8 @@ function VehiclesContent() {
                               </div>
                             )}
 
-                            {/* Header: icon + title */}
-                            <div className="flex gap-3 mb-3 mt-1">
+                            {/* Header: icon + title + code tag */}
+                             <div className="flex gap-3 mb-3 mt-1">
                               <div className={`w-12 h-12 shrink-0 flex items-center justify-center rounded-lg text-3xl bg-gray-50 border border-gray-100 ${isUnavailable ? 'opacity-40 grayscale' : ''}`}>
                                 {eq.icon || '📦'}
                               </div>
