@@ -6,7 +6,7 @@ export const revalidate = 3600;
 
 export async function GET() {
   try {
-    const overrides = await prisma.carCategoryOverride.findMany();
+    const overrides = await (prisma as any).carCategoryOverride.findMany();
     return NextResponse.json(overrides, {
       headers: {
         'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',

@@ -704,7 +704,12 @@ function VehiclesContent() {
       ...car,
       imageUrl: carImageOverrides[car.carCategoryCode] || car.imageUrl
     });
-    setZeroExcessUpgrade(false); // reset upgrade when changing car
+    setZeroExcessUpgrade(false);       // reset upgrade when changing car
+    setEquipmentPrices({});            // reset equipment prices for new station/car
+    setXrsEquipment([]);               // reset dynamic equipment list for new station
+    setQuoteInsurances([]);            // reset insurances for new car
+    setQuoteMileage(null);             // reset mileage for new car
+    setSelectedEquipmentMap({});       // clear previous selections
     setCurrentStep(3);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -1225,7 +1230,7 @@ function VehiclesContent() {
               <div className="border-b border-gray-200 p-6 flex items-center justify-between gap-6">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <button onClick={() => { setCurrentStep(2); setEquipmentPrices({}); setQuoteInsurances([]); setQuoteMileage(null); }} className="text-[#008d36] font-bold hover:underline text-sm">← Voltar</button>
+                    <button onClick={() => { setCurrentStep(2); setEquipmentPrices({}); setXrsEquipment([]); setQuoteInsurances([]); setQuoteMileage(null); setSelectedEquipmentMap({}); }} className="text-[#008d36] font-bold hover:underline text-sm">← Voltar</button>
                   </div>
                   <h2 className="text-2xl font-black text-gray-900">Escolha sua proteção e seus extras</h2>
                 </div>
