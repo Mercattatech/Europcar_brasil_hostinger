@@ -915,7 +915,8 @@ function VehiclesContent() {
                     // Apply admin margin to ETO
                     const totalPriceETO = totalPriceETO_raw * (1 + etoMargin / 100);
                     const totalBRL_ETO = totalBRL_ETO_raw * (1 + etoMargin / 100);
-                    const hasETO = etoCar && totalPriceETO_raw > 0;
+                    const isBrazil = currency === 'BRL'; // Brazil: POA only; international: POA + ETO
+                    const hasETO = !isBrazil && etoCar && totalPriceETO_raw > 0;
                     // Calculate discount % ETO vs POA
                     const discountPct = hasETO && totalPricePOA > 0 ? Math.round((1 - totalPriceETO / totalPricePOA) * 100) : 0;
 
