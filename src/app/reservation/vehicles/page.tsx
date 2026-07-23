@@ -313,30 +313,39 @@ function VehiclesContent() {
               .map((ins: any) => ins.$ || ins)
               .filter((ins: any) => ins.type === "M" || ins.type === "I");
 
-            // Extract mileage limits
             let mileageType = "Controlado";
             let mileageLimit = "";
             let mileageUnit = "km";
             let extraMileageCost = "";
-            const distanceRaw = r.distance;
-            const distance = distanceRaw?.$ || distanceRaw;
-            if (distance) {
-              if (distance.unlimitedDistance === "Y" || distance.unlimited === "Y" || distance.unlimitedMileage === "Y") {
-                mileageType = "Livre";
-              } else {
-                // Try multiple possible field names from XRS
-                const distVal = distance.distanceValue || distance.includedDistance || distance.quantity || distance.freeDistance || distance.value || distance.includedKm || "";
-                if (distVal) {
-                  mileageLimit = String(distVal);
+
+            // getMultipleRates returns mileage as root attributes on reservationRate
+            const inclKm = attrs.includedKm || attrs.includedKmScr || "";
+            const kmType = attrs.includedKmType || "D"; // D=per day, R=rental period
+            const kmUnit = attrs.includedKmUnit || "K"; // K=km, M=miles
+
+            if (inclKm === "UNLIMITED" || inclKm === "ILLIMITE" || inclKm === "ILIMITADO") {
+              mileageType = "Livre";
+            } else if (inclKm && inclKm !== "0") {
+              mileageType = "Controlado";
+              mileageLimit = inclKm;
+              mileageUnit = kmUnit === "M" ? "milhas" : "km";
+            } else {
+              // Fallback: check distance child node
+              const distanceRaw = r.distance;
+              const distance = distanceRaw?.$ || distanceRaw;
+              if (distance) {
+                if (distance.unlimitedDistance === "Y" || distance.unlimited === "Y" || distance.unlimitedMileage === "Y") {
+                  mileageType = "Livre";
+                } else {
+                  const distVal = distance.distanceValue || distance.includedDistance || distance.quantity || distance.freeDistance || distance.value || "";
+                  if (distVal) mileageLimit = String(distVal);
+                  mileageUnit = (distance.unit === "M" || distance.distUnit === "M") ? "milhas" : "km";
                 }
-                mileageUnit = (distance.unit === "M" || distance.distUnit === "M") ? "milhas" : "km";
-              }
-              // Extra mileage cost
-              const extraRate = distance.extraDistanceRate || distance.extraMileageRate || distance.surchargeRate || "";
-              if (extraRate) {
-                extraMileageCost = String(extraRate);
+                const extraRate = distance.extraDistanceRate || distance.extraMileageRate || distance.surchargeRate || "";
+                if (extraRate) extraMileageCost = String(extraRate);
               }
             }
+
 
             // Extract deductible/excess from included insurances
             let deductibleAmount = "";
@@ -348,23 +357,43 @@ function VehiclesContent() {
             );
             if (cdwIns) {
               deductibleAmount = cdwIns.deductible;
-              deductibleCurrency = cdwIns.deductibleCurrency || currency || "BRL";
+              deductibleCurrency = cdwIns.deductibleCurrency || attrs.currency || 'BRL';
             }
             // Fallback: check for any insurance with deductible
             if (!deductibleAmount) {
               const anyWithDeductible = allInsForDeductible.find((ins: any) => ins.deductible);
               if (anyWithDeductible) {
                 deductibleAmount = anyWithDeductible.deductible;
-                deductibleCurrency = anyWithDeductible.deductibleCurrency || currency || "BRL";
+                deductibleCurrency = anyWithDeductible.deductibleCurrency || attrs.currency || "BRL";
               }
             }
 
-            // Debug: log distance object to find field names
-            if (distance && !mileageLimit && mileageType !== "Livre") {
-              console.log(`[Distance Debug] Code: ${attrs.carCategoryCode}`, JSON.stringify(distance));
-            }
 
-            const specs = specsMap[attrs.carCategoryCode] || {};
+            // Extract ageLimit from the reservationRate node
+            const ageLimit = r.ageLimit?.$ || r.ageLimit || {};
+            const minAgeForCategory = ageLimit.minAgeForCategory || attrs.minAgeForCategory || '';
+
+            // Build specs from the reservationRate attributes directly (all fields come from API)
+            const specsFromRate = {
+              carCategorySeats:           attrs.carCategorySeats || '',
+              carCategoryDoors:           attrs.carCategoryDoors || '',
+              carCategoryAirCond:         attrs.carCategoryAirCond || '',
+              carCategoryAutomatic:       attrs.carCategoryAutomatic || '',
+              carCategoryBaggageQuantity: attrs.carCategoryBaggageQuantity || '',
+              carCategoryPowerHP:         attrs.carCategoryPowerHP || '',
+              carCategoryPowerKW:         attrs.carCategoryPowerKW || '',
+              carCategoryCO2Quantity:     attrs.carCategoryCO2Quantity || '',
+              carCategoryType:            attrs.carCategoryType || '',
+              carCategoryFuelType:        attrs.fuelTypeCode || '',
+              carCategoryModelHeight:     attrs.carCategoryModelHeight || '',
+              carCategoryModelLength:     attrs.carCategoryModelLength || '',
+              carCategoryModelWidth:      attrs.carCategoryModelWidth || '',
+              carCategoryModelGuaranteed: attrs.carCategoryModelGuaranteed || '',
+              carCategoryMinDriverAge:    minAgeForCategory,
+            };
+            // Merge with catDetailsMap (fallback for any field not in reservationRate)
+            const specs = { ...specsMap[attrs.carCategoryCode] || {}, ...specsFromRate };
+
             allRates.push({ 
               ...attrs, 
               imageUrl, 
@@ -373,10 +402,11 @@ function VehiclesContent() {
               mileageType,
               mileageLimit,
               mileageUnit,
-              extraMileageCost,
+              mileageKmType: attrs.includedKmType || 'D', // D=per day, R=rental period
+              extraMileageCost: extraMileageCost || attrs.extraKmPrice || '',
               deductibleAmount,
               deductibleCurrency,
-              distanceRaw: distance ? JSON.stringify(distance) : "",
+              distanceRaw: '',
               specs 
             });
           }
@@ -1062,7 +1092,13 @@ function VehiclesContent() {
                                 <h4 className="text-[17px] font-black text-gray-900 mb-4">Quilometragem</h4>
                                 <div className="flex items-start gap-2 text-sm text-gray-700 font-bold mb-2">
                                   <svg className="w-4 h-4 text-[#008d36] mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
-                                  <span>{car.mileageType === "Livre" ? "Quilometragem ilimitada" : car.mileageLimit ? `${car.mileageLimit} ${car.mileageUnit || "km"} incluído` : "Quilometragem incluída"}</span>
+                                  <span>
+                                    {car.mileageType === "Livre"
+                                      ? "Quilometragem ilimitada"
+                                      : car.mileageLimit
+                                        ? `${car.mileageLimit} ${car.mileageUnit || "km"} incluído${car.mileageKmType === 'D' ? '/dia' : ''}`
+                                        : "Quilometragem incluída"}
+                                  </span>
                                 </div>
                                 {car.mileageType !== "Livre" && car.extraMileageCost && (
                                   <div className="text-sm text-gray-500 pl-6">
