@@ -1466,8 +1466,8 @@ function VehiclesContent() {
                     const displayInsurances = quoteInsurances.filter(ins => ins.type !== 'M' && ins.code !== 'SL');
                     return (
                       <>
-                        <h3 className="font-black text-lg text-gray-900 mb-6">Proteções</h3>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                        <h3 className="font-extrabold text-2xl text-gray-900 mb-6">Proteções</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                           {displayInsurances.map((ins: any) => {
                             const insId = ins.code;
                             const sel = selectedExtrasMap[insId] > 0;
@@ -1478,50 +1478,81 @@ function VehiclesContent() {
                             const name = insNamesPT[insId] || ins.descr || insId;
                             const desc = insDescPT[insId] || ins.descr || 'Proteção adicional.';
                             const icon = insIconEmoji[insId] || '🛡️';
+                            const TRUNCATE_AT = 90;
+                            const isLong = desc.length > TRUNCATE_AT;
+                            const shortDesc = isLong ? desc.slice(0, TRUNCATE_AT) + '...' : desc;
                             return (
-                              <div key={insId} className={`border rounded-xl p-4 transition-all flex flex-col ${sel ? 'border-[#008d36] bg-green-50 shadow-md' : isIncluded ? 'border-green-300 bg-green-50/50' : !isAvailable ? 'border-gray-100 bg-gray-50 opacity-60' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'}`}>
-                                {/* Icon */}
-                                <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-2xl mb-3 shrink-0">
-                                  {icon}
-                                </div>
-                                {/* Name */}
-                                <h4 className="font-bold text-sm text-gray-900 mb-1 leading-tight">{name}</h4>
-                                {/* Description (truncated) */}
-                                <p className="text-xs text-gray-500 mb-3 line-clamp-3 flex-1">{desc}</p>
-                                {/* Excess info */}
-                                {ins.excessWithPOM !== undefined && ins.excessWithPOM === 0 && !isIncluded && insId !== 'RSA' && insId !== 'PAI' && (
-                                  <span className="text-[9px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full mb-2 self-start">SEM FRANQUIA</span>
-                                )}
-                                {excessBRL > 0 && !isIncluded && (
-                                  <span className="text-[9px] text-gray-400 mb-2">Franquia: R$ {fmtPrice(excessBRL)}</span>
-                                )}
-                                {/* Price */}
-                                <div className="mt-auto">
-                                  {isIncluded ? (
-                                    <div className="text-sm font-bold text-[#008d36] mb-2">Incluída</div>
-                                  ) : isAvailable ? (
-                                    <div className="mb-2">
-                                      <span className="text-lg font-black text-gray-900">R$ {fmtPrice(totalBRL)}</span>
-                                      <span className="text-xs text-gray-400 font-normal"> / total</span>
+                              <article
+                                key={insId}
+                                className={`bg-white p-5 flex flex-col justify-between h-full rounded-lg transition-shadow duration-200 cursor-default
+                                  ${sel ? 'border-2 border-[#008d36] shadow-md' : 'border border-gray-200 hover:shadow-md'}`}
+                              >
+                                {/* Top content */}
+                                <div className="flex flex-col">
+                                  {/* Icon + Title */}
+                                  <div className="flex items-start gap-4 mb-4">
+                                    <div className="w-16 h-16 flex-shrink-0 flex items-center justify-center text-4xl bg-gray-50 rounded-lg border border-gray-100">
+                                      {icon}
                                     </div>
-                                  ) : (
-                                    <div className="text-xs text-orange-500 font-bold mb-2">Indisponível</div>
+                                    <h2 className="text-[1.05rem] font-bold leading-tight text-gray-900 mt-1">{name}</h2>
+                                  </div>
+                                  {/* Description */}
+                                  <div className="text-gray-600 text-sm leading-relaxed mb-5">
+                                    <p>
+                                      {shortDesc}
+                                      {isLong && (
+                                        <span className="text-gray-900 font-medium underline cursor-pointer ml-1">Ler mais</span>
+                                      )}
+                                    </p>
+                                  </div>
+                                  {/* Excess badge */}
+                                  {excessBRL > 0 && !isIncluded && (
+                                    <p className="text-xs text-gray-400 mb-2">Franquia: R$ {fmtPrice(excessBRL)}</p>
                                   )}
+                                  {ins.excessWithPOM === 0 && !isIncluded && insId !== 'RSA' && insId !== 'PAI' && (
+                                    <span className="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full mb-2 self-start uppercase tracking-wide">Sem franquia</span>
+                                  )}
+                                </div>
+
+                                {/* Bottom: price + button */}
+                                <div className="mt-auto">
+                                  {/* Price row */}
+                                  <div className="mb-4">
+                                    {isIncluded ? (
+                                      <span className="text-base font-extrabold text-[#008d36]">Incluída</span>
+                                    ) : isAvailable ? (
+                                      <>
+                                        <span className="text-2xl font-extrabold text-gray-900">R$ {fmtPrice(totalBRL)}</span>
+                                        <span className="text-gray-500 font-medium text-sm"> / total</span>
+                                      </>
+                                    ) : (
+                                      <span className="text-sm font-bold text-orange-400">Indisponível</span>
+                                    )}
+                                  </div>
+
                                   {/* Button */}
                                   {isIncluded ? (
-                                    <div className="w-full text-center font-bold py-2 rounded text-sm bg-green-100 text-[#008d36]">✓ Incluída</div>
+                                    <div className="w-full text-center font-bold py-3 rounded-md text-sm bg-green-100 text-[#008d36]">
+                                      ✓ Incluída
+                                    </div>
                                   ) : isAvailable ? (
                                     <button
                                       onClick={() => sel ? handleExtraQuantity(insId, -1) : handleExtraQuantity(insId, 1)}
-                                      className={`w-full font-bold py-2.5 rounded-lg text-sm transition-all ${sel ? 'bg-[#008d36] text-white shadow-md' : 'bg-[#ffcc00] hover:bg-[#e6b800] text-gray-900'}`}
+                                      className={`w-full py-3 rounded-md font-bold text-sm transition-colors
+                                        ${sel
+                                          ? 'bg-[#008d36] text-white'
+                                          : 'bg-[#FFD100] hover:bg-[#f2c800] text-black'
+                                        }`}
                                     >
-                                      {sel ? '✓ Adicionado' : 'Adicionar'}
+                                      {sel ? '✓ Adicionado — Remover' : 'Adicionar'}
                                     </button>
                                   ) : (
-                                    <div className="w-full text-center font-bold py-2 rounded text-sm bg-gray-100 text-gray-400">Indisponível</div>
+                                    <div className="w-full text-center font-bold py-3 rounded-md text-sm bg-gray-100 text-gray-400">
+                                      Indisponível
+                                    </div>
                                   )}
                                 </div>
-                              </div>
+                              </article>
                             );
                           })}
                         </div>
