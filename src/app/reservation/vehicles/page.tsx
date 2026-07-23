@@ -470,19 +470,7 @@ function VehiclesContent() {
         .then(d => setDbExtras(d.filter((e: any) => e.active)))
         .finally(() => setLoadingExtras(false));
     }
-    // Load standard equipment list
-    if (currentStep === 3 && xrsEquipment.length === 0) {
-      setXrsEquipment([
-        { code: 'CSB', name: 'Cadeira de bebê (0-12 meses)', icon: '👶', description: 'Cadeira infantil para bebês de até 12 meses (grupo 0).', maxQty: 2, onRequest: false },
-        { code: 'CST', name: 'Cadeira de criança (1-3 anos)', icon: '🧒', description: 'Cadeira infantil para crianças de 1 a 3 anos (grupo 1).', maxQty: 2, onRequest: false },
-        { code: 'BST', name: 'Assento elevatório (4-12 anos)', icon: '💺', description: 'Assento elevatório (booster) para crianças de 4 a 12 anos.', maxQty: 2, onRequest: false },
-        { code: 'NVS', name: 'GPS / Navegador', icon: '🗺️', description: 'Navegador GPS portátil com mapas atualizados.', maxQty: 1, onRequest: false },
-        { code: 'SKR', name: 'Rack de esqui', icon: '🎿', description: 'Suporte para transporte de esquis no teto do veículo.', maxQty: 1, onRequest: true },
-        { code: 'CHN', name: 'Correntes para neve', icon: '⛓️', description: 'Correntes para pneus — obrigatórias em certas regiões com neve.', maxQty: 1, onRequest: true },
-        { code: 'WFI', name: 'Wi-Fi portátil', icon: '📶', description: 'Hotspot Wi-Fi portátil com dados móveis inclusos.', maxQty: 1, onRequest: true },
-      ]);
-    }
-  }, [currentStep, dbExtras.length, xrsEquipment.length]);
+  }, [currentStep, dbExtras.length]);
 
   // Fetch equipment prices + insurances + mileage from getQuote when entering Step 3
   useEffect(() => {
@@ -490,9 +478,39 @@ function VehiclesContent() {
     const carCategory = selectedCar.carCategoryCode;
     if (!carCategory || !pickupStation || !pickupDate || !returnDate) return;
 
-    setLoadingEquipment(true);
-    const allEqCodes = ['CSB', 'CST', 'BST', 'NVS', 'SKR', 'CHN', 'WFI'];
+    // ── Full catalog of all known Europcar equipment codes ──────────────────
+    // Items not returned by the API for this station will show as "Indisponível"
+    const EQUIPMENT_CATALOG: Record<string, { name: string; icon: string; description: string; maxQty: number }> = {
+      CSB: { name: 'Assento de segurança para bebês de 0-13 kg (0-12 meses)', icon: '👶', description: 'Recomendado para crianças de 0-12 meses ou 0-13 kg.', maxQty: 2 },
+      CSI: { name: 'Assento de segurança para crianças pequenas de 9-18 kg (1-3 anos)', icon: '🧒', description: 'Recomendado para crianças de 1-3 anos ou 9-18 kg.', maxQty: 2 },
+      CST: { name: 'Assento de segurança para crianças pequenas de 9-18 kg (1-3 anos)', icon: '🧒', description: 'Recomendado para crianças de 1-3 anos ou 9-18 kg.', maxQty: 2 },
+      BST: { name: 'Assento de segurança infantil 15-30 kg (4-7 anos)', icon: '💺', description: 'Recomendado para crianças de 4-7 anos ou 15-30 kg.', maxQty: 2 },
+      NVS: { name: 'Sistema de navegação', icon: '🗺️', description: '- Smartphone com navegação/GPS ativado. - Chamadas locais e internacionais ilimitadas.', maxQty: 1 },
+      NAV: { name: 'Sistema de navegação', icon: '🗺️', description: 'Navegador GPS portátil com mapas atualizados.', maxQty: 1 },
+      ADD: { name: 'Motorista adicional', icon: '👤', description: 'Você pode compartilhar a direção em longas viagens e ter a tranquilidade de que algum... Ler mais', maxQty: 3 },
+      ADR: { name: 'Motorista adicional', icon: '👤', description: 'Condutor adicional — permite que outra pessoa dirija o veículo alugado.', maxQty: 3 },
+      JAC: { name: 'Sobretaxa de motorista jovem', icon: '🧑‍🦱', description: 'Exigida para todos os motoristas com menos de 25 anos.', maxQty: 1 },
+      YOU: { name: 'Sobretaxa de motorista jovem', icon: '🧑‍🦱', description: 'Taxa aplicada para motoristas com menos de 25 anos.', maxQty: 1 },
+      TRH: { name: 'Engate para reboque', icon: '🔗', description: 'Engate para reboque de trailers ou caravanas.', maxQty: 1 },
+      CBF: { name: 'Taxa transfronteiriça', icon: '🌍', description: 'Esta opção permite que você dirija seu carro alugado em países selecionados.', maxQty: 1 },
+      LRC: { name: 'Taxa transfronteiriça', icon: '🌍', description: 'Taxa para condução do veículo em países adicionais.', maxQty: 1 },
+      DVD: { name: 'Diesel garantido', icon: '⛽', description: 'Diesel garantido (disponível apenas em EDMR, CDMR, EVMR, IVMR e SDMR).', maxQty: 1 },
+      SKR: { name: 'Rack de esqui', icon: '🎿', description: 'Suporte para transporte de esquis no teto do veículo.', maxQty: 1 },
+      SKB: { name: 'Rack de esqui', icon: '🎿', description: 'Suporte para transporte de esquis no teto do veículo.', maxQty: 1 },
+      SKV: { name: 'Rack de esqui', icon: '🎿', description: 'Rack para transporte de esquis ou snowboards.', maxQty: 1 },
+      SNO: { name: 'Correntes para neve', icon: '⛓️', description: 'Na maioria dos casos, as correntes de neve devem ser reservadas em combinação com pneus de neve.', maxQty: 1 },
+      CHN: { name: 'Correntes para neve', icon: '⛓️', description: 'Correntes para pneus — obrigatórias em certas regiões com neve.', maxQty: 1 },
+      WFI: { name: 'Wi-Fi portátil', icon: '📶', description: 'Hotspot Wi-Fi portátil com dados móveis inclusos.', maxQty: 1 },
+      LUG: { name: 'Proteção de bagagem', icon: '🧳', description: 'Cobertura para danos ou roubo de bagagem.', maxQty: 1 },
+      HEL: { name: 'Capacete de motocicleta', icon: '🪖', description: 'Capacete fornecido junto com o veículo.', maxQty: 2 },
+      MMS: { name: 'Proteção de espelhos', icon: '🪞', description: 'Cobertura adicional para espelhos retrovisores.', maxQty: 1 },
+      JAB: { name: 'Dispositivo antiabandono', icon: '🔔', description: 'Dispositivo antiabandono para crianças.', maxQty: 1 },
+    };
+
+    const allEqCodes = Object.keys(EQUIPMENT_CATALOG);
     const equipmentList = allEqCodes.map(code => ({ code, qty: 1 }));
+
+    setLoadingEquipment(true);
 
     const cidForQuote = selectedTariffType === 'ETO'
       ? (selectedCar._etoCID || '56935466')
@@ -519,27 +537,76 @@ function VehiclesContent() {
         const quote = reservation?.quote;
         const quoteAttrs = quote?.$ || quote || {};
 
-        // === Equipment prices ===
+
+        // === Equipment prices + dynamic xrsEquipment list ===
         const eqList = reservation?.equipmentList?.equipment;
         if (eqList) {
           const items = Array.isArray(eqList) ? eqList : [eqList];
           const prices: Record<string, { price: number; priceBRL: number; totalBRL: number; currency: string; exchangeRate: number; onRequest: boolean }> = {};
           const exchRate = parseFloat(quoteAttrs.exchangeRate || '1');
+
+          // Build a set of codes returned by the API (these are available for this station)
+          const returnedCodes = new Set<string>();
+
           for (const item of items) {
             const a = item.$ || item;
             const code = a.code || '';
             if (code) {
-              prices[code] = {
-                price: parseFloat(a.price || '0'),
-                priceBRL: parseFloat(a.priceInBookingCurrency || '0'),
-                totalBRL: parseFloat(a.rentalPriceInBookingCurrencyAI || a.rentalMaxInBookingCurrencyAI || a.priceInBookingCurrency || '0'),
-                currency: quoteAttrs.currency || 'EUR',
-                exchangeRate: exchRate,
-                onRequest: (a.statusCode || '') === 'R',
-              };
+              returnedCodes.add(code);
+              const itemPrice = parseFloat(a.price || '0');
+              const itemPriceBRL = parseFloat(a.priceInBookingCurrency || '0');
+              const itemTotalBRL = parseFloat(a.rentalPriceInBookingCurrencyAI || a.rentalMaxInBookingCurrencyAI || a.priceInBookingCurrency || '0');
+              // Only count as "available" if it has a real price OR statusCode is not blank
+              if (itemPrice > 0 || itemPriceBRL > 0 || itemTotalBRL > 0 || a.statusCode) {
+                prices[code] = {
+                  price: itemPrice,
+                  priceBRL: itemPriceBRL,
+                  totalBRL: itemTotalBRL,
+                  currency: quoteAttrs.currency || 'EUR',
+                  exchangeRate: exchRate,
+                  onRequest: (a.statusCode || '') === 'R',
+                };
+              }
             }
           }
           setEquipmentPrices(prices);
+
+          // Build dynamic equipment list: API-returned items first, rest as inactive
+          const dynamicEquipment: any[] = [];
+          const seenCodes = new Set<string>();
+
+          // First: add items that came back from the API with a price
+          for (const code of Array.from(returnedCodes)) {
+            if (prices[code] && EQUIPMENT_CATALOG[code] && !seenCodes.has(code)) {
+              seenCodes.add(code);
+              dynamicEquipment.push({
+                code,
+                ...EQUIPMENT_CATALOG[code],
+                onRequest: prices[code].onRequest,
+              });
+            }
+          }
+
+          // Then: add catalog items not returned by API (show as "Indisponível")
+          for (const code of Object.keys(EQUIPMENT_CATALOG)) {
+            if (!seenCodes.has(code)) {
+              seenCodes.add(code);
+              dynamicEquipment.push({
+                code,
+                ...EQUIPMENT_CATALOG[code],
+                onRequest: false,
+              });
+            }
+          }
+
+          setXrsEquipment(dynamicEquipment);
+        } else {
+          // API returned no equipment list → show full catalog as inactive
+          setXrsEquipment(Object.entries(EQUIPMENT_CATALOG).map(([code, meta]) => ({
+            code,
+            ...meta,
+            onRequest: false,
+          })));
         }
 
         // === Insurance list from getQuote (all types) ===
