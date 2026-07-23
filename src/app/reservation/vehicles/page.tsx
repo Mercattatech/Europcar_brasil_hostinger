@@ -171,7 +171,7 @@ function VehiclesContent() {
   const [selectedEquipmentMap, setSelectedEquipmentMap] = useState<Record<string, number>>({});
   const [loadingEquipment, setLoadingEquipment] = useState(false);
   // Equipment prices fetched from getQuote: { code: { price, priceBRL, currency } }
-  const [equipmentPrices, setEquipmentPrices] = useState<Record<string, { price: number; priceBRL: number; currency: string }>>({});
+  const [equipmentPrices, setEquipmentPrices] = useState<Record<string, { price: number; priceBRL: number; totalBRL: number; currency: string; exchangeRate: number; onRequest: boolean }>>({});
   // Quote insurances from getQuote API (real data for the selected vehicle)
   const [quoteInsurances, setQuoteInsurances] = useState<any[]>([]);
   // Quote mileage data from getQuote API
@@ -493,7 +493,8 @@ function VehiclesContent() {
         const eqList = reservation?.equipmentList?.equipment;
         if (eqList) {
           const items = Array.isArray(eqList) ? eqList : [eqList];
-          const prices: Record<string, { price: number; priceBRL: number; currency: string }> = {};
+          const prices: Record<string, { price: number; priceBRL: number; totalBRL: number; currency: string; exchangeRate: number; onRequest: boolean }> = {};
+          const exchRate = parseFloat(quoteAttrs.exchangeRate || '1');
           for (const item of items) {
             const a = item.$ || item;
             const code = a.code || '';
@@ -501,7 +502,10 @@ function VehiclesContent() {
               prices[code] = {
                 price: parseFloat(a.price || '0'),
                 priceBRL: parseFloat(a.priceInBookingCurrency || '0'),
+                totalBRL: parseFloat(a.rentalPriceInBookingCurrencyAI || a.rentalMaxInBookingCurrencyAI || a.priceInBookingCurrency || '0'),
                 currency: quoteAttrs.currency || 'EUR',
+                exchangeRate: exchRate,
+                onRequest: (a.statusCode || '') === 'R',
               };
             }
           }
@@ -1447,75 +1451,111 @@ function VehiclesContent() {
                     </>
                   )}
 
-                  {/* 🧳 Acessórios e Equipamentos (XRS API) */}
-                  {xrsEquipment.length > 0 && (
-                    <>
-                      <h3 className="font-black text-lg text-gray-900 mb-6 mt-8">Extras disponíveis</h3>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                        {xrsEquipment.map((eq: any) => {
-                          const qty = selectedEquipmentMap[eq.code] || 0;
-                          const totalSelectedItems = Object.values(selectedEquipmentMap).reduce((a: number, b: number) => a + b, 0);
-                          const canAdd = totalSelectedItems < 4;
-                          const ep = equipmentPrices[eq.code];
-                          const hasPrice = ep && ep.price > 0;
-                          const isUnavailable = !loadingEquipment && !hasPrice;
+                  {/* 🧳 Extras disponíveis (XRS API) */}
+                  <div className="mt-10">
+                    <h3 className="font-black text-xl text-gray-900 mb-6">Extras disponíveis</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                      {xrsEquipment.map((eq: any) => {
+                        const qty = selectedEquipmentMap[eq.code] || 0;
+                        const totalSelectedItems = Object.values(selectedEquipmentMap).reduce((a: number, b: number) => a + b, 0);
+                        const canAdd = totalSelectedItems < 4;
+                        const ep = equipmentPrices[eq.code];
+                        const hasPrice = ep && (ep.price > 0 || ep.priceBRL > 0 || ep.totalBRL > 0);
+                        const isUnavailable = !loadingEquipment && !hasPrice;
+                        const isOnRequest = ep?.onRequest || eq.onRequest;
+                        // Use totalBRL (rentalPriceInBookingCurrencyAI) = total for the period in BRL
+                        const priceBRL = ep ? (ep.totalBRL > 0 ? ep.totalBRL : ep.priceBRL > 0 ? ep.priceBRL * bookingDurationDays : ep.price * (ep.exchangeRate || 1) * bookingDurationDays) : 0;
 
-                          return (
-                            <div key={eq.code} className={`border rounded-lg p-4 transition-colors flex flex-col ${isUnavailable ? 'border-gray-100 bg-gray-50 opacity-60' : qty > 0 ? 'border-[#008d36] bg-green-50' : 'border-gray-200 hover:border-gray-300'}`}>
-                              <div className="flex items-start gap-3 mb-3">
-                                <span className={`text-3xl ${isUnavailable ? 'grayscale' : ''}`}>{eq.icon}</span>
-                                <div className="flex-1 min-w-0">
-                                  <h4 className={`font-black text-sm leading-tight ${isUnavailable ? 'text-gray-400' : 'text-gray-900'}`}>{eq.name}</h4>
-                                </div>
+
+                        return (
+                          <div
+                            key={eq.code}
+                            className={`bg-white border rounded-lg p-5 flex flex-col h-full transition-all duration-200 relative
+                              ${isUnavailable ? 'opacity-60 cursor-not-allowed' : qty > 0 ? 'ring-2 ring-[#008d36] border-transparent shadow-sm' : 'border-gray-200 hover:border-[#008d36]'}`}
+                          >
+                            {/* "Limitado" badge for on-request items */}
+                            {isOnRequest && !isUnavailable && (
+                              <div className="absolute -top-3 left-3 bg-gray-900 text-white text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1 uppercase">
+                                Sob Consulta ℹ️
                               </div>
-                              {eq.description && <p className="text-xs text-gray-500 mb-3 line-clamp-3">{eq.description}</p>}
+                            )}
 
+                            {/* Header: icon + title */}
+                            <div className="flex gap-3 mb-3 mt-1">
+                              <div className={`w-12 h-12 shrink-0 flex items-center justify-center rounded-lg text-3xl bg-gray-50 border border-gray-100 ${isUnavailable ? 'opacity-40 grayscale' : ''}`}>
+                                {eq.icon || '📦'}
+                              </div>
+                              <h4 className={`text-sm font-bold leading-tight ${isUnavailable ? 'text-gray-400' : 'text-gray-900'}`}>
+                                {eq.name}
+                              </h4>
+                            </div>
+
+                            {/* Description */}
+                            {eq.description && (
+                              <p className={`text-xs mb-3 line-clamp-3 ${isUnavailable ? 'text-gray-400' : 'text-gray-500'}`}>
+                                {eq.description}
+                              </p>
+                            )}
+
+                            {/* Price + Controls */}
+                            <div className="mt-auto">
                               {loadingEquipment ? (
-                                <div className="flex items-center gap-2 text-sm text-gray-400 mb-3 mt-auto">
-                                  <div className="w-3 h-3 border-2 border-[#e67e00] border-t-transparent rounded-full animate-spin"></div>
+                                <div className="flex items-center gap-2 text-sm text-gray-400 mb-3">
+                                  <div className="w-3 h-3 border-2 border-[#008d36] border-t-transparent rounded-full animate-spin" />
                                   Buscando preço...
                                 </div>
                               ) : isUnavailable ? (
-                                <div className="mt-auto">
-                                  <span className="text-xs bg-red-100 text-red-600 font-bold px-2 py-1 rounded-full">Indisponível</span>
-                                </div>
+                                <span className="inline-block text-xs bg-red-50 text-red-500 font-bold px-3 py-1 rounded-full border border-red-200 mt-1">
+                                  Indisponível
+                                </span>
                               ) : (
-                                <div className="mt-auto">
-                                  <div className="mb-3">
-                                    <div className="text-lg font-black text-gray-900">
-                                      R$ {((ep!.priceBRL > 0 ? ep!.priceBRL : ep!.price) * bookingDurationDays).toFixed(2).replace(".", ",")}
-                                      <span className="text-xs text-gray-400 font-normal"> / total</span>
-                                    </div>
+                                <>
+                                  {/* Price */}
+                                  <div className="text-xl font-black text-gray-900 mb-4">
+                                    R$ {priceBRL.toFixed(2).replace('.', ',')}
+                                    <span className="text-xs font-normal text-gray-400 ml-1">/ total</span>
                                   </div>
-                                  {eq.onRequest && <div className="text-[10px] bg-yellow-100 text-yellow-700 font-bold px-2 py-0.5 rounded-full mb-2 w-fit">Sob consulta</div>}
+
+                                  {/* Controls: +/- or Adicionar */}
                                   {eq.maxQty > 1 ? (
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center justify-between border border-gray-200 rounded-lg p-1">
                                       <button
                                         onClick={() => handleEquipmentQuantity(eq.code, -1, eq.maxQty)}
                                         disabled={qty === 0}
-                                        className={`w-8 h-8 rounded font-bold text-lg flex items-center justify-center transition-colors ${qty > 0 ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
+                                        className={`w-10 h-10 flex items-center justify-center rounded text-lg font-bold transition-colors
+                                          ${qty > 0 ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-gray-50 text-gray-300 cursor-not-allowed'}`}
                                       >−</button>
-                                      <span className="font-black text-lg text-gray-900 w-5 text-center">{qty}</span>
+                                      <span className="font-black text-base text-gray-900">{qty}</span>
                                       <button
                                         onClick={() => handleEquipmentQuantity(eq.code, 1, eq.maxQty)}
                                         disabled={!canAdd || qty >= eq.maxQty}
-                                        className={`w-8 h-8 rounded font-bold text-lg flex items-center justify-center transition-colors ${canAdd && qty < eq.maxQty ? 'bg-[#ffcc00] hover:bg-[#e6b800] text-gray-900' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
+                                        className={`w-10 h-10 flex items-center justify-center rounded text-lg font-bold transition-colors
+                                          ${canAdd && qty < eq.maxQty ? 'border border-[#008d36] text-[#008d36] hover:bg-green-50' : 'bg-gray-50 text-gray-300 cursor-not-allowed'}`}
                                       >+</button>
                                     </div>
                                   ) : (
                                     <button
-                                      onClick={() => qty > 0 ? handleEquipmentQuantity(eq.code, -1, eq.maxQty) : handleEquipmentQuantity(eq.code, 1, eq.maxQty)}
-                                      className={`w-full font-bold py-2 rounded text-sm transition-colors ${qty > 0 ? "bg-gray-200 text-gray-600" : "bg-[#ffcc00] hover:bg-[#e6b800] text-gray-900"}`}
-                                    >{qty > 0 ? "Remover ✓" : "Adicionar"}</button>
+                                      onClick={() => qty > 0
+                                        ? handleEquipmentQuantity(eq.code, -1, eq.maxQty)
+                                        : handleEquipmentQuantity(eq.code, 1, eq.maxQty)
+                                      }
+                                      className={`w-full font-bold py-3 rounded-lg text-sm transition-all
+                                        ${qty > 0
+                                          ? 'bg-[#008d36] text-white hover:bg-[#007a2d]'
+                                          : 'bg-[#ffcc00] hover:bg-[#e6b800] text-gray-900'
+                                        }`}
+                                    >
+                                      {qty > 0 ? '✓ Selecionado — Remover' : 'Adicionar'}
+                                    </button>
                                   )}
-                                </div>
+                                </>
                               )}
                             </div>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
 
                   {/* ETO: Skip protections button */}
                   {selectedTariffType === 'ETO' && (
