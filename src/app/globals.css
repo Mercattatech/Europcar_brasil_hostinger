@@ -19,4 +19,26 @@
   .bg-europcar-green { background-color: var(--europcar-green); }
   .bg-europcar-dark { background-color: var(--europcar-green-dark); }
   .text-europcar-green { color: var(--europcar-green); }
+
+  /* Custom range slider thumb */
+  input[type="range"].appearance-none::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #008d36;
+    cursor: pointer;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+  }
+  input[type="range"].appearance-none::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #008d36;
+    cursor: pointer;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+  }
 }

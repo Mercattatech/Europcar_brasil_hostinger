@@ -714,7 +714,14 @@ function VehiclesContent() {
             <div className="border-t border-gray-100 pt-4">
               <h4 className="font-bold text-sm text-gray-900 mb-2">Assentos mín.</h4>
               <div className="flex justify-between text-xs font-bold text-gray-600 mb-1">{[2, 4, 5, 7].map(n => <span key={n}>{n}+</span>)}</div>
-              <input type="range" min="2" max="7" value={minSeats} onChange={e => setMinSeats(Number(e.target.value))} className="w-full accent-[#008d36]" />
+              <input
+                type="range" min="2" max="7" value={minSeats}
+                onChange={e => setMinSeats(Number(e.target.value))}
+                className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+                style={{
+                  background: `linear-gradient(to right, #d1d5db ${((minSeats - 2) / (7 - 2)) * 100}%, #008d36 ${((minSeats - 2) / (7 - 2)) * 100}%)`,
+                }}
+              />
             </div>
             {priceRange.max > 0 && (
               <div className="border-t border-gray-100 pt-4 mt-4">
