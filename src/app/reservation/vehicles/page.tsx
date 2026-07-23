@@ -915,7 +915,7 @@ function VehiclesContent() {
                     // Apply admin margin to ETO
                     const totalPriceETO = totalPriceETO_raw * (1 + etoMargin / 100);
                     const totalBRL_ETO = totalBRL_ETO_raw * (1 + etoMargin / 100);
-                    const isBrazil = currency === 'BRL'; // Brazil: POA only; international: POA + ETO
+                    const isBrazil = stationCountry === 'BR' || pickupStation.toUpperCase().startsWith('BR'); // Brazil: POA only; international: POA + ETO
                     const hasETO = !isBrazil && etoCar && totalPriceETO_raw > 0;
                     // Calculate discount % ETO vs POA
                     const discountPct = hasETO && totalPricePOA > 0 ? Math.round((1 - totalPriceETO / totalPricePOA) * 100) : 0;
@@ -1410,7 +1410,7 @@ function VehiclesContent() {
                   {/* 🛡️ Proteções da API getQuote — Real data for selected vehicle */}
                   {/* For ETO (Pagar Agora) on international stations, hide the package cards —
                       only the Zero Excess banner above is shown. */}
-                  {!(selectedTariffType === 'ETO' && selectedCar?.currency && selectedCar.currency !== 'BRL') && quoteInsurances.length > 0 ? (() => {
+                  {!(selectedTariffType === 'ETO' && stationCountry !== 'BR' && !pickupStation.toUpperCase().startsWith('BR')) && quoteInsurances.length > 0 ? (() => {
                     // Insurance name and description maps (Portuguese)
                     const insNamesPT: Record<string, string> = {
                       WWI: 'Proteção de para-brisas, vidros, faróis e pneus',
