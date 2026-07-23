@@ -1045,7 +1045,7 @@ function VehiclesContent() {
                             <div className={`${hasETO ? 'w-[180px]' : 'w-[200px]'} flex flex-col items-end justify-center text-right`}>
                               <span className="text-[10px] text-gray-800 font-medium uppercase tracking-wider mb-2">PAGAR NO BALCÃO</span>
                               <div className="flex flex-col items-end mb-1">
-                                <div className="text-3xl font-black text-gray-900 leading-none whitespace-nowrap">
+                                <div className="text-2xl font-black text-gray-900 leading-none whitespace-nowrap">
                                   {dailyBRL_POA > 0 ? `R$ ${fmtPrice(dailyBRL_POA)}` : `${currency} ${fmtPrice(dailyPOA)}`} <span className="text-xl font-normal text-gray-900">/ dia</span>
                                 </div>
                                 <div className="text-sm text-gray-400 font-medium mt-1">
@@ -1073,7 +1073,7 @@ function VehiclesContent() {
                                   )}
                                   <span className="text-[10px] text-[#008d36] font-bold uppercase tracking-wider mb-2">PAGAR AGORA</span>
                                   <div className="flex flex-col items-end mb-1">
-                                    <div className="text-3xl font-black text-[#008d36] leading-none whitespace-nowrap">
+                                    <div className="text-2xl font-black text-[#008d36] leading-none whitespace-nowrap">
                                       {dailyBRL_ETO > 0 ? `R$ ${fmtPrice(dailyBRL_ETO)}` : `${currency} ${fmtPrice(dailyETO)}`} <span className="text-xl font-normal text-[#008d36]">/ dia</span>
                                     </div>
                                     <div className="text-sm text-green-600 font-medium mt-1">
