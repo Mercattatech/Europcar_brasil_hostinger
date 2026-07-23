@@ -164,6 +164,7 @@ function VehiclesContent() {
   // Extras
   const [dbExtras, setDbExtras] = useState<any[]>([]);
   const [selectedExtrasMap, setSelectedExtrasMap] = useState<Record<string, number>>({});
+  const [selectedProtectionPackage, setSelectedProtectionPackage] = useState<'none' | 'basic' | 'medium' | 'premium'>('none');
   const [loadingExtras, setLoadingExtras] = useState(false);
 
   // XRS Equipment (accessories from API)
@@ -1462,100 +1463,110 @@ function VehiclesContent() {
                       CDW: '🚗', LDW: '📋', TPL: '📄', ECOLOGIC: '🌿',
                       PEP: '🧳', APP: '🎨',
                     };
-                    // Filter: show Optional (O) and Included (I). Hide Mandatory (M) and SL (Stand Liable = no protection)
-                    const displayInsurances = quoteInsurances.filter(ins => ins.type !== 'M' && ins.code !== 'SL');
+                    // ── Tier classification of insurance codes ────────────────────────────
+                    const MEDIUM_CODES = new Set(['RSA', 'WWI', 'APP', 'INTERIOR', 'AWC', 'PEP', 'THW', 'STHW', 'MEDIUM', 'PAI']);
+                    const PREMIUM_CODES = new Set(['SCDW', 'SPCDW', 'SPTHW', 'PREMIUM', 'PREMPLUS', 'PREMPRE', 'ECOLOGIC']);
+
+                    const includedIns  = quoteInsurances.filter((ins: any) => ins.type === 'I');
+                    const optionalIns  = quoteInsurances.filter((ins: any) => ins.type === 'O' && ins.code !== 'SL');
+                    const mediumMembers  = optionalIns.filter((ins: any) => MEDIUM_CODES.has(ins.code));
+                    const premiumMembers = optionalIns.filter((ins: any) => PREMIUM_CODES.has(ins.code));
+                    const premiumAll    = [...mediumMembers, ...premiumMembers];
+                    const sumBRL = (list: any[]) => list.reduce((acc: number, ins: any) => acc + (ins.rentalPriceInBookingCurrencyAI || 0), 0);
+
+                    const packages = [
+                      { id: 'basic' as const, label: 'Básico', sublabel: 'Já incluído no veículo', badge: '', color: 'border-gray-300', headerBg: 'bg-gray-800', icon: '🛡️', members: [] as any[], extraMembers: includedIns, total: 0, isFree: true, description: 'Proteção mínima obrigatória incluída na tarifa do veículo.' },
+                      { id: 'medium' as const, label: 'Médio', sublabel: 'Cobertura ampliada', badge: 'POPULAR', color: 'border-[#008d36]', headerBg: 'bg-[#008d36]', icon: '🛡️🛡️', members: mediumMembers, extraMembers: includedIns, total: sumBRL(mediumMembers), isFree: false, description: 'Amplia a proteção com coberturas adicionais como vidros, assistência e mais.' },
+                      { id: 'premium' as const, label: 'Premium', sublabel: 'Cobertura máxima', badge: 'COMPLETO', color: 'border-yellow-400', headerBg: 'bg-yellow-500', icon: '🏆', members: premiumAll, extraMembers: includedIns, total: sumBRL(premiumAll), isFree: false, description: 'Máxima cobertura: sem franquia, proteção total contra danos e roubo.' },
+                    ].filter(pkg => pkg.id === 'basic' || pkg.members.length > 0);
+
+                    const handleSelectPackage = (pkgId: 'none' | 'basic' | 'medium' | 'premium', members: any[]) => {
+                      setSelectedProtectionPackage(pkgId);
+                      const newMap: Record<string, number> = { ...selectedExtrasMap };
+                      for (const ins of quoteInsurances) { delete newMap[ins.code]; }
+                      for (const ins of members) { if (ins.type === 'O') newMap[ins.code] = 1; }
+                      setSelectedExtrasMap(newMap);
+                    };
+
                     return (
                       <>
-                        <h3 className="font-extrabold text-2xl text-gray-900 mb-6">Proteções</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                          {displayInsurances.map((ins: any) => {
-                            const insId = ins.code;
-                            const sel = selectedExtrasMap[insId] > 0;
-                            const isIncluded = ins.type === 'I';
-                            const totalBRL = ins.rentalPriceInBookingCurrencyAI || 0;
-                            const isAvailable = totalBRL > 0 || isIncluded;
-                            const excessBRL = ins.bkExcessWithPOM || 0;
-                            const name = insNamesPT[insId] || ins.descr || insId;
-                            const desc = insDescPT[insId] || ins.descr || 'Proteção adicional.';
-                            const icon = insIconEmoji[insId] || '🛡️';
-                            const TRUNCATE_AT = 90;
-                            const isLong = desc.length > TRUNCATE_AT;
-                            const shortDesc = isLong ? desc.slice(0, TRUNCATE_AT) + '...' : desc;
-                            return (
-                              <article
-                                key={insId}
-                                className={`bg-white p-5 flex flex-col justify-between h-full rounded-lg transition-shadow duration-200 cursor-default
-                                  ${sel ? 'border-2 border-[#008d36] shadow-md' : 'border border-gray-200 hover:shadow-md'}`}
-                              >
-                                {/* Top content */}
-                                <div className="flex flex-col">
-                                  {/* Icon + Title */}
-                                  <div className="flex items-start gap-4 mb-4">
-                                    <div className="w-16 h-16 flex-shrink-0 flex items-center justify-center text-4xl bg-gray-50 rounded-lg border border-gray-100">
-                                      {icon}
-                                    </div>
-                                    <h2 className="text-[1.05rem] font-bold leading-tight text-gray-900 mt-1">{name}</h2>
-                                  </div>
-                                  {/* Description */}
-                                  <div className="text-gray-600 text-sm leading-relaxed mb-5">
-                                    <p>
-                                      {shortDesc}
-                                      {isLong && (
-                                        <span className="text-gray-900 font-medium underline cursor-pointer ml-1">Ler mais</span>
-                                      )}
-                                    </p>
-                                  </div>
-                                  {/* Excess badge */}
-                                  {excessBRL > 0 && !isIncluded && (
-                                    <p className="text-xs text-gray-400 mb-2">Franquia: R$ {fmtPrice(excessBRL)}</p>
-                                  )}
-                                  {ins.excessWithPOM === 0 && !isIncluded && insId !== 'RSA' && insId !== 'PAI' && (
-                                    <span className="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full mb-2 self-start uppercase tracking-wide">Sem franquia</span>
-                                  )}
-                                </div>
+                        <h3 className="font-extrabold text-2xl text-gray-900 mb-2">Proteções</h3>
+                        <p className="text-sm text-gray-500 mb-6">Escolha o pacote de proteção para sua viagem. Os valores são somados e incluídos no total.</p>
 
-                                {/* Bottom: price + button */}
-                                <div className="mt-auto">
-                                  {/* Price row */}
-                                  <div className="mb-4">
-                                    {isIncluded ? (
-                                      <span className="text-base font-extrabold text-[#008d36]">Incluída</span>
-                                    ) : isAvailable ? (
-                                      <>
-                                        <span className="text-2xl font-extrabold text-gray-900">R$ {fmtPrice(totalBRL)}</span>
-                                        <span className="text-gray-500 font-medium text-sm"> / total</span>
-                                      </>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-6">
+                          {packages.map(pkg => {
+                            const isSelected = selectedProtectionPackage === pkg.id;
+                            const allMembers = [...pkg.extraMembers, ...pkg.members];
+                            return (
+                              <div
+                                key={pkg.id}
+                                onClick={() => handleSelectPackage(pkg.id, pkg.members)}
+                                className={`relative rounded-xl border-2 cursor-pointer flex flex-col overflow-hidden transition-all duration-200
+                                  ${isSelected ? `${pkg.color} shadow-lg scale-[1.01]` : 'border-gray-200 hover:border-gray-300 hover:shadow-md'}`}
+                              >
+                                {pkg.badge && (
+                                  <div className={`absolute top-3 right-3 text-[10px] font-black tracking-widest px-2 py-0.5 rounded-full
+                                    ${pkg.id === 'premium' ? 'bg-yellow-400 text-yellow-900' : 'bg-[#008d36] text-white'}`}>
+                                    {pkg.badge}
+                                  </div>
+                                )}
+                                <div className={`p-4 pb-3 ${isSelected ? pkg.headerBg : 'bg-gray-50'} transition-colors`}>
+                                  <div className="text-2xl mb-1">{pkg.icon}</div>
+                                  <h4 className={`text-lg font-black ${isSelected ? 'text-white' : 'text-gray-900'}`}>{pkg.label}</h4>
+                                  <p className={`text-xs font-medium ${isSelected ? 'text-white/80' : 'text-gray-500'}`}>{pkg.sublabel}</p>
+                                </div>
+                                <div className="bg-white p-4 flex flex-col flex-1">
+                                  <p className="text-xs text-gray-500 mb-3 leading-relaxed">{pkg.description}</p>
+                                  <ul className="space-y-1.5 mb-4 flex-1">
+                                    {allMembers.slice(0, 6).map((ins: any) => (
+                                      <li key={ins.code} className="flex items-start gap-2 text-xs text-gray-700">
+                                        <span className="text-[#008d36] font-bold mt-0.5">✓</span>
+                                        <span>{insNamesPT[ins.code] || ins.descr || ins.code}</span>
+                                      </li>
+                                    ))}
+                                    {allMembers.length > 6 && <li className="text-xs text-gray-400 pl-4">+ {allMembers.length - 6} mais...</li>}
+                                    {allMembers.length === 0 && <li className="text-xs text-gray-400 italic">Proteção padrão incluída na tarifa</li>}
+                                  </ul>
+                                  <div className="border-t border-gray-100 pt-3 mt-auto">
+                                    {pkg.isFree ? (
+                                      <p className="text-base font-extrabold text-[#008d36]">Já incluído</p>
                                     ) : (
-                                      <span className="text-sm font-bold text-orange-400">Indisponível</span>
+                                      <><span className="text-2xl font-extrabold text-gray-900">R$ {fmtPrice(pkg.total)}</span><span className="text-sm text-gray-500 font-medium"> / total</span></>
                                     )}
                                   </div>
-
-                                  {/* Button */}
-                                  {isIncluded ? (
-                                    <div className="w-full text-center font-bold py-3 rounded-md text-sm bg-green-100 text-[#008d36]">
-                                      ✓ Incluída
-                                    </div>
-                                  ) : isAvailable ? (
-                                    <button
-                                      onClick={() => sel ? handleExtraQuantity(insId, -1) : handleExtraQuantity(insId, 1)}
-                                      className={`w-full py-3 rounded-md font-bold text-sm transition-colors
-                                        ${sel
-                                          ? 'bg-[#008d36] text-white'
-                                          : 'bg-[#FFD100] hover:bg-[#f2c800] text-black'
-                                        }`}
-                                    >
-                                      {sel ? '✓ Adicionado — Remover' : 'Adicionar'}
-                                    </button>
-                                  ) : (
-                                    <div className="w-full text-center font-bold py-3 rounded-md text-sm bg-gray-100 text-gray-400">
-                                      Indisponível
-                                    </div>
-                                  )}
+                                  <button
+                                    onClick={e => { e.stopPropagation(); handleSelectPackage(pkg.id, pkg.members); }}
+                                    className={`mt-3 w-full py-2.5 rounded-lg font-bold text-sm transition-all
+                                      ${isSelected
+                                        ? pkg.id === 'premium' ? 'bg-yellow-400 text-yellow-900' : pkg.id === 'medium' ? 'bg-[#008d36] text-white' : 'bg-gray-800 text-white'
+                                        : 'bg-[#FFD100] hover:bg-[#f2c800] text-black'
+                                      }`}
+                                  >
+                                    {isSelected ? '✓ Pacote selecionado' : `Selecionar ${pkg.label}`}
+                                  </button>
                                 </div>
-                              </article>
+                              </div>
                             );
                           })}
                         </div>
+
+                        {selectedProtectionPackage !== 'none' && (() => {
+                          const pkg = packages.find(p => p.id === selectedProtectionPackage);
+                          if (!pkg) return null;
+                          const optCount = pkg.members.filter((ins: any) => ins.type === 'O').length;
+                          return (
+                            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl flex items-start gap-3">
+                              <span className="text-2xl">✅</span>
+                              <div className="flex-1">
+                                <p className="font-bold text-gray-900 text-sm">Pacote {pkg.label} selecionado</p>
+                                <p className="text-xs text-gray-600 mt-0.5">
+                                  {optCount > 0 ? `${optCount} proteção(ões) adicionada(s)` : 'Apenas proteção básica incluída na tarifa'}
+                                  {pkg.total > 0 && ` · Total adicional: R$ ${fmtPrice(pkg.total)}`}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </>
                     );
                   })() : (
