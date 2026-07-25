@@ -565,18 +565,14 @@ export default function HeroSearchForm() {
               <div className="flex-1 flex items-center bg-white px-3 border-r border-gray-200">
                 <input
                   type="date"
-                  className="w-full py-3 bg-transparent outline-none text-sm font-bold text-gray-900 cursor-pointer"
+                  className="w-full py-3 bg-transparent outline-none text-sm font-bold text-gray-900 cursor-pointer [&::-webkit-datetime-edit-year-field]:max-w-[4ch]"
                   value={pickupDate}
                   min={minPickupDate}
                   max="2099-12-31"
                   onChange={(e) => {
-                    let v = e.target.value;
-                    if (v && v.indexOf('-') > 4) v = v.slice(v.length - 10);
+                    const v = e.target.value;
+                    if (v.length > 10) return;
                     setPickupDate(v);
-                  }}
-                  onInput={(e) => {
-                    const input = e.target as HTMLInputElement;
-                    if (input.value.length > 10) input.value = input.value.slice(0, 10);
                   }}
                   required
                 />
@@ -604,16 +600,12 @@ export default function HeroSearchForm() {
               <div className="flex-1 flex items-center bg-white px-3 border-r border-gray-200">
                 <input
                   type="date"
-                  className="w-full py-3 bg-transparent outline-none text-sm font-bold text-gray-900 cursor-pointer"
+                  className="w-full py-3 bg-transparent outline-none text-sm font-bold text-gray-900 cursor-pointer [&::-webkit-datetime-edit-year-field]:max-w-[4ch]"
                   value={returnDate}
                   onChange={(e) => {
-                    let v = e.target.value;
-                    if (v && v.indexOf('-') > 4) v = v.slice(v.length - 10);
+                    const v = e.target.value;
+                    if (v.length > 10) return;
                     setReturnDate(v);
-                  }}
-                  onInput={(e) => {
-                    const input = e.target as HTMLInputElement;
-                    if (input.value.length > 10) input.value = input.value.slice(0, 10);
                   }}
                   min={pickupDate || minPickupDate}
                   max="2099-12-31"
