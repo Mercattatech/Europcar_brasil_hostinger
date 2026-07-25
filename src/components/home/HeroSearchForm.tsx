@@ -568,7 +568,16 @@ export default function HeroSearchForm() {
                   className="w-full py-3 bg-transparent outline-none text-sm font-bold text-gray-900 cursor-pointer"
                   value={pickupDate}
                   min={minPickupDate}
-                  onChange={(e) => setPickupDate(e.target.value)}
+                  max="2099-12-31"
+                  onChange={(e) => {
+                    let v = e.target.value;
+                    if (v && v.indexOf('-') > 4) v = v.slice(v.length - 10);
+                    setPickupDate(v);
+                  }}
+                  onInput={(e) => {
+                    const input = e.target as HTMLInputElement;
+                    if (input.value.length > 10) input.value = input.value.slice(0, 10);
+                  }}
                   required
                 />
               </div>
@@ -597,8 +606,17 @@ export default function HeroSearchForm() {
                   type="date"
                   className="w-full py-3 bg-transparent outline-none text-sm font-bold text-gray-900 cursor-pointer"
                   value={returnDate}
-                  onChange={(e) => setReturnDate(e.target.value)}
+                  onChange={(e) => {
+                    let v = e.target.value;
+                    if (v && v.indexOf('-') > 4) v = v.slice(v.length - 10);
+                    setReturnDate(v);
+                  }}
+                  onInput={(e) => {
+                    const input = e.target as HTMLInputElement;
+                    if (input.value.length > 10) input.value = input.value.slice(0, 10);
+                  }}
                   min={pickupDate || minPickupDate}
+                  max="2099-12-31"
                   required
                 />
               </div>
