@@ -40,14 +40,15 @@ model CieloConfig {
 }
 
 model LocalReservation {
-  id              String   @id @default(uuid())
-  resNumber       String?  @unique
-  merchantOrderId String   @unique
-  customerData    Json
-  amountInCents   Int?
-  status          String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                String   @id @default(uuid())
+  resNumber         String?  @unique
+  merchantOrderId   String   @unique
+  customerData      Json
+  amountInCents     Int?
+  status            String
+  operationalStatus String?  @default("R") // R, S, CF, CC, CP, CO, TD, NS
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 model LogXRS {

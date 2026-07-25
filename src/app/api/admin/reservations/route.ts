@@ -22,6 +22,7 @@ export async function GET(req: Request) {
    try {
       const { searchParams } = new URL(req.url);
       const statusFilter = searchParams.get('status');
+      const opStatusFilter = searchParams.get('operationalStatus');
       const search = searchParams.get('search');
       const startDate = searchParams.get('startDate');
       const endDate = searchParams.get('endDate');
@@ -53,6 +54,13 @@ export async function GET(req: Request) {
          if (statusFilter && statusFilter !== 'ALL') {
             sql += ` AND "status" = $${paramIndex}`;
             params.push(statusFilter);
+            paramIndex++;
+         }
+
+         // Filtro por status operacional
+         if (opStatusFilter && opStatusFilter !== 'ALL') {
+            sql += ` AND "operationalStatus" = $${paramIndex}`;
+            params.push(opStatusFilter);
             paramIndex++;
          }
 
@@ -88,6 +96,10 @@ export async function GET(req: Request) {
          where.status = statusFilter;
       }
 
+      if (opStatusFilter && opStatusFilter !== 'ALL') {
+         where.operationalStatus = opStatusFilter;
+      }
+
       if (startDate || endDate) {
          where.createdAt = {};
          if (startDate) {
@@ -111,4 +123,3 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Erro ao buscar reservas' }, { status: 500 });
    }
 }
-

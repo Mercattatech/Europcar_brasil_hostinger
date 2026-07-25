@@ -26,6 +26,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       const updateData: any = {};
 
       if (body.status !== undefined) updateData.status = body.status;
+      if (body.operationalStatus !== undefined) updateData.operationalStatus = body.operationalStatus;
 
       const updated = await prisma.localReservation.update({
          where: { id: params.id },
