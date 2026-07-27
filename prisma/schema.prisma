@@ -227,3 +227,53 @@ model AIAgentConfig {
   negativePrompt  String?  @db.Text
   updatedAt       DateTime @updatedAt
 }
+
+// Customer Journey Tracking
+model CustomerJourney {
+  id                String   @id @default(cuid())
+  sessionId         String   // Unique browser session ID
+  userId            String?  // Logged-in user ID (if any)
+
+  // Step 1: Search
+  pickupStation     String?
+  pickupStationName String?
+  returnStation     String?
+  returnStationName String?
+  pickupDate        String?
+  returnDate        String?
+  pickupTime        String?
+  returnTime        String?
+  country           String?
+  contractID        String?
+
+  // Step 2: Vehicle Selection
+  selectedCar       String?
+  selectedCarName   String?
+  carPrice          Float?
+
+  // Step 3: Extras
+  selectedExtras    Json?
+
+  // Step 4: Checkout
+  paymentMethod     String?
+
+  // Step 5: Result
+  resNumber         String?
+
+  // Metadata
+  currentStep       Int      @default(1)
+  status            String   @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED, ABANDONED
+  abandonedAt       String?
+
+  // Device info
+  userAgent         String?  @db.Text
+  ipAddress         String?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([sessionId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([currentStep])
+}

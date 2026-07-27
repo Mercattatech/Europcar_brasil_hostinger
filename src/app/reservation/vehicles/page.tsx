@@ -714,6 +714,24 @@ function VehiclesContent() {
     setSelectedEquipmentMap({});       // clear previous selections
     setCurrentStep(3);
     window.scrollTo({ top: 0, behavior: "smooth" });
+
+    // Journey tracking — Step 2: Vehicle Selected
+    try {
+      const sessionId = sessionStorage.getItem("europcar_journey_session");
+      if (sessionId) {
+        fetch("/api/journey/track", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId,
+            step: 2,
+            selectedCar: car.carCategoryCode,
+            selectedCarName: carCategoryOverrides[car.carCategoryCode] || car.carCategorySample || car.carCategoryCode,
+            carPrice: parseFloat(car.totalRateEstimateInBookingCurrency || car.totalRateEstimate || "0"),
+          }),
+        }).catch(() => {});
+      }
+    } catch {}
   };
 
   const fmtPrice = (v: any) => parseFloat(String(v || 0)).toFixed(2).replace(".", ",");
@@ -1264,6 +1282,22 @@ function VehiclesContent() {
                       : (effectiveContractID || '57269673');
                     const payload = { car: selectedCar, extras: selectedExtrasMap, xrsEquipment: xrsEquipmentPayload, xrsInsurances: xrsInsurancesPayload, pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, contractID: cidForTariff, tariffType: selectedTariffType, zeroExcess: zeroExcessUpgrade, driverCountry, driverCountryName, stationCountry, quoteMileage };
                     sessionStorage.setItem("europcar_booking", JSON.stringify(payload));
+                    // Journey tracking — Step 3: Extras selected, going to checkout
+                    try {
+                      const sessionId = sessionStorage.getItem("europcar_journey_session");
+                      if (sessionId) {
+                        const extraNames = [...xrsEquipmentPayload.map((e: any) => e.name), ...xrsInsurancesPayload.map((e: any) => e.name)];
+                        fetch("/api/journey/track", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            sessionId,
+                            step: 3,
+                            selectedExtras: extraNames.length > 0 ? extraNames : null,
+                          }),
+                        }).catch(() => {});
+                      }
+                    } catch {}
                     window.location.href = "/checkout";
                   }}
                   className="bg-[#008d36] hover:bg-[#007530] text-white font-black py-3 px-6 rounded shrink-0 text-sm"
@@ -1300,6 +1334,22 @@ function VehiclesContent() {
                         : (zeroExcessUpgrade ? '56935495' : (effectiveContractID || '57269673'));
                       const payload = { car: selectedCar, extras: selectedExtrasMap, xrsEquipment: xrsEquipmentPayload2, xrsInsurances: xrsInsurancesPayload2, pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, contractID: cidForTariff, tariffType: selectedTariffType, zeroExcess: zeroExcessUpgrade, driverCountry, driverCountryName, stationCountry, quoteMileage };
                       sessionStorage.setItem("europcar_booking", JSON.stringify(payload));
+                      // Journey tracking — Step 3: Extras selected (ETO path)
+                      try {
+                        const sessionId = sessionStorage.getItem("europcar_journey_session");
+                        if (sessionId) {
+                          const extraNames2 = [...xrsEquipmentPayload2.map((e: any) => e.name), ...xrsInsurancesPayload2.map((e: any) => e.name)];
+                          fetch("/api/journey/track", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              sessionId,
+                              step: 3,
+                              selectedExtras: extraNames2.length > 0 ? extraNames2 : null,
+                            }),
+                          }).catch(() => {});
+                        }
+                      } catch {}
                       window.location.href = "/checkout";
                     }}
                     className="bg-[#008d36] hover:bg-[#007530] text-white font-black py-4 px-10 rounded-lg text-lg uppercase tracking-wide shadow-lg transition-colors"

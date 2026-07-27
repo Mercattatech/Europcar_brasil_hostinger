@@ -291,6 +291,35 @@ export default function HeroSearchForm() {
     if (stationCountryCode) params.set("stationCountry", stationCountryCode);
     if (tarifNumber) params.set("contractID", tarifNumber);
 
+    // Journey tracking — Step 1: Search
+    try {
+      let sessionId = sessionStorage.getItem("europcar_journey_session");
+      if (!sessionId) {
+        sessionId = crypto.randomUUID();
+        sessionStorage.setItem("europcar_journey_session", sessionId);
+      }
+      // Find station name from the return dropdown too
+      const returnStationName = !sameReturnLocation ? returnStationQuery : stationQuery;
+      fetch("/api/journey/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId,
+          step: 1,
+          pickupStation: pickupLocation,
+          pickupStationName: stationQuery,
+          returnStation: sameReturnLocation ? pickupLocation : (returnLocation || pickupLocation),
+          returnStationName: sameReturnLocation ? stationQuery : returnStationName,
+          pickupDate: fmt(pickupDate),
+          returnDate: fmt(effectiveReturn),
+          pickupTime: fmtTime(pickupTime),
+          returnTime: fmtTime(returnTime),
+          country,
+          contractID: tarifNumber || null,
+        }),
+      }).catch(() => {});
+    } catch {}
+
     window.location.href = `/reservation/vehicles?${params.toString()}`;
   };
 

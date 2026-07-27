@@ -89,6 +89,21 @@ export default function CheckoutPage() {
       if (parsed.tariffType === 'ETO' && paymentMethod === 'BALCAO') {
         setPaymentMethod('CREDIT');
       }
+      // Journey tracking — Step 4: Reached checkout
+      try {
+        const sessionId = sessionStorage.getItem("europcar_journey_session");
+        if (sessionId) {
+          fetch("/api/journey/track", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sessionId,
+              step: 4,
+              userId: undefined, // will be set once session loads
+            }),
+          }).catch(() => {});
+        }
+      } catch {}
     }
   }, []);
 
@@ -250,7 +265,23 @@ export default function CheckoutPage() {
           if (t % 5 === 0 && t > 0) {
             fetch(`/api/reservas/pix-status?orderId=${merchantOrderId}`)
               .then(r => r.json())
-              .then(d => { if (d.status === "PAID" && d.resNumber) setResNumber(d.resNumber); })
+              .then(d => {
+                if (d.status === "PAID" && d.resNumber) {
+                  setResNumber(d.resNumber);
+                  // Journey tracking — Step 5: PIX payment confirmed
+                  try {
+                    const sessionId = sessionStorage.getItem("europcar_journey_session");
+                    if (sessionId) {
+                      fetch("/api/journey/track", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ sessionId, step: 5, resNumber: d.resNumber, paymentMethod: "PIX", status: "COMPLETED" }),
+                      }).catch(() => {});
+                      sessionStorage.removeItem("europcar_journey_session");
+                    }
+                  } catch {}
+                }
+              })
               .catch(() => {});
           }
           return t;
@@ -390,8 +421,32 @@ export default function CheckoutPage() {
           setIsOnRequest(true);
           setOnRequestItems(json.onRequestItems || []);
           setResNumber(json.resNumber);
+          // Journey tracking — Step 5: Reservation completed (on-request)
+          try {
+            const sessionId = sessionStorage.getItem("europcar_journey_session");
+            if (sessionId) {
+              fetch("/api/journey/track", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ sessionId, step: 5, resNumber: json.resNumber, paymentMethod, status: "COMPLETED", userId: session?.user?.email || undefined }),
+              }).catch(() => {});
+              sessionStorage.removeItem("europcar_journey_session");
+            }
+          } catch {}
         } else {
           setResNumber(json.resNumber);
+          // Journey tracking — Step 5: Reservation completed (credit/balcão)
+          try {
+            const sessionId = sessionStorage.getItem("europcar_journey_session");
+            if (sessionId) {
+              fetch("/api/journey/track", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ sessionId, step: 5, resNumber: json.resNumber, paymentMethod, status: "COMPLETED", userId: session?.user?.email || undefined }),
+              }).catch(() => {});
+              sessionStorage.removeItem("europcar_journey_session");
+            }
+          } catch {}
         }
       } else {
         alert("Erro ao finalizar reserva: " + (json.error || "Desconhecido"));

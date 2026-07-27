@@ -14,6 +14,7 @@ const sidebarLinks = [
    { href: "/painel/agente-ia", label: "Agente de IA", icon: "🤖" },
    { href: "/painel/reservas", label: "Reservas", icon: "📋" },
    { href: "/painel/relatorios", label: "Relatórios", icon: "📑" },
+   { href: "/painel/jornada", label: "Jornada do Cliente", icon: "🗺️" },
    { href: "/painel/comissoes", label: "Comissões", icon: "💰" },
    { href: "/painel/margem", label: "Margem ETO", icon: "💹" },
    { href: "/painel/promocoes", label: "Promoções", icon: "🏷️" },
