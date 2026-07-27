@@ -44,10 +44,14 @@ export default function JornadaPage() {
     fetch(`/api/admin/journey/stats?${params}`)
       .then((r) => r.json())
       .then((d) => {
-        setStats(d);
+        if (d && d.funnel) {
+          setStats(d);
+        } else {
+          setStats(null);
+        }
         setLoadingStats(false);
       })
-      .catch(() => setLoadingStats(false));
+      .catch(() => { setStats(null); setLoadingStats(false); });
   };
 
   const fetchJourneys = (p: number = 1) => {
@@ -65,10 +69,12 @@ export default function JornadaPage() {
     fetch(`/api/admin/journey?${params}`)
       .then((r) => r.json())
       .then((d) => {
-        setJourneys(d.journeys || []);
-        setTotal(d.total || 0);
-        setPage(d.page || 1);
-        setTotalPages(d.totalPages || 1);
+        if (d && !d.error) {
+          setJourneys(d.journeys || []);
+          setTotal(d.total || 0);
+          setPage(d.page || 1);
+          setTotalPages(d.totalPages || 1);
+        }
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -137,6 +143,26 @@ export default function JornadaPage() {
           </p>
         </div>
       </div>
+
+      {/* Loading State */}
+      {loadingStats && !stats && (
+        <div className="flex justify-center py-10">
+          <div className="text-center">
+            <div className="w-10 h-10 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-sm text-gray-500">Carregando dados da jornada...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Empty State when no stats (API error or no data) */}
+      {!loadingStats && !stats && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-10 text-center">
+          <p className="text-4xl mb-4">🗺️</p>
+          <h3 className="text-lg font-bold text-white mb-2">Jornada do Cliente</h3>
+          <p className="text-sm text-gray-400 mb-4">Nenhuma jornada registrada ainda. Os dados aparecerão aqui quando os primeiros clientes pesquisarem no site.</p>
+          <p className="text-xs text-gray-600">As pesquisas, seleções de veículos e checkouts serão rastreados automaticamente.</p>
+        </div>
+      )}
 
       {/* Summary Cards */}
       {stats && (
