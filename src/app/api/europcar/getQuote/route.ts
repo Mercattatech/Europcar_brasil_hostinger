@@ -50,20 +50,12 @@ export async function POST(request: Request) {
     const contractAttr = contractID ? ` contractID="${contractID}" type="C"` : '';
     const rateIdAttr   = rateId     ? ` rateId="${rateId}"`               : '';
 
-    // Build equipment XML — cap at 4 items total (Europcar hard limit)
+    // Build equipment XML
     let equipmentXml = '';
     if (equipmentList && Array.isArray(equipmentList) && equipmentList.length > 0) {
-      let totalQty = 0;
       const items = equipmentList
         .filter((eq: any) => eq.code && eq.qty > 0)
-        .reduce((acc: any[], eq: any) => {
-          const remaining = 4 - totalQty;
-          if (remaining <= 0) return acc;
-          const qty = Math.min(eq.qty, remaining);
-          totalQty += qty;
-          acc.push(`          <equipment code="${eq.code}" qty="${qty}"/>`);
-          return acc;
-        }, [])
+        .map((eq: any) => `          <equipment code="${eq.code}" qty="${eq.qty}"/>`)
         .join('\n');
       if (items) {
         equipmentXml = `\n        <equipmentList>\n${items}\n        </equipmentList>`;

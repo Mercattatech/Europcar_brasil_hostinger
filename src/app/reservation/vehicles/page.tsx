@@ -532,7 +532,6 @@ function VehiclesContent() {
         // getQuote returns a single price per item based on the prepaidMode sent.
         const codesForQuote = stationEquipment
           .filter((eq: any) => !eq.onRequest) // exclude On-Request from pricing call
-          .slice(0, 4)
           .map((eq: any) => ({ code: eq.code, qty: 1 }));
 
         let quoteData: any = null;
