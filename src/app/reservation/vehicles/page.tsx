@@ -175,6 +175,8 @@ function VehiclesContent() {
   const [loadingEquipment, setLoadingEquipment] = useState(false);
   // Equipment prices fetched from getQuote: { code: { price, priceBRL, currency } }
   const [equipmentPrices, setEquipmentPrices] = useState<Record<string, { price: number; priceBRL: number; totalBRL: number; currency: string; exchangeRate: number; onRequest: boolean }>>({});
+  // Track if we already fetched Step 3 data for the selected car
+  const [step3FetchedCarCategory, setStep3FetchedCarCategory] = useState<string | null>(null);
   // Quote insurances from getQuote API (real data for the selected vehicle)
   const [quoteInsurances, setQuoteInsurances] = useState<any[]>([]);
   // Quote mileage data from getQuote API
@@ -482,9 +484,10 @@ function VehiclesContent() {
   //  3. Call getQuote with chargesDetail="TRE" + correct prepaidMode → get prices
   //  4. Deduplicate prices: one price per item based on prepaidMode (NP vs PP)
   useEffect(() => {
-    if (currentStep !== 3 || !selectedCar || Object.keys(equipmentPrices).length > 0) return;
+    if (currentStep !== 3 || !selectedCar) return;
     const carCategory = selectedCar.carCategoryCode;
     if (!carCategory || !pickupStation || !pickupDate || !returnDate) return;
+    if (step3FetchedCarCategory === carCategory) return;
 
     // Determine prepaidMode based on tariff type
     // POA (Pay on Arrival) → NP (Non-Prepaid)
@@ -646,6 +649,7 @@ function VehiclesContent() {
         }));
 
         setXrsEquipment(finalEquipment);
+        setStep3FetchedCarCategory(carCategory);
         console.log(`[Step3] Equipment loaded: ${finalEquipment.length} items, prepaidMode=${prepaidMode}`);
       })
       .catch(err => console.warn('[Step3] getEquipmentList failed:', err))
@@ -713,6 +717,7 @@ function VehiclesContent() {
     setZeroExcessUpgrade(false);       // reset upgrade when changing car
     setEquipmentPrices({});            // reset equipment prices for new station/car
     setXrsEquipment([]);               // reset dynamic equipment list for new station
+    setStep3FetchedCarCategory(null);  // reset fetch tracker
     setQuoteInsurances([]);            // reset insurances for new car
     setQuoteMileage(null);             // reset mileage for new car
     setSelectedEquipmentMap({});       // clear previous selections
