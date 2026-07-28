@@ -124,7 +124,8 @@ export default function SearchBookingPage() {
                   ) : userReservations.length === 0 ? (
                      <div className="p-8 text-center text-gray-500">Você ainda não possui reservas.</div>
                   ) : (
-                     <table className="w-full text-left text-sm">
+                     <div className="overflow-x-auto scroll-x-mobile">
+                     <table className="w-full text-left text-sm min-w-[600px]">
                         <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 font-bold uppercase text-xs">
                            <tr>
                               <th className="px-6 py-4">Código / Status</th>
@@ -155,6 +156,7 @@ export default function SearchBookingPage() {
                            ))}
                         </tbody>
                      </table>
+                     </div>
                   )}
                </div>
             ) : result ? (

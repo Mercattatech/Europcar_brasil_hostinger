@@ -730,7 +730,7 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-[#f7f7f7] font-sans pb-20">
       <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 h-20 flex justify-between items-center text-sm font-bold text-gray-900">
+        <div className="max-w-7xl mx-auto px-4 h-14 md:h-20 flex justify-between items-center text-sm font-bold text-gray-900">
           <button onClick={() => window.history.back()} className="flex items-center gap-2 hover:text-[#008d36]">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
             Voltar
@@ -740,14 +740,14 @@ export default function CheckoutPage() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 py-10 flex gap-8">
+      <div className="max-w-7xl mx-auto px-4 py-6 md:py-10 flex flex-col-reverse md:flex-row gap-6 md:gap-8">
         {/* Form */}
         <div className="flex-1">
           <form onSubmit={handleCheckout} className="space-y-8">
             {/* Dados condutor */}
-            <div className="bg-white rounded-lg border border-gray-200 p-8 shadow-sm">
-              <h2 className="text-xl font-black text-gray-900 mb-6">1. Dados do Condutor Principal</h2>
-              <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="bg-white rounded-lg border border-gray-200 p-5 md:p-8 shadow-sm">
+              <h2 className="text-lg md:text-xl font-black text-gray-900 mb-4 md:mb-6">1. Dados do Condutor Principal</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Nome</label>
                   <input required value={nome} onChange={e => setNome(e.target.value)} className="w-full border rounded p-3 outline-none focus:border-[#008d36]" placeholder="João" />
@@ -775,7 +775,7 @@ export default function CheckoutPage() {
                 />
                 {emailError && <span className="text-red-500 text-[10px] font-bold mt-1">{emailError}</span>}
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Telefone / Celular</label>
                   <input 
@@ -793,7 +793,7 @@ export default function CheckoutPage() {
               </div>
               
               {/* Programa de Fidelidade e Voo */}
-              <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Programa de Fidelidade <span className="text-gray-400 font-normal">(Opcional)</span></label>
                   <select
@@ -823,7 +823,7 @@ export default function CheckoutPage() {
             </div>
 
             {/* Pagamento */}
-            <div className="bg-white rounded-lg border border-gray-200 p-8 shadow-sm">
+            <div className="bg-white rounded-lg border border-gray-200 p-5 md:p-8 shadow-sm">
               <h2 className="text-xl font-black text-gray-900 mb-6">2. Forma de Pagamento</h2>
               <div className="space-y-4">
                 {/* Balcão — only for POA tariff */}
@@ -933,7 +933,7 @@ export default function CheckoutPage() {
             </div>
 
             <div className="text-right">
-              <button disabled={loading || !acceptTermsReserva || !acceptTermsPais} type="submit" className="bg-[#008d36] hover:bg-[#007a2d] text-white font-black py-5 px-10 rounded-lg shadow-lg uppercase tracking-wide text-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+              <button disabled={loading || !acceptTermsReserva || !acceptTermsPais} type="submit" className="w-full md:w-auto bg-[#008d36] hover:bg-[#007a2d] text-white font-black py-4 md:py-5 px-8 md:px-10 rounded-lg shadow-lg uppercase tracking-wide text-base md:text-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors touch-target">
                 {loading ? "Processando..." : "Finalizar e Reservar Agora"}
               </button>
             </div>
@@ -941,7 +941,7 @@ export default function CheckoutPage() {
         </div>
 
         {/* Resumo */}
-        <div className="w-[380px] shrink-0">
+        <div className="w-full md:w-[380px] shrink-0">
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm sticky top-8">
             <div className="bg-gray-50 border-b border-gray-200 p-6">
               <h3 className="font-black text-gray-900 text-lg mb-1">Resumo da Reserva</h3>

@@ -327,22 +327,22 @@ export default function HeroSearchForm() {
     COUNTRIES.find((c) => c.code === country)?.emoji || "🌎";
 
   return (
-    <div className="bg-white rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.2)] overflow-visible p-6 md:p-8 relative mt-0">
+    <div className="bg-white rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.2)] overflow-visible p-4 sm:p-6 md:p-8 relative mt-0">
       <h2 className="text-gray-900 font-bold mb-4 text-base md:text-lg">
         Qual tipo de veículo?
       </h2>
 
       {/* Veículo Type Tabs */}
-      <div className="flex gap-0 border border-gray-300 rounded inline-flex mb-8">
+      <div className="flex gap-0 border border-gray-300 rounded inline-flex mb-6 md:mb-8">
         <button
           type="button"
-          className="bg-[#008d36] text-white font-bold px-6 py-2 text-sm rounded-l shadow-sm flex items-center gap-2"
+          className="bg-[#008d36] text-white font-bold px-4 md:px-6 py-2 text-xs md:text-sm rounded-l shadow-sm flex items-center gap-1 md:gap-2"
         >
           🚗 Carro
         </button>
         <button
           type="button"
-          className="bg-white text-gray-700 font-bold px-6 py-2 text-sm rounded-r hover:bg-gray-50 flex items-center gap-2"
+          className="bg-white text-gray-700 font-bold px-4 md:px-6 py-2 text-xs md:text-sm rounded-r hover:bg-gray-50 flex items-center gap-1 md:gap-2"
         >
           🚐 Furgões e caminhões
         </button>
@@ -350,7 +350,7 @@ export default function HeroSearchForm() {
 
       <form onSubmit={handleSearch}>
         {/* Main Grid Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
           {/* Pickup Location + Return Location */}
           <div className="lg:col-span-2 relative">
             <div className="flex justify-between items-center mb-2">
@@ -399,9 +399,9 @@ export default function HeroSearchForm() {
 
                 {/* Dropdown Autocomplete - Pickup Station (Europcar style) */}
                 {showStationsList && stations.length > 0 && (
-                  <div className="absolute top-full left-0 w-full md:w-[820px] mt-1 bg-white flex shadow-2xl rounded-lg z-50 overflow-hidden border border-gray-200" style={{ height: '420px' }}>
+                  <div className="absolute top-full left-0 w-[calc(100vw-2rem)] sm:w-full md:w-[820px] mt-1 bg-white flex flex-col md:flex-row shadow-2xl rounded-lg z-50 overflow-hidden border border-gray-200 max-h-[60vh] md:max-h-none" style={{ height: 'auto', maxHeight: '420px' }}>
                     {/* Left: Station list */}
-                    <div className="w-full md:w-[340px] flex flex-col border-r border-gray-200 shrink-0">
+                    <div className="w-full md:w-[340px] flex flex-col border-b md:border-b-0 md:border-r border-gray-200 shrink-0 max-h-[300px] md:max-h-none overflow-y-auto">
                       <div className="bg-gray-50 font-bold text-[11px] text-gray-500 px-5 py-2.5 border-b border-gray-200 tracking-widest uppercase">Europcar Station</div>
                       <div className="flex-1 overflow-y-auto">
                         {stations.map((station) => (
@@ -544,8 +544,8 @@ export default function HeroSearchForm() {
 
                   {/* Dropdown Autocomplete - Return Station */}
                   {showReturnStationsList && returnStations.length > 0 && (
-                    <div className="absolute top-full left-0 w-full md:w-[760px] mt-2 bg-white flex shadow-2xl rounded-lg z-50 h-[380px] overflow-hidden border border-gray-200">
-                      <div className="w-full md:w-[380px] flex flex-col border-r border-gray-200">
+                    <div className="absolute top-full left-0 w-[calc(100vw-2rem)] sm:w-full md:w-[760px] mt-2 bg-white flex flex-col md:flex-row shadow-2xl rounded-lg z-50 max-h-[60vh] md:max-h-[380px] overflow-hidden border border-gray-200">
+                      <div className="w-full md:w-[380px] flex flex-col border-b md:border-b-0 md:border-r border-gray-200 max-h-[250px] md:max-h-none overflow-y-auto">
                         <div className="bg-orange-50 font-bold text-[10px] text-orange-600 px-4 py-2 border-b border-gray-200 tracking-wider">LOCAL DE DEVOLUÇÃO</div>
                         <div className="flex-1 overflow-y-auto">
                           {returnStations.map((station) => (
@@ -658,7 +658,7 @@ export default function HeroSearchForm() {
 
         {/* Footer Actions */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-6 mt-8">
-          <div className="flex gap-8 items-center w-auto">
+          <div className="flex flex-wrap gap-4 md:gap-8 items-center w-full md:w-auto">
             {/* Idade Dropdown */}
             <div className="flex items-center gap-1 cursor-pointer text-sm relative group">
               <span className="font-bold text-gray-500">Tenho </span>
@@ -778,7 +778,7 @@ export default function HeroSearchForm() {
 
             {/* Tarifa Popover - Exact match implementation */}
             {showTariffPopover && (
-              <div className="absolute top-full right-1/2 md:right-0 transform md:translate-x-0 translate-x-1/2 mt-4 w-[350px] bg-white rounded-lg shadow-2xl z-50 overflow-hidden flex flex-col border border-gray-200">
+              <div className="absolute top-full left-0 md:left-auto right-auto md:right-0 mt-4 w-[calc(100vw-3rem)] sm:w-[350px] bg-white rounded-lg shadow-2xl z-50 overflow-hidden flex flex-col border border-gray-200">
                 <div className="p-5 flex flex-col gap-3">
                   <h3 className="font-extrabold text-[#000000] text-[16px] leading-[22px]">
                     Está a viajar em trabalho ou lazer e vai pagar com cartão de
@@ -910,7 +910,7 @@ export default function HeroSearchForm() {
 
             <button
               type="submit"
-              className="w-full md:w-56 bg-[#ffcc00] hover:bg-[#e6b800] text-gray-900 font-black py-4 px-8 rounded transition-colors text-base flex justify-center items-center shadow-md border-0"
+              className="w-full md:w-56 bg-[#ffcc00] hover:bg-[#e6b800] text-gray-900 font-black py-3.5 md:py-4 px-6 md:px-8 rounded transition-colors text-sm md:text-base flex justify-center items-center shadow-md border-0 touch-target"
             >
               Pesquisar
             </button>

@@ -47,7 +47,7 @@ export default function AIChatWidget() {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-europcar-green text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform z-50 hover:bg-green-700 focus:outline-none"
+        className="fixed bottom-20 right-4 md:bottom-6 md:right-6 w-12 h-12 md:w-14 md:h-14 bg-europcar-green text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform z-40 hover:bg-green-700 focus:outline-none"
         aria-label="Falar com Assistente IA"
       >
         <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -58,7 +58,7 @@ export default function AIChatWidget() {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 w-full max-w-[360px] h-[550px] max-h-[85vh] bg-white rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden border border-gray-100 flex-shrink-0">
+    <div className="fixed bottom-20 right-0 md:bottom-6 md:right-6 w-full md:max-w-[360px] h-[80vh] md:h-[550px] md:max-h-[85vh] bg-white rounded-t-2xl md:rounded-2xl shadow-2xl flex flex-col z-40 overflow-hidden border border-gray-100 border-b-0 md:border-b">
       
       {/* Header */}
       <div className="bg-europcar-green p-4 flex items-center justify-between shadow-md shrink-0">

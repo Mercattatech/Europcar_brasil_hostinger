@@ -56,6 +56,7 @@ function VehiclesContent() {
   const [currentStep, setCurrentStep] = useState(2);
   const [carImageOverrides, setCarImageOverrides] = useState<Record<string, string>>({});
   const [carCategoryOverrides, setCarCategoryOverrides] = useState<Record<string, string>>({});
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   // URL params
   const pickupStation = searchParams.get("pickup") || "";
@@ -743,11 +744,11 @@ function VehiclesContent() {
 
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 h-20 flex justify-between items-center">
+        <div className="max-w-7xl mx-auto px-4 h-14 md:h-20 flex justify-between items-center">
           <Link href="/">
-            <img src="/logo.jpg" alt="Europcar" className="h-12 object-contain" />
+            <img src="/logo.jpg" alt="Europcar" className="h-8 md:h-12 object-contain" />
           </Link>
-          <div className="flex items-center gap-6 text-sm font-bold text-gray-900">
+          <div className="flex items-center gap-3 md:gap-6 text-xs md:text-sm font-bold text-gray-900">
             {session?.user ? (
               <div className="flex items-center gap-4">
                 <span className="text-[#008d36]">Olá, {session.user.name || session.user.email?.split("@")[0]}</span>
@@ -763,14 +764,14 @@ function VehiclesContent() {
 
       {/* Stepper */}
       <div className="bg-white border-b border-gray-200 py-4">
-        <div className="max-w-7xl mx-auto px-4 flex gap-4">
+        <div className="max-w-7xl mx-auto px-4 flex gap-2 md:gap-4 overflow-x-auto scroll-x-mobile pb-2 md:pb-0">
           {/* Step 1 */}
-          <div className="flex-1 bg-white border border-gray-200 rounded p-4">
+          <div className="min-w-[120px] md:min-w-0 flex-1 bg-white border border-gray-200 rounded p-2 md:p-4">
             <div className="flex items-center gap-2 mb-2">
-              <span className="bg-[#008d36] text-white font-bold text-xs w-5 h-5 flex items-center justify-center rounded-sm">1</span>
-              <span className="text-[11px] font-bold text-gray-500 uppercase">LOCAL DO ALUGUEL</span>
+              <span className="bg-[#008d36] text-white font-bold text-[10px] md:text-xs w-4 h-4 md:w-5 md:h-5 flex items-center justify-center rounded-sm">1</span>
+              <span className="text-[9px] md:text-[11px] font-bold text-gray-500 uppercase">LOCAL</span>
             </div>
-            <div className="flex justify-between text-xs">
+            <div className="flex justify-between text-[10px] md:text-xs">
               <div>
                 <div className="font-bold text-gray-900 uppercase text-[10px]">Retirada</div>
                 <div className="font-bold truncate max-w-[130px]">{stationName || pickupStation}</div>
@@ -784,7 +785,7 @@ function VehiclesContent() {
             </div>
           </div>
           {/* Step 2 */}
-          <div className={`flex-1 bg-white border-2 ${currentStep === 2 ? "border-[#008d36]" : "border-gray-200"} rounded p-4 relative`}>
+          <div className={`min-w-[100px] md:min-w-0 flex-1 bg-white border-2 ${currentStep === 2 ? "border-[#008d36]" : "border-gray-200"} rounded p-2 md:p-4 relative`}>
             <div className="absolute -top-3 left-4 bg-white px-2 flex items-center gap-2">
               <span className="bg-[#008d36] text-white font-bold text-xs w-5 h-5 flex items-center justify-center rounded-sm">2</span>
               <span className="text-[11px] font-bold text-[#008d36] uppercase">VEÍCULO</span>
@@ -794,7 +795,7 @@ function VehiclesContent() {
             </p>
           </div>
           {/* Step 3 */}
-          <div className={`flex-1 bg-white border-2 ${currentStep === 3 ? "border-[#008d36]" : "border-gray-200"} rounded p-4 relative`}>
+          <div className={`min-w-[100px] md:min-w-0 flex-1 bg-white border-2 ${currentStep === 3 ? "border-[#008d36]" : "border-gray-200"} rounded p-2 md:p-4 relative`}>
             <div className="absolute -top-3 left-4 bg-white px-2 flex items-center gap-2">
               <span className={`${currentStep === 3 ? "bg-[#008d36] text-white" : "bg-gray-200 text-gray-500"} font-bold text-xs w-5 h-5 flex items-center justify-center rounded-sm`}>3</span>
               <span className={`text-[11px] font-bold ${currentStep === 3 ? "text-[#008d36]" : "text-gray-400"} uppercase`}>PROTEÇÃO, EXTRAS</span>
@@ -802,7 +803,7 @@ function VehiclesContent() {
             <p className="text-[13px] text-gray-500 mt-2">{currentStep === 3 ? "Escolha extras opcionais." : "Disponível após selecionar veículo."}</p>
           </div>
           {/* Step 4 */}
-          <div className="flex-1 bg-white border border-gray-200 rounded p-4">
+          <div className="min-w-[80px] md:min-w-0 flex-1 bg-white border border-gray-200 rounded p-2 md:p-4">
             <div className="flex items-center gap-2">
               <span className="bg-gray-200 text-gray-500 font-bold text-xs w-5 h-5 flex items-center justify-center rounded-sm">4</span>
               <span className="text-[11px] font-bold text-gray-400 uppercase">REVISAR</span>
@@ -812,10 +813,20 @@ function VehiclesContent() {
       </div>
 
       {/* Main */}
-      <div className="max-w-7xl mx-auto px-4 py-8 flex gap-8 items-start">
-        {/* Filters sidebar - only on step 2 */}
+      <div className="max-w-7xl mx-auto px-4 py-4 md:py-8 flex flex-col md:flex-row gap-4 md:gap-8 items-start">
+        {/* Mobile filter toggle */}
         {currentStep === 2 && (
-        <div className="w-[260px] shrink-0 sticky top-4">
+          <button
+            onClick={() => setShowMobileFilters(!showMobileFilters)}
+            className="md:hidden flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-4 py-3 w-full justify-center text-sm font-bold text-gray-700"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+            {showMobileFilters ? 'Ocultar Filtros' : 'Mostrar Filtros'}
+          </button>
+        )}
+        {/* Filters sidebar */}
+        {currentStep === 2 && (
+        <div className={`${showMobileFilters ? 'block' : 'hidden'} md:block w-full md:w-[260px] shrink-0 md:sticky md:top-4`}>
           <div className="bg-white rounded border border-gray-200 p-6">
             <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
               <h3 className="font-bold text-gray-900">Filtros</h3>
@@ -947,16 +958,16 @@ function VehiclesContent() {
                       <div key={`${code}-${idx}`} className={`bg-white rounded border flex flex-col transition-shadow ${isSelected ? "border-[#008d36] shadow-lg" : isPremium ? "border-[#c9a84c] hover:shadow-md" : "border-gray-200 hover:shadow-md"}`}>
                         
                         {/* Top row */}
-                        <div className="flex p-5 gap-6">
+                        <div className="flex flex-col sm:flex-row p-4 md:p-5 gap-4 md:gap-6">
                           {/* Image - gold background for premium */}
-                          <div className={`w-[240px] shrink-0 flex items-center justify-center p-2 rounded-lg ${isPremium ? "bg-gradient-to-b from-[#f5ecd0] to-[#efe3c0]" : ""}`}>
+                          <div className={`w-full sm:w-[200px] md:w-[240px] shrink-0 flex items-center justify-center p-2 rounded-lg ${isPremium ? "bg-gradient-to-b from-[#f5ecd0] to-[#efe3c0]" : ""}`}>
                             <CarImage sample={sample} code={code} alt={sample || name} imageUrl={car.imageUrl} overrideUrl={carImageOverrides[code]} />
                           </div>
 
                           {/* Info */}
                           <div className="flex-1 flex flex-col justify-start">
                             {/* Car name: use sample (AUDI A3 SPORTBACK) as main title */}
-                            <h2 className="text-[22px] font-black text-gray-900 uppercase tracking-tight">
+                            <h2 className="text-lg md:text-[22px] font-black text-gray-900 uppercase tracking-tight">
                               {sample || name}
                             </h2>
                             
