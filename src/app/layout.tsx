@@ -1,8 +1,16 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
+  themeColor: "#008d36",
+};
 
 export const metadata: Metadata = {
   title: "Europcar Brasil - Aluguel de Carros",
@@ -13,6 +21,17 @@ export const metadata: Metadata = {
       { url: "https://www.europcar.com/favicon-32x32.png", sizes: "32x32", type: "image/png" },
     ],
     apple: "https://www.europcar.com/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Europcar Brasil",
+  },
+  formatDetection: {
+    telephone: true,
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
   },
 };
 
@@ -29,7 +48,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body className={inter.className}>
+      <body className={`${inter.className} safe-top`}>
         <AuthProvider>
           <MaintenanceGuard />
           <GoogleTags />
