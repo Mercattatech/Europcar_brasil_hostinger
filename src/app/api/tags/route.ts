@@ -8,6 +8,9 @@ const TAG_KEYS = [
    'custom_body_scripts',
 ];
 
+// Force dynamic rendering — this route must query the DB at runtime
+export const dynamic = 'force-dynamic';
+
 // GET — Endpoint público para carregar as tags de tracking
 // Usado pelo componente GoogleTags no layout
 export async function GET() {
@@ -28,7 +31,11 @@ export async function GET() {
          }
       });
    } catch (error: any) {
-      console.error('Tags public API error:', error);
-      return NextResponse.json({});
+      console.error('Tags public API error:', error?.message || error);
+      // Return empty values so the component doesn't break
+      const empty: Record<string, string> = {};
+      TAG_KEYS.forEach(k => empty[k] = '');
+      return NextResponse.json(empty);
    }
 }
+
