@@ -83,7 +83,7 @@ export async function POST(request: Request) {
     <serviceParameters>
       <reservation chargesDetail="TRE" rateDetails="Y" prepaidMode="${resolvedPrepaidMode}" carCategory="${carCategory}"${contractAttr}${rateIdAttr}>
         <checkout stationID="${pickupStation}" date="${pickupDate}" time="${pickupTime || '1000'}"/>
-        <checkin  stationID="${returnStation || pickupStation}" date="${returnDate}" time="${returnTime || '1000'}/>${equipmentXml}${insuranceXml}
+        <checkin stationID="${returnStation || pickupStation}" date="${returnDate}" time="${returnTime || '1000'}"/>${equipmentXml}${insuranceXml}
       </reservation>
       <driver countryOfResidence="BR"/>
     </serviceParameters>

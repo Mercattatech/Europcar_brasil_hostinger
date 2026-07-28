@@ -686,6 +686,7 @@ export default function CheckoutPage() {
                 {booking?.xrsEquipment?.length > 0 && (
                   <>
                     <div className="text-[10px] font-bold text-[#e67e00] uppercase mt-2 mb-1">Acessórios</div>
+                    <div className="text-[9px] text-gray-400 mb-1 leading-tight">Pagamento na loja de destino.</div>
                     {booking.xrsEquipment.map((eq: any) => {
                       const eqName = eq.name || eq.code;
                       const eqIcon = eq.icon || '📦';
@@ -1103,7 +1104,8 @@ export default function CheckoutPage() {
                 {/* Equipment section in main form */}
                 {booking?.xrsEquipment?.length > 0 && (
                   <div className="mb-4 pb-3 border-b border-gray-200">
-                    <div className="text-[10px] font-bold text-[#e67e00] uppercase mb-2">Acessórios</div>
+                    <div className="text-[10px] font-bold text-[#e67e00] uppercase mb-1">Acessórios</div>
+                    <p className="text-[10px] text-gray-500 mb-2 leading-tight">Opcionais reservados. O pagamento destes itens é feito na loja de destino.</p>
                     {booking.xrsEquipment.map((eq: any) => {
                       const eqPriceBRL = parseFloat(eq.priceBRL || 0);
                       const eqTotal = eqPriceBRL * (eq.qty || 1) * days;
