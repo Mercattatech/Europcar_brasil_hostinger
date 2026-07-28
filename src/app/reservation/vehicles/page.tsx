@@ -475,183 +475,186 @@ function VehiclesContent() {
     }
   }, [currentStep, dbExtras.length]);
 
-  // Fetch equipment prices + insurances + mileage from getQuote when entering Step 3
+  // ── Step 3: Load equipment + prices + insurances + mileage ─────────────────
+  // Strategy:
+  //  1. Call getEquipmentList (real API, stationID + dates) → what's available here
+  //  2. Filter out "U" (Unavailable) → show "R" (On Request) with warning badge
+  //  3. Call getQuote with chargesDetail="TRE" + correct prepaidMode → get prices
+  //  4. Deduplicate prices: one price per item based on prepaidMode (NP vs PP)
   useEffect(() => {
     if (currentStep !== 3 || !selectedCar || Object.keys(equipmentPrices).length > 0) return;
     const carCategory = selectedCar.carCategoryCode;
     if (!carCategory || !pickupStation || !pickupDate || !returnDate) return;
 
-    // ── Full catalog of all known Europcar equipment codes ──────────────────
-    // Items not returned by the API for this station will show as "Indisponível"
-    const EQUIPMENT_CATALOG: Record<string, { name: string; icon: string; description: string; maxQty: number }> = {
-      CSB: { name: 'Assento de segurança para bebês de 0-13 kg (0-12 meses)', icon: '👶', description: 'Recomendado para crianças de 0-12 meses ou 0-13 kg.', maxQty: 2 },
-      CSI: { name: 'Assento de segurança para crianças pequenas de 9-18 kg (1-3 anos)', icon: '🧒', description: 'Recomendado para crianças de 1-3 anos ou 9-18 kg.', maxQty: 2 },
-      CST: { name: 'Assento de segurança para crianças pequenas de 9-18 kg (1-3 anos)', icon: '🧒', description: 'Recomendado para crianças de 1-3 anos ou 9-18 kg.', maxQty: 2 },
-      BST: { name: 'Assento de segurança infantil 15-30 kg (4-7 anos)', icon: '💺', description: 'Recomendado para crianças de 4-7 anos ou 15-30 kg.', maxQty: 2 },
-      NVS: { name: 'Sistema de navegação', icon: '🗺️', description: '- Smartphone com navegação/GPS ativado. - Chamadas locais e internacionais ilimitadas.', maxQty: 1 },
-      NAV: { name: 'Sistema de navegação', icon: '🗺️', description: 'Navegador GPS portátil com mapas atualizados.', maxQty: 1 },
-      ADD: { name: 'Motorista adicional', icon: '👤', description: 'Você pode compartilhar a direção em longas viagens e ter a tranquilidade de que algum... Ler mais', maxQty: 3 },
-      ADR: { name: 'Motorista adicional', icon: '👤', description: 'Condutor adicional — permite que outra pessoa dirija o veículo alugado.', maxQty: 3 },
-      JAC: { name: 'Sobretaxa de motorista jovem', icon: '🧑‍🦱', description: 'Exigida para todos os motoristas com menos de 25 anos.', maxQty: 1 },
-      YOU: { name: 'Sobretaxa de motorista jovem', icon: '🧑‍🦱', description: 'Taxa aplicada para motoristas com menos de 25 anos.', maxQty: 1 },
-      TRH: { name: 'Engate para reboque', icon: '🔗', description: 'Engate para reboque de trailers ou caravanas.', maxQty: 1 },
-      CBF: { name: 'Taxa transfronteiriça', icon: '🌍', description: 'Esta opção permite que você dirija seu carro alugado em países selecionados.', maxQty: 1 },
-      LRC: { name: 'Taxa transfronteiriça', icon: '🌍', description: 'Taxa para condução do veículo em países adicionais.', maxQty: 1 },
-      DVD: { name: 'Diesel garantido', icon: '⛽', description: 'Diesel garantido (disponível apenas em EDMR, CDMR, EVMR, IVMR e SDMR).', maxQty: 1 },
-      SKR: { name: 'Rack de esqui', icon: '🎿', description: 'Suporte para transporte de esquis no teto do veículo.', maxQty: 1 },
-      SKB: { name: 'Rack de esqui', icon: '🎿', description: 'Suporte para transporte de esquis no teto do veículo.', maxQty: 1 },
-      SKV: { name: 'Rack de esqui', icon: '🎿', description: 'Rack para transporte de esquis ou snowboards.', maxQty: 1 },
-      SNO: { name: 'Correntes para neve', icon: '⛓️', description: 'Na maioria dos casos, as correntes de neve devem ser reservadas em combinação com pneus de neve.', maxQty: 1 },
-      CHN: { name: 'Correntes para neve', icon: '⛓️', description: 'Correntes para pneus — obrigatórias em certas regiões com neve.', maxQty: 1 },
-      WFI: { name: 'Wi-Fi portátil', icon: '📶', description: 'Hotspot Wi-Fi portátil com dados móveis inclusos.', maxQty: 1 },
-      LUG: { name: 'Proteção de bagagem', icon: '🧳', description: 'Cobertura para danos ou roubo de bagagem.', maxQty: 1 },
-      HEL: { name: 'Capacete de motocicleta', icon: '🪖', description: 'Capacete fornecido junto com o veículo.', maxQty: 2 },
-      MMS: { name: 'Proteção de espelhos', icon: '🪞', description: 'Cobertura adicional para espelhos retrovisores.', maxQty: 1 },
-      JAB: { name: 'Dispositivo antiabandono', icon: '🔔', description: 'Dispositivo antiabandono para crianças.', maxQty: 1 },
-    };
-
-    const allEqCodes = Object.keys(EQUIPMENT_CATALOG);
-    const equipmentList = allEqCodes.map(code => ({ code, qty: 1 }));
-
-    setLoadingEquipment(true);
+    // Determine prepaidMode based on tariff type
+    // POA (Pay on Arrival) → NP (Non-Prepaid)
+    // ETO (prepaid corporate) → PP (Prepaid)
+    const prepaidMode = selectedTariffType === 'ETO' ? 'PP' : 'NP';
 
     const cidForQuote = selectedTariffType === 'ETO'
       ? (selectedCar._etoCID || '56935466')
       : (effectiveContractID || '57269673');
 
-    fetch('/api/europcar/getQuote', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        carCategory,
-        pickupStation,
-        returnStation: returnStation || pickupStation,
-        pickupDate,
-        returnDate,
-        pickupTime,
-        returnTime,
-        contractID: cidForQuote,
-        equipmentList,
-      }),
-    })
+    setLoadingEquipment(true);
+
+    // ── Step 3a: getEquipmentList → available items for this station ─────────
+    const equipListUrl = new URLSearchParams({
+      station:     pickupStation,
+      date:        pickupDate,
+      returnDate:  returnDate,
+      prepaidMode: prepaidMode,
+    });
+
+    fetch(`/api/europcar/getEquipmentList?${equipListUrl.toString()}`)
       .then(r => r.json())
-      .then(data => {
-        const reservation = data?.message?.serviceResponse?.reservation;
-        const quote = reservation?.quote;
-        const quoteAttrs = quote?.$ || quote || {};
+      .then(async (listData) => {
+        const apiEquipment: any[] = listData.equipment || [];
 
+        // Equipment from API already filtered (U=unavailable removed)
+        // Build the working list for this station
+        const stationEquipment = apiEquipment.map((eq: any) => ({
+          code:        eq.code,
+          name:        eq.name,
+          icon:        eq.icon        || '📦',
+          description: eq.description || '',
+          maxQty:      Math.min(eq.maxQty ?? 4, 4),
+          onRequest:   eq.onRequest   || false,
+          statusCode:  eq.statusCode  || 'F',
+          // Prices from getEquipmentList (may be partial — enriched by getQuote below)
+          priceFromList: eq.price     || 0,
+        }));
 
-        // === Equipment prices + dynamic xrsEquipment list ===
-        const eqList = reservation?.equipmentList?.equipment;
-        if (eqList) {
-          const items = Array.isArray(eqList) ? eqList : [eqList];
-          const prices: Record<string, { price: number; priceBRL: number; totalBRL: number; currency: string; exchangeRate: number; onRequest: boolean }> = {};
-          const exchRate = parseFloat(quoteAttrs.exchangeRate || '1');
+        // ── Step 3b: getQuote with chargesDetail="TRE" ────────────────────
+        // Send only the available codes (max 4) to get accurate per-item prices.
+        // getQuote returns a single price per item based on the prepaidMode sent.
+        const codesForQuote = stationEquipment
+          .filter((eq: any) => !eq.onRequest) // exclude On-Request from pricing call
+          .slice(0, 4)
+          .map((eq: any) => ({ code: eq.code, qty: 1 }));
 
-          // Build a set of codes returned by the API (these are available for this station)
-          const returnedCodes = new Set<string>();
-
-          for (const item of items) {
-            const a = item.$ || item;
-            const code = a.code || '';
-            if (code) {
-              returnedCodes.add(code);
-              const itemPrice = parseFloat(a.price || '0');
-              const itemPriceBRL = parseFloat(a.priceInBookingCurrency || '0');
-              const itemTotalBRL = parseFloat(a.rentalPriceInBookingCurrencyAI || a.rentalMaxInBookingCurrencyAI || a.priceInBookingCurrency || '0');
-              // Only count as "available" if it has a real price OR statusCode is not blank
-              if (itemPrice > 0 || itemPriceBRL > 0 || itemTotalBRL > 0 || a.statusCode) {
-                prices[code] = {
-                  price: itemPrice,
-                  priceBRL: itemPriceBRL,
-                  totalBRL: itemTotalBRL,
-                  currency: quoteAttrs.currency || 'EUR',
-                  exchangeRate: exchRate,
-                  onRequest: (a.statusCode || '') === 'R',
-                };
-              }
-            }
+        let quoteData: any = null;
+        if (codesForQuote.length > 0) {
+          try {
+            const quoteRes = await fetch('/api/europcar/getQuote', {
+              method:  'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                carCategory,
+                pickupStation,
+                returnStation: returnStation || pickupStation,
+                pickupDate,
+                returnDate,
+                pickupTime,
+                returnTime,
+                contractID:  cidForQuote,
+                prepaidMode,           // ← dynamic NP or PP
+                equipmentList: codesForQuote,
+              }),
+            });
+            quoteData = await quoteRes.json();
+          } catch (err) {
+            console.warn('[Step3] getQuote failed:', err);
           }
-          setEquipmentPrices(prices);
-
-          // Build dynamic equipment list: API-returned items first, rest as inactive
-          const dynamicEquipment: any[] = [];
-          const seenCodes = new Set<string>();
-
-          // First: add items that came back from the API with a price
-          for (const code of Array.from(returnedCodes)) {
-            if (prices[code] && EQUIPMENT_CATALOG[code] && !seenCodes.has(code)) {
-              seenCodes.add(code);
-              dynamicEquipment.push({
-                code,
-                ...EQUIPMENT_CATALOG[code],
-                onRequest: prices[code].onRequest,
-              });
-            }
-          }
-
-          // Then: add catalog items not returned by API (show as "Indisponível")
-          for (const code of Object.keys(EQUIPMENT_CATALOG)) {
-            if (!seenCodes.has(code)) {
-              seenCodes.add(code);
-              dynamicEquipment.push({
-                code,
-                ...EQUIPMENT_CATALOG[code],
-                onRequest: false,
-              });
-            }
-          }
-
-          setXrsEquipment(dynamicEquipment);
-        } else {
-          // API returned no equipment list → show full catalog as inactive
-          setXrsEquipment(Object.entries(EQUIPMENT_CATALOG).map(([code, meta]) => ({
-            code,
-            ...meta,
-            onRequest: false,
-          })));
         }
 
-        // === Insurance list from getQuote (all types) ===
-        const rawIns = quote?.insuranceList?.insurance || [];
-        const insArr: any[] = Array.isArray(rawIns) ? rawIns : [rawIns];
-        const parsedInsurances = insArr.map((ins: any) => {
-          const a = ins.$ || ins;
-          return {
-            code: a.code || '',
-            descr: a.descr || '',
-            type: a.type || 'O', // O=Optional, I=Included, M=Mandatory
-            price: parseFloat(a.price || '0'),
-            priceInBookingCurrency: parseFloat(a.priceInBookingCurrency || '0'),
-            rentalPriceAI: parseFloat(a.rentalPriceAI || '0'),
-            rentalPriceInBookingCurrencyAI: parseFloat(a.rentalPriceInBookingCurrencyAI || '0'),
-            excessWithPOM: parseFloat(a.excessWithPOM || '0'),
-            bkExcessWithPOM: parseFloat(a.bkExcessWithPOM || '0'),
-          };
-        }).filter((ins: any) => ins.code);
-        console.log('[Step3] Quote insurances:', parsedInsurances.length, parsedInsurances.map((i: any) => i.code));
-        setQuoteInsurances(parsedInsurances);
+        // ── Parse prices from getQuote response ──────────────────────────
+        const prices: Record<string, { price: number; priceBRL: number; totalBRL: number; currency: string; exchangeRate: number; onRequest: boolean }> = {};
 
-        // === Mileage data ===
-        const includedKm = parseInt(quoteAttrs.includedKm || '0');
-        const totalIncludedDist = parseInt(quoteAttrs.totalIncludedDist || '0');
-        const extraKmPrice = parseFloat(quoteAttrs.extraKmPrice || '0');
-        const exchangeRate = parseFloat(quoteAttrs.exchangeRate || '1');
-        const extraKmPriceBRL = extraKmPrice * exchangeRate;
-        if (includedKm > 0 || totalIncludedDist > 0) {
-          setQuoteMileage({
-            includedKm,
-            totalIncludedDist,
-            extraKmPrice,
-            extraKmPriceBRL,
-            includedKmType: quoteAttrs.includedKmType || 'D',
-            currency: quoteAttrs.currency || 'EUR',
-          });
+        if (quoteData) {
+          const reservation = quoteData?.message?.serviceResponse?.reservation;
+          const quote       = reservation?.quote;
+          const quoteAttrs  = quote?.$ || quote || {};
+          const exchRate    = parseFloat(quoteAttrs.exchangeRate || '1');
+
+          const eqList = reservation?.equipmentList?.equipment;
+          if (eqList) {
+            const items = Array.isArray(eqList) ? eqList : [eqList];
+            for (const item of items) {
+              const a    = item.$ || item;
+              const code = (a.code || '').toString().trim().toUpperCase();
+              if (!code) continue;
+
+              const itemPrice    = parseFloat(a.price                              || '0');
+              const itemPriceBRL = parseFloat(a.priceInBookingCurrency             || '0');
+              const itemTotalBRL = parseFloat(
+                a.rentalPriceInBookingCurrencyAI ||
+                a.rentalMaxInBookingCurrencyAI   ||
+                a.priceInBookingCurrency         || '0'
+              );
+
+              // statusCode from getQuote also applies — re-check
+              const sc = (a.statusCode || 'F').toString().trim().toUpperCase();
+              if (sc === 'U') continue; // skip unavailable
+
+              prices[code] = {
+                price:        itemPrice,
+                priceBRL:     itemPriceBRL,
+                totalBRL:     itemTotalBRL,
+                currency:     quoteAttrs.currency || 'EUR',
+                exchangeRate: exchRate,
+                onRequest:    sc === 'R',
+              };
+            }
+          }
+
+          // ── Insurance list from getQuote ────────────────────────────────
+          const rawIns  = quote?.insuranceList?.insurance || [];
+          const insArr  = Array.isArray(rawIns) ? rawIns : [rawIns];
+          const parsedInsurances = insArr.map((ins: any) => {
+            const a = ins.$ || ins;
+            return {
+              code:                          a.code                          || '',
+              descr:                         a.descr                         || '',
+              type:                          a.type                          || 'O',
+              price:                         parseFloat(a.price              || '0'),
+              priceInBookingCurrency:        parseFloat(a.priceInBookingCurrency || '0'),
+              rentalPriceAI:                 parseFloat(a.rentalPriceAI      || '0'),
+              rentalPriceInBookingCurrencyAI:parseFloat(a.rentalPriceInBookingCurrencyAI || '0'),
+              excessWithPOM:                 parseFloat(a.excessWithPOM      || '0'),
+              bkExcessWithPOM:               parseFloat(a.bkExcessWithPOM    || '0'),
+            };
+          }).filter((ins: any) => ins.code);
+          setQuoteInsurances(parsedInsurances);
+
+          // ── Mileage data ────────────────────────────────────────────────
+          const includedKm     = parseInt(quoteAttrs.includedKm     || '0');
+          const totalIncludedDist = parseInt(quoteAttrs.totalIncludedDist || '0');
+          const extraKmPrice   = parseFloat(quoteAttrs.extraKmPrice  || '0');
+          const exchangeRate   = parseFloat(quoteAttrs.exchangeRate  || '1');
+          if (includedKm > 0 || totalIncludedDist > 0) {
+            setQuoteMileage({
+              includedKm,
+              totalIncludedDist,
+              extraKmPrice,
+              extraKmPriceBRL: extraKmPrice * exchangeRate,
+              includedKmType:  quoteAttrs.includedKmType || 'D',
+              currency:        quoteAttrs.currency       || 'EUR',
+            });
+          }
         }
+
+        setEquipmentPrices(prices);
+
+        // ── Finalize equipment list with merged price data ─────────────────
+        // Items from the API + enriched with getQuote prices.
+        // Items that have no price from either source are still shown if
+        // they came from getEquipmentList (statusCode F or R).
+        const finalEquipment = stationEquipment.map((eq: any) => ({
+          ...eq,
+          // Override onRequest if getQuote also flags it
+          onRequest: eq.onRequest || (prices[eq.code]?.onRequest ?? false),
+        }));
+
+        setXrsEquipment(finalEquipment);
+        console.log(`[Step3] Equipment loaded: ${finalEquipment.length} items, prepaidMode=${prepaidMode}`);
       })
-      .catch(err => console.warn('[Step3] getQuote fetch failed:', err))
+      .catch(err => console.warn('[Step3] getEquipmentList failed:', err))
       .finally(() => setLoadingEquipment(false));
+
   }, [currentStep, selectedCar, equipmentPrices, pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, selectedTariffType, effectiveContractID]);
+
+
+
 
   const handleEquipmentQuantity = (code: string, delta: number, maxQty: number = 4) => {
     setSelectedEquipmentMap(prev => {

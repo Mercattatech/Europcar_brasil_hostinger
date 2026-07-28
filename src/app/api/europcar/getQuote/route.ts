@@ -2,13 +2,39 @@ import { NextResponse } from 'next/server';
 import { callXRS } from '@/lib/europcar/xrsClient';
 export const dynamic = 'force-dynamic';
 
+/**
+ * POST /api/europcar/getQuote
+ *
+ * Body:
+ *   carCategory    — ACRISS code (required)
+ *   rateId         — optional rate ID
+ *   pickupStation  — stationID
+ *   returnStation  — stationID (falls back to pickupStation)
+ *   pickupDate     — YYYYMMDD
+ *   returnDate     — YYYYMMDD
+ *   pickupTime     — HHMM (default: 1000)
+ *   returnTime     — HHMM (default: 1000)
+ *   contractID     — optional promotion CID
+ *   prepaidMode    — "NP" (Pay on Arrival) | "PP" (Prepaid). Default: "NP"
+ *                    Controls which price lines are returned for equipment.
+ *   chargesDetail  — always sent as "TRE" (Total, Rental, Equipment)
+ *   equipmentList  — [{ code, qty }] optional
+ *   insuranceList  — [{ code }] optional
+ */
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const {
-      carCategory, rateId, pickupStation, returnStation,
-      pickupDate, returnDate, pickupTime, returnTime,
+      carCategory,
+      rateId,
+      pickupStation,
+      returnStation,
+      pickupDate,
+      returnDate,
+      pickupTime,
+      returnTime,
       contractID,
+      prepaidMode,    // "NP" | "PP"
       equipmentList,  // Array of { code, qty } — optional
       insuranceList,  // Array of { code } — optional
     } = body;
@@ -17,16 +43,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'carCategory é obrigatório' }, { status: 400 });
     }
 
-    // Build contractID attribute if promotion is active
-    const contractAttr = contractID ? ` contractID="${contractID}" type="C"` : '';
-    const rateIdAttr = rateId ? ` rateId="${rateId}"` : '';
+    // Resolve prepaidMode — default to NP (Pay on Arrival / POA tariff)
+    const resolvedPrepaidMode = prepaidMode === 'PP' ? 'PP' : 'NP';
 
-    // Build equipment XML
+    // Build optional attributes
+    const contractAttr = contractID ? ` contractID="${contractID}" type="C"` : '';
+    const rateIdAttr   = rateId     ? ` rateId="${rateId}"`               : '';
+
+    // Build equipment XML — cap at 4 items total (Europcar hard limit)
     let equipmentXml = '';
     if (equipmentList && Array.isArray(equipmentList) && equipmentList.length > 0) {
+      let totalQty = 0;
       const items = equipmentList
         .filter((eq: any) => eq.code && eq.qty > 0)
-        .map((eq: any) => `          <equipment code="${eq.code}" qty="${eq.qty}"/>`)
+        .reduce((acc: any[], eq: any) => {
+          const remaining = 4 - totalQty;
+          if (remaining <= 0) return acc;
+          const qty = Math.min(eq.qty, remaining);
+          totalQty += qty;
+          acc.push(`          <equipment code="${eq.code}" qty="${qty}"/>`);
+          return acc;
+        }, [])
         .join('\n');
       if (items) {
         equipmentXml = `\n        <equipmentList>\n${items}\n        </equipmentList>`;
@@ -45,15 +82,16 @@ export async function POST(request: Request) {
       }
     }
 
+    // chargesDetail="TRE" is mandatory — ensures Total, Rental and Equipment breakdown
     const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
 <message>
   <serviceRequest serviceCode="getQuote">
     <serviceContext language="pt_PT"/>
     <caller/>
     <serviceParameters>
-      <reservation chargesDetail="TRE" rateDetails="Y" prepaidMode="NP" carCategory="${carCategory}"${contractAttr}${rateIdAttr}>
+      <reservation chargesDetail="TRE" rateDetails="Y" prepaidMode="${resolvedPrepaidMode}" carCategory="${carCategory}"${contractAttr}${rateIdAttr}>
         <checkout stationID="${pickupStation}" date="${pickupDate}" time="${pickupTime || '1000'}"/>
-        <checkin stationID="${returnStation || pickupStation}" date="${returnDate}" time="${returnTime || '1000'}"/>${equipmentXml}${insuranceXml}
+        <checkin  stationID="${returnStation || pickupStation}" date="${returnDate}" time="${returnTime || '1000'}/>${equipmentXml}${insuranceXml}
       </reservation>
       <driver countryOfResidence="BR"/>
     </serviceParameters>
@@ -62,13 +100,14 @@ export async function POST(request: Request) {
 
     const config = {
       callerCode: process.env.XRS_CALLER_CODE || 'DEMO',
-      password: process.env.XRS_PASSWORD || 'DEMO',
-      action: 'getQuote',
-      sourceFile: 'getQuote/route.ts'
+      password:   process.env.XRS_PASSWORD    || 'DEMO',
+      action:     'getQuote',
+      sourceFile: 'getQuote/route.ts',
     };
 
     const xrsResponse = await callXRS(xmlRequest, config);
-    return NextResponse.json(xrsResponse);
+    // Attach the resolved prepaidMode to the response so the frontend can track it
+    return NextResponse.json({ ...xrsResponse, _prepaidMode: resolvedPrepaidMode });
 
   } catch (error: any) {
     return NextResponse.json(
