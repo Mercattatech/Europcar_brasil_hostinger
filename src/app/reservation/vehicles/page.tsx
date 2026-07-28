@@ -1708,17 +1708,37 @@ function VehiclesContent() {
                   <div className="mt-10">
                     <h3 className="font-black text-xl text-gray-900 mb-6">Extras disponíveis</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                      {xrsEquipment.map((eq: any) => {
+                      {xrsEquipment.slice().sort((a: any, b: any) => {
+                        const epA = equipmentPrices[a.code];
+                        const fbA = parseFloat(a.priceFromList) || 0;
+                        const hasPriceA = (epA && (epA.price > 0 || epA.priceBRL > 0 || epA.totalBRL > 0)) || fbA > 0;
+                        const isUnavailableA = !loadingEquipment && !hasPriceA;
+
+                        const epB = equipmentPrices[b.code];
+                        const fbB = parseFloat(b.priceFromList) || 0;
+                        const hasPriceB = (epB && (epB.price > 0 || epB.priceBRL > 0 || epB.totalBRL > 0)) || fbB > 0;
+                        const isUnavailableB = !loadingEquipment && !hasPriceB;
+
+                        if (isUnavailableA && !isUnavailableB) return 1;
+                        if (!isUnavailableA && isUnavailableB) return -1;
+                        return 0;
+                      }).map((eq: any) => {
                         const qty = selectedEquipmentMap[eq.code] || 0;
                         const totalSelectedItems = Object.values(selectedEquipmentMap).reduce((a: number, b: number) => a + b, 0);
                         const canAdd = totalSelectedItems < 4;
+                        const fallbackPrice = parseFloat(eq.priceFromList) || 0;
                         const ep = equipmentPrices[eq.code];
-                        const hasPrice = ep && (ep.price > 0 || ep.priceBRL > 0 || ep.totalBRL > 0);
+                        const hasPrice = (ep && (ep.price > 0 || ep.priceBRL > 0 || ep.totalBRL > 0)) || fallbackPrice > 0;
                         const isUnavailable = !loadingEquipment && !hasPrice;
                         const isOnRequest = ep?.onRequest || eq.onRequest;
                         // Use totalBRL (rentalPriceInBookingCurrencyAI) = total for the period in BRL
-                        const priceBRL = ep ? (ep.totalBRL > 0 ? ep.totalBRL : ep.priceBRL > 0 ? ep.priceBRL * bookingDurationDays : ep.price * (ep.exchangeRate || 1) * bookingDurationDays) : 0;
-
+                        const priceBRL = ep && ep.totalBRL > 0
+                          ? ep.totalBRL
+                          : ep && ep.priceBRL > 0
+                            ? ep.priceBRL * bookingDurationDays
+                            : ep && ep.price > 0
+                              ? ep.price * (ep.exchangeRate || 1) * bookingDurationDays
+                              : fallbackPrice * parseFloat(selectedCar?.exchangeRate || '1') * bookingDurationDays;
 
                         return (
                           <div
