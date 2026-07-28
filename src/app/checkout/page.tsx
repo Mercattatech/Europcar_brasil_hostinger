@@ -1060,7 +1060,8 @@ export default function CheckoutPage() {
               {/* Extras selecionados */}
               {extrasDetails.length > 0 && (
                 <div className="border border-[#008d36]/20 rounded-lg bg-green-50 p-4 mt-4 mb-4">
-                  <h5 className="text-xs font-bold text-[#008d36] uppercase mb-3">Proteções & Extras</h5>
+                  <h5 className="text-xs font-bold text-[#008d36] uppercase mb-1">Proteções & Extras</h5>
+                  <p className="text-[10px] text-gray-500 mb-3 leading-tight">Opcionais reservados. O pagamento destes itens é feito na loja de destino.</p>
                   <div className="space-y-2">
                     {extrasDetails.map((extra: any) => {
                         const insNames: Record<string, string> = {
