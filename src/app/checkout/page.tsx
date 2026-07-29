@@ -1056,9 +1056,30 @@ export default function CheckoutPage() {
                     <span>1 {currency} = {bookingCurrency} {parseFloat(car.exchangeRate).toFixed(4)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-xs text-gray-400">
-                  <span>Taxas e Impostos Base</span>
-                  <span>Incluídos</span>
+                {/* O QUE ESTÁ INCLUÍDO? */}
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <div className="flex justify-between text-xs font-bold text-gray-700 mb-2">
+                    <span className="uppercase text-[#008d36] text-[10px]">O que está incluído?</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {/* Quilometragem */}
+                    <div className="flex justify-between text-[10px] text-gray-500">
+                      <span>Quilometragem {car?.mileageType === 'Livre' ? 'Ilimitada' : 'Limitada'}</span>
+                      <span className="text-gray-400">Incluída</span>
+                    </div>
+                    {/* Seguros e Taxas Inclusas */}
+                    {booking?.quoteInsurances?.filter((i: any) => (i.type === 'M' || i.type === 'I') && !['APF', 'APT', 'AIRPORTFEE', 'CITYFEE', 'LOC', 'PRM', 'YSC'].includes(i.code)).map((ins: any, idx: number) => (
+                      <div key={idx} className="flex justify-between text-[10px] text-gray-500">
+                        <span>{ins.descr || ins.code}</span>
+                        <span className="text-gray-400">Incluída</span>
+                      </div>
+                    ))}
+                    {/* IVA Padrão */}
+                    <div className="flex justify-between text-[10px] text-gray-500">
+                      <span>Impostos e Taxas (IVA)</span>
+                      <span className="text-gray-400">Incluída</span>
+                    </div>
+                  </div>
                 </div>
                 {parseFloat(car?.amountToPayOnArrivalInBookingCurrency || car?.amountToPayOnArrival || '0') > 0 && (
                   <div className="flex flex-col text-xs font-bold text-[#e67e00] mt-1 bg-[#fff8f0] p-2 rounded">
