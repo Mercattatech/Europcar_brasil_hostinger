@@ -528,16 +528,24 @@ function VehiclesContent() {
         }));
 
         // ── Step 3b: getQuote with chargesDetail="TRE" ────────────────────
-        // Send only the available codes (max 4) to get accurate per-item prices.
-        // getQuote returns a single price per item based on the prepaidMode sent.
+        // XRS enforces a hard limit of 4 equipment lines per getQuote call —
+        // exceeding it returns errorCode="rental.noratefound" for the WHOLE
+        // request (not just the extra items). So we chunk into groups of 4
+        // and fire one getQuote per chunk, merging the resulting prices.
+        const EQUIPMENT_QUOTE_CHUNK_SIZE = 4;
         const codesForQuote = stationEquipment
           .filter((eq: any) => !eq.onRequest) // exclude On-Request from pricing call
           .map((eq: any) => ({ code: eq.code, qty: 1 }));
 
-        let quoteData: any = null;
-        if (codesForQuote.length > 0) {
-          try {
-            const quoteRes = await fetch('/api/europcar/getQuote', {
+        const equipmentChunks: { code: string; qty: number }[][] = [];
+        for (let i = 0; i < codesForQuote.length; i += EQUIPMENT_QUOTE_CHUNK_SIZE) {
+          equipmentChunks.push(codesForQuote.slice(i, i + EQUIPMENT_QUOTE_CHUNK_SIZE));
+        }
+
+        let quoteDataList: any[] = [];
+        if (equipmentChunks.length > 0) {
+          quoteDataList = await Promise.all(equipmentChunks.map(chunk =>
+            fetch('/api/europcar/getQuote', {
               method:  'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -550,19 +558,19 @@ function VehiclesContent() {
                 returnTime,
                 contractID:  cidForQuote,
                 prepaidMode,           // ← dynamic NP or PP
-                equipmentList: codesForQuote,
+                equipmentList: chunk,
               }),
-            });
-            quoteData = await quoteRes.json();
-          } catch (err) {
-            console.warn('[Step3] getQuote failed:', err);
-          }
+            })
+              .then(r => r.json())
+              .catch(err => { console.warn('[Step3] getQuote chunk failed:', err); return null; })
+          ));
         }
 
-        // ── Parse prices from getQuote response ──────────────────────────
+        // ── Parse prices from getQuote responses (merged across chunks) ──
         const prices: Record<string, { price: number; priceBRL: number; totalBRL: number; currency: string; exchangeRate: number; onRequest: boolean }> = {};
 
-        if (quoteData) {
+        for (const quoteData of quoteDataList) {
+          if (!quoteData) continue;
           const reservation = quoteData?.message?.serviceResponse?.reservation;
           const quote       = reservation?.quote;
           const quoteAttrs  = quote?.$ || quote || {};
@@ -599,24 +607,26 @@ function VehiclesContent() {
             }
           }
 
-          // ── Insurance list from getQuote ────────────────────────────────
-          const rawIns  = quote?.insuranceList?.insurance || [];
-          const insArr  = Array.isArray(rawIns) ? rawIns : [rawIns];
-          const parsedInsurances = insArr.map((ins: any) => {
-            const a = ins.$ || ins;
-            return {
-              code:                          a.code                          || '',
-              descr:                         a.descr                         || '',
-              type:                          a.type                          || 'O',
-              price:                         parseFloat(a.price              || '0'),
-              priceInBookingCurrency:        parseFloat(a.priceInBookingCurrency || '0'),
-              rentalPriceAI:                 parseFloat(a.rentalPriceAI      || '0'),
-              rentalPriceInBookingCurrencyAI:parseFloat(a.rentalPriceInBookingCurrencyAI || '0'),
-              excessWithPOM:                 parseFloat(a.excessWithPOM      || '0'),
-              bkExcessWithPOM:               parseFloat(a.bkExcessWithPOM    || '0'),
-            };
-          }).filter((ins: any) => ins.code);
-          setQuoteInsurances(parsedInsurances);
+          // ── Insurance list from getQuote (same regardless of equipment chunk) ──
+          if (quote?.insuranceList?.insurance) {
+            const rawIns  = quote.insuranceList.insurance;
+            const insArr  = Array.isArray(rawIns) ? rawIns : [rawIns];
+            const parsedInsurances = insArr.map((ins: any) => {
+              const a = ins.$ || ins;
+              return {
+                code:                          a.code                          || '',
+                descr:                         a.descr                         || '',
+                type:                          a.type                          || 'O',
+                price:                         parseFloat(a.price              || '0'),
+                priceInBookingCurrency:        parseFloat(a.priceInBookingCurrency || '0'),
+                rentalPriceAI:                 parseFloat(a.rentalPriceAI      || '0'),
+                rentalPriceInBookingCurrencyAI:parseFloat(a.rentalPriceInBookingCurrencyAI || '0'),
+                excessWithPOM:                 parseFloat(a.excessWithPOM      || '0'),
+                bkExcessWithPOM:               parseFloat(a.bkExcessWithPOM    || '0'),
+              };
+            }).filter((ins: any) => ins.code);
+            setQuoteInsurances(parsedInsurances);
+          }
 
           // ── Mileage data ────────────────────────────────────────────────
           const includedKm     = parseInt(quoteAttrs.includedKm     || '0');
