@@ -386,14 +386,10 @@ export default function CheckoutPage() {
     setEmailError("");
 
     setLoading(true);
-    const extrasTotalBRL = extrasDetails.reduce((sum: number, ex: any) => sum + (ex.isTotal ? ex.pricePerDay * ex.qty : ex.pricePerDay * ex.qty * days), 0);
-    const equipTotalBRL = (booking?.xrsEquipment || []).reduce((sum: number, eq: any) => {
-      const p = parseFloat(eq.priceBRL || 0);
-      return sum + p * (eq.qty || 1) * days;
-    }, 0);
+    // Proteções e acessórios (extrasDetails / xrsEquipment) são pagos na loja de
+    // destino — não entram na cobrança online. Só a tarifa do veículo é cobrada agora.
     const baseAmountBRL = totalBRL > 0 ? totalBRL : totalRateXRS;
-    const grandTotalBRL = baseAmountBRL + extrasTotalBRL + equipTotalBRL;
-    const amountInCents = Math.round(grandTotalBRL * 100);
+    const amountInCents = Math.round(baseAmountBRL * 100);
 
     try {
       const res = await fetch("/api/reservas", {
@@ -543,7 +539,10 @@ export default function CheckoutPage() {
       return s + p * (eq.qty || 1) * days;
     }, 0);
     const baseBRL = totalBRL > 0 ? totalBRL : totalRateXRS;
-    const grandTotal = baseBRL + extrasSumBRL + equipSumBRL;
+    // Proteções e acessórios são pagos na loja de destino — o valor do PIX
+    // gerado (amountInCents) é só a tarifa do veículo, então o "Total a pagar"
+    // aqui precisa refletir isso, não a soma de tudo.
+    const extrasAndEquipTotal = extrasSumBRL + equipSumBRL;
 
     const insNames: Record<string, string> = {
       TPL: "Resp. Civil (TPL)", LDW: "Danos e Roubo (LDW)",
@@ -712,11 +711,16 @@ export default function CheckoutPage() {
 
               {/* Grand total */}
               <div className="bg-[#008d36] rounded-lg p-4 mt-auto">
-                <div className="text-[10px] font-bold text-green-200 uppercase mb-1">Total a pagar</div>
+                <div className="text-[10px] font-bold text-green-200 uppercase mb-1">Total a pagar (PIX)</div>
                 <div className="text-2xl font-black text-white">
-                  R$ {grandTotal.toFixed(2).replace(".", ",")}
+                  R$ {baseBRL.toFixed(2).replace(".", ",")}
                 </div>
                 <div className="text-[10px] text-green-200 mt-0.5">Taxas e impostos incluídos</div>
+                {extrasAndEquipTotal > 0 && (
+                  <div className="text-[10px] text-green-100 mt-1 pt-1 border-t border-white/20">
+                    + R$ {extrasAndEquipTotal.toFixed(2).replace(".", ",")} em proteções/acessórios, pago na loja de destino
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1120,29 +1124,29 @@ export default function CheckoutPage() {
                 )}
 
                 <div className="flex justify-between items-end">
-                  <span className="text-xs font-bold text-gray-500 uppercase">Preço Total</span>
+                  <span className="text-xs font-bold text-gray-500 uppercase">Total a pagar agora</span>
                   <div className="text-right">
-                    {(extrasDetails.length > 0 || booking?.xrsEquipment?.length > 0) && (
-                      <span className="text-xs text-gray-400 block mb-1">
-                        {(() => {
-                          const extrasVal = extrasDetails.reduce((s: number, e: any) => s + e.pricePerDay * e.qty, 0) * days;
-                          const equipVal = (booking?.xrsEquipment || []).reduce((s: number, eq: any) => s + parseFloat(eq.priceBRL || 0) * (eq.qty || 1) * days, 0);
-                          const total = extrasVal + equipVal;
-                          return total > 0 ? `incl. R$ ${total.toFixed(2).replace(".", ",")} em extras/acessórios` : '';
-                        })()}
-                      </span>
-                    )}
                     <span className="text-2xl font-black text-gray-900">
                       {(() => {
-                        const extrasSum = extrasDetails.reduce((s: number, e: any) => s + e.pricePerDay * e.qty, 0) * days;
-                        const equipSum = (booking?.xrsEquipment || []).reduce((s: number, eq: any) => s + parseFloat(eq.priceBRL || 0) * (eq.qty || 1) * days, 0);
                         const base = totalBRL > 0 ? totalBRL : totalRateXRS;
                         const cur = totalBRL > 0 ? bookingCurrency : currency;
-                        return `${cur} ${(base + extrasSum + equipSum).toFixed(2).replace(".", ",")}`;
+                        return `${cur} ${base.toFixed(2).replace(".", ",")}`;
                       })()}
                     </span>
                   </div>
                 </div>
+                {(extrasDetails.length > 0 || booking?.xrsEquipment?.length > 0) && (() => {
+                  const extrasVal = extrasDetails.reduce((s: number, e: any) => s + e.pricePerDay * e.qty, 0) * days;
+                  const equipVal = (booking?.xrsEquipment || []).reduce((s: number, eq: any) => s + parseFloat(eq.priceBRL || 0) * (eq.qty || 1) * days, 0);
+                  const total = extrasVal + equipVal;
+                  if (total <= 0) return null;
+                  return (
+                    <div className="flex justify-between items-center text-xs text-gray-500 mt-2 pt-2 border-t border-gray-200">
+                      <span>+ Proteções/acessórios (pago na loja de destino)</span>
+                      <span className="font-bold">R$ {total.toFixed(2).replace(".", ",")}</span>
+                    </div>
+                  );
+                })()}
               </div>
 
 
