@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { callXRS } from '@/lib/europcar/xrsClient';
+import { isValidXRSDate, isValidXRSTime } from '@/lib/europcar/validate';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
@@ -9,6 +10,12 @@ export async function POST(request: Request) {
 
     if (!acrissCodes || !Array.isArray(acrissCodes)) {
       return NextResponse.json({ error: 'acrissCodes precisa ser um array' }, { status: 400 });
+    }
+    if (!isValidXRSDate(pickupDate) || !isValidXRSDate(returnDate)) {
+      return NextResponse.json({ error: 'Data inválida. Use o formato YYYYMMDD.' }, { status: 400 });
+    }
+    if ((pickupTime && !isValidXRSTime(pickupTime)) || (returnTime && !isValidXRSTime(returnTime))) {
+      return NextResponse.json({ error: 'Horário inválido. Use o formato HHMM.' }, { status: 400 });
     }
 
     // Split into chunks of 10 (XRS limit per request)

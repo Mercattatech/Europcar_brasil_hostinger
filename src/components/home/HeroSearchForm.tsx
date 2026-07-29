@@ -262,6 +262,23 @@ export default function HeroSearchForm() {
       alert("Selecione a data de retirada");
       return;
     }
+    // Defesa extra: o widget nativo <input type="date"> pode desincronizar do
+    // valor controlado pelo React em alguns navegadores (ex: dígitos extras
+    // digitados no campo de ano antes de dia/mês estarem preenchidos). Nunca
+    // confiar cegamente no valor — revalidar o formato e o ano antes de usar.
+    const isSaneDate = (d: string) => {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
+      const year = parseInt(d.slice(0, 4), 10);
+      return year >= 2000 && year <= 2099;
+    };
+    if (!isSaneDate(pickupDate)) {
+      alert("Data de retirada inválida.");
+      return;
+    }
+    if (returnDate && !isSaneDate(returnDate)) {
+      alert("Data de devolução inválida.");
+      return;
+    }
     if (minPickupDate && pickupDate < minPickupDate) {
       alert(`A data mínima de retirada é ${minPickupDate}. Por favor selecione uma data válida.`);
       return;

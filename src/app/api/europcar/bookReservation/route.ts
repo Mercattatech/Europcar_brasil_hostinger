@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { callXRS, DEFAULT_POA_CID } from '@/lib/europcar/xrsClient';
+import { isValidXRSDate, isValidXRSTime } from '@/lib/europcar/validate';
 import prisma from '@/lib/prisma';
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +18,12 @@ export async function POST(request: Request) {
 
     if (!carCategory || !rateId) {
       return NextResponse.json({ error: 'carCategory e rateId são obrigatórios' }, { status: 400 });
+    }
+    if (!isValidXRSDate(pickupDate) || !isValidXRSDate(returnDate)) {
+      return NextResponse.json({ error: 'Data inválida. Use o formato YYYYMMDD.' }, { status: 400 });
+    }
+    if ((pickupTime && !isValidXRSTime(pickupTime)) || (returnTime && !isValidXRSTime(returnTime))) {
+      return NextResponse.json({ error: 'Horário inválido. Use o formato HHMM.' }, { status: 400 });
     }
 
     // Use POA CID as default when no contractID is provided

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { callXRS } from '@/lib/europcar/xrsClient';
+import { isValidXRSDate } from '@/lib/europcar/validate';
 export const dynamic = 'force-dynamic';
 
 // ── CMS / Friendly name catalog ────────────────────────────────────────────
@@ -51,8 +52,11 @@ export async function GET(request: Request) {
   if (!stationID) {
     return NextResponse.json({ error: 'Parâmetro station é obrigatório.' }, { status: 400 });
   }
-  if (!date) {
-    return NextResponse.json({ error: 'Parâmetro date é obrigatório (YYYYMMDD).' }, { status: 400 });
+  if (!isValidXRSDate(date)) {
+    return NextResponse.json({ error: 'Parâmetro date inválido. Use o formato YYYYMMDD.' }, { status: 400 });
+  }
+  if (returnDate && !isValidXRSDate(returnDate)) {
+    return NextResponse.json({ error: 'Parâmetro returnDate inválido. Use o formato YYYYMMDD.' }, { status: 400 });
   }
 
   try {

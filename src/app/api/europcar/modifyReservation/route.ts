@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { callXRS } from '@/lib/europcar/xrsClient';
+import { isValidXRSDate, isValidXRSTime } from '@/lib/europcar/validate';
 import prisma from '@/lib/prisma';
 import { sendTransactionalEmail } from '@/lib/emailService';
 export const dynamic = 'force-dynamic';
@@ -11,6 +12,12 @@ export async function POST(request: Request) {
 
     if (!resNumber) {
       return NextResponse.json({ error: 'resNumber é obrigatório para modificação' }, { status: 400 });
+    }
+    if (pickupDate && !isValidXRSDate(pickupDate)) {
+      return NextResponse.json({ error: 'Data inválida. Use o formato YYYYMMDD.' }, { status: 400 });
+    }
+    if (pickupTime && !isValidXRSTime(pickupTime)) {
+      return NextResponse.json({ error: 'Horário inválido. Use o formato HHMM.' }, { status: 400 });
     }
 
     // Per Antonio: only send the field being modified + driver name
