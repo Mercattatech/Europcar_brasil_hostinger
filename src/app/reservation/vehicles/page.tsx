@@ -528,10 +528,14 @@ function VehiclesContent() {
         }));
 
         // ── Step 3b: getQuote with chargesDetail="TRE" ────────────────────
-        // XRS enforces a hard limit of 4 equipment lines per getQuote call —
-        // exceeding it returns errorCode="rental.noratefound" for the WHOLE
-        // request (not just the extra items). So we chunk into groups of 4
-        // and fire one getQuote per chunk, merging the resulting prices.
+        // carCategory + contractID alone can be ambiguous when a category has
+        // more than one active rate plan (promo, corporate, etc.) — XRS then
+        // returns errorCode="rental.noratefound" for the WHOLE request. The
+        // rateId returned by getMultipleRates (already used by bookReservation
+        // to identify the exact rate) disambiguates it. We also keep requests
+        // chunked in small groups as a defensive measure against any per-call
+        // equipment-count limit.
+        const rateIdForQuote = selectedCar.rateId || selectedCar.$?.rateId || '';
         const EQUIPMENT_QUOTE_CHUNK_SIZE = 4;
         const codesForQuote = stationEquipment
           .filter((eq: any) => !eq.onRequest) // exclude On-Request from pricing call
@@ -557,6 +561,7 @@ function VehiclesContent() {
                 pickupTime,
                 returnTime,
                 contractID:  cidForQuote,
+                rateId:      rateIdForQuote,
                 prepaidMode,           // ← dynamic NP or PP
                 equipmentList: chunk,
               }),
