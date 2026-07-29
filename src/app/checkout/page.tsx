@@ -1057,9 +1057,18 @@ export default function CheckoutPage() {
                   </div>
                 )}
                 <div className="flex justify-between text-xs text-gray-400">
-                  <span>Taxas e Impostos</span>
+                  <span>Taxas e Impostos Base</span>
                   <span>Incluídos</span>
                 </div>
+                {parseFloat(car?.amountToPayOnArrivalInBookingCurrency || car?.amountToPayOnArrival || '0') > 0 && (
+                  <div className="flex justify-between text-xs font-bold text-[#e67e00] mt-1 bg-[#fff8f0] p-1.5 rounded">
+                    <span>A ser pago na Estação (Taxas Locais / Suplementos)</span>
+                    <span>
+                      {(car?.amountToPayOnArrivalInBookingCurrency ? bookingCurrency : currency) || 'BRL'}{' '}
+                      {parseFloat(car?.amountToPayOnArrivalInBookingCurrency || car?.amountToPayOnArrival || '0').toFixed(2).replace('.', ',')}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Extras selecionados */}
