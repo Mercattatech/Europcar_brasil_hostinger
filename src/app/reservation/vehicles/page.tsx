@@ -634,6 +634,48 @@ function VehiclesContent() {
                 includedInTotal:               a.includedInTotal               || '',
               };
             }).filter((ins: any) => ins.code);
+            if (quote?.chargeList?.charge) {
+              const rawCharge = quote.chargeList.charge;
+              const chargeArr = Array.isArray(rawCharge) ? rawCharge : [rawCharge];
+              chargeArr.forEach((c: any) => {
+                const a = c.$ || c;
+                if (a.code) {
+                  parsedInsurances.push({
+                    code:                          a.code,
+                    descr:                         a.descr || a.code,
+                    type:                          a.type || 'M',
+                    price:                         parseFloat(a.price || '0'),
+                    priceInBookingCurrency:        parseFloat(a.priceInBookingCurrency || '0'),
+                    rentalPriceAI:                 parseFloat(a.rentalPriceAI || '0'),
+                    rentalPriceInBookingCurrencyAI:parseFloat(a.rentalPriceInBookingCurrencyAI || '0'),
+                    prepaid:                       a.prepaid || '',
+                    includedInTotal:               a.includedInTotal || '',
+                  });
+                }
+              });
+            }
+
+            if (quote?.taxList?.tax) {
+              const rawTax = quote.taxList.tax;
+              const taxArr = Array.isArray(rawTax) ? rawTax : [rawTax];
+              taxArr.forEach((t: any) => {
+                const a = t.$ || t;
+                const percent = parseFloat(a.amount || '0');
+                const taxName = a.type === 'VAT' ? `IVA ${percent > 0 ? percent + '%' : ''}` : `Taxa/Imposto ${percent > 0 ? percent + '%' : ''}`;
+                parsedInsurances.push({
+                  code:                          a.type || 'TAX',
+                  descr:                         taxName.trim(),
+                  type:                          'M',
+                  price:                         parseFloat(a.price || '0'),
+                  priceInBookingCurrency:        parseFloat(a.priceInBookingCurrency || '0'),
+                  rentalPriceAI:                 parseFloat(a.rentalPriceAI || '0'),
+                  rentalPriceInBookingCurrencyAI:parseFloat(a.rentalPriceInBookingCurrencyAI || '0'),
+                  prepaid:                       a.prepaid || '',
+                  includedInTotal:               a.includedInTotal || '',
+                });
+              });
+            }
+
             setQuoteInsurances(parsedInsurances);
           }
 
