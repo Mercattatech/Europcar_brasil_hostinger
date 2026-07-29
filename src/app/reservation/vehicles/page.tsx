@@ -628,6 +628,8 @@ function VehiclesContent() {
                 rentalPriceInBookingCurrencyAI:parseFloat(a.rentalPriceInBookingCurrencyAI || '0'),
                 excessWithPOM:                 parseFloat(a.excessWithPOM      || '0'),
                 bkExcessWithPOM:               parseFloat(a.bkExcessWithPOM    || '0'),
+                prepaid:                       a.prepaid                       || '',
+                includedInTotal:               a.includedInTotal               || '',
               };
             }).filter((ins: any) => ins.code);
             setQuoteInsurances(parsedInsurances);
@@ -1313,7 +1315,7 @@ function VehiclesContent() {
                     const cidForTariff = selectedTariffType === 'ETO'
                       ? (zeroExcessUpgrade ? '56935495' : (selectedCar?._etoCID || '56935466'))
                       : (effectiveContractID || '57269673');
-                    const payload = { car: selectedCar, extras: selectedExtrasMap, xrsEquipment: xrsEquipmentPayload, xrsInsurances: xrsInsurancesPayload, pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, contractID: cidForTariff, tariffType: selectedTariffType, zeroExcess: zeroExcessUpgrade, driverCountry, driverCountryName, stationCountry, quoteMileage };
+                    const payload = { car: selectedCar, extras: selectedExtrasMap, xrsEquipment: xrsEquipmentPayload, xrsInsurances: xrsInsurancesPayload, quoteInsurances: quoteInsurances, pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, contractID: cidForTariff, tariffType: selectedTariffType, zeroExcess: zeroExcessUpgrade, driverCountry, driverCountryName, stationCountry, quoteMileage };
                     sessionStorage.setItem("europcar_booking", JSON.stringify(payload));
                     // Journey tracking — Step 3: Extras selected, going to checkout
                     try {

@@ -1061,12 +1061,23 @@ export default function CheckoutPage() {
                   <span>Incluídos</span>
                 </div>
                 {parseFloat(car?.amountToPayOnArrivalInBookingCurrency || car?.amountToPayOnArrival || '0') > 0 && (
-                  <div className="flex justify-between text-xs font-bold text-[#e67e00] mt-1 bg-[#fff8f0] p-1.5 rounded">
-                    <span>A ser pago na Estação (Taxas Locais / Suplementos)</span>
-                    <span>
-                      {(car?.amountToPayOnArrivalInBookingCurrency ? bookingCurrency : currency) || 'BRL'}{' '}
-                      {parseFloat(car?.amountToPayOnArrivalInBookingCurrency || car?.amountToPayOnArrival || '0').toFixed(2).replace('.', ',')}
-                    </span>
+                  <div className="flex flex-col text-xs font-bold text-[#e67e00] mt-1 bg-[#fff8f0] p-2 rounded">
+                    <div className="flex justify-between">
+                      <span>A ser pago na Estação (Taxas Locais)</span>
+                      <span>
+                        {(car?.amountToPayOnArrivalInBookingCurrency ? bookingCurrency : currency) || 'BRL'}{' '}
+                        {parseFloat(car?.amountToPayOnArrivalInBookingCurrency || car?.amountToPayOnArrival || '0').toFixed(2).replace('.', ',')}
+                      </span>
+                    </div>
+                    {/* List specific local mandatory fees like Premium Station Surcharge if available in quoteInsurances */}
+                    {booking?.quoteInsurances?.filter((i: any) => i.type === 'M' && ['APF', 'APT', 'AIRPORTFEE', 'CITYFEE', 'LOC', 'PRM', 'YSC'].includes(i.code)).map((ins: any, idx: number) => (
+                      <div key={idx} className="text-[10px] text-gray-500 font-normal flex justify-between mt-1.5 border-t border-[#e67e00]/10 pt-1.5">
+                        <span className="flex-1 truncate pr-2">- {ins.descr || 'Suplemento de Estação Premium'} ({ins.code})</span>
+                        {ins.rentalPriceInBookingCurrencyAI > 0 && (
+                          <span className="whitespace-nowrap">{(car?.amountToPayOnArrivalInBookingCurrency ? bookingCurrency : currency) || 'BRL'} {ins.rentalPriceInBookingCurrencyAI.toFixed(2).replace('.', ',')}</span>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
