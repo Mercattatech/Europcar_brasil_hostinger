@@ -181,6 +181,8 @@ function VehiclesContent() {
   const [quoteInsurances, setQuoteInsurances] = useState<any[]>([]);
   // Quote mileage data from getQuote API
   const [quoteMileage, setQuoteMileage] = useState<{ includedKm: number; totalIncludedDist: number; extraKmPrice: number; extraKmPriceBRL: number; includedKmType: string; currency: string } | null>(null);
+  // Quote totals (e.g. amount to pay on arrival)
+  const [quoteTotals, setQuoteTotals] = useState<any>(null);
 
   // ETO protection skip state
   const [protectionsSkipped, setProtectionsSkipped] = useState(false);
@@ -648,6 +650,14 @@ function VehiclesContent() {
               extraKmPriceBRL: extraKmPrice * exchangeRate,
               includedKmType:  quoteAttrs.includedKmType || 'D',
               currency:        quoteAttrs.currency       || 'EUR',
+            });
+          }
+
+          // ── Totals from getQuote ────────────────────────────────────────
+          if (quoteAttrs.amountToPayOnArrivalInBookingCurrency || quoteAttrs.amountToPayOnArrival) {
+            setQuoteTotals({
+              amountToPayOnArrival: quoteAttrs.amountToPayOnArrival || '0',
+              amountToPayOnArrivalInBookingCurrency: quoteAttrs.amountToPayOnArrivalInBookingCurrency || '0',
             });
           }
         }
@@ -1286,7 +1296,7 @@ function VehiclesContent() {
               <div className="border-b border-gray-200 p-6 flex items-center justify-between gap-6">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <button onClick={() => { setCurrentStep(2); setEquipmentPrices({}); setXrsEquipment([]); setQuoteInsurances([]); setQuoteMileage(null); setSelectedEquipmentMap({}); }} className="text-[#008d36] font-bold hover:underline text-sm">← Voltar</button>
+                    <button onClick={() => { setCurrentStep(2); setEquipmentPrices({}); setXrsEquipment([]); setQuoteInsurances([]); setQuoteMileage(null); setQuoteTotals(null); setSelectedEquipmentMap({}); }} className="text-[#008d36] font-bold hover:underline text-sm">← Voltar</button>
                   </div>
                   <h2 className="text-2xl font-black text-gray-900">Escolha sua proteção e seus extras</h2>
                 </div>
@@ -1315,7 +1325,8 @@ function VehiclesContent() {
                     const cidForTariff = selectedTariffType === 'ETO'
                       ? (zeroExcessUpgrade ? '56935495' : (selectedCar?._etoCID || '56935466'))
                       : (effectiveContractID || '57269673');
-                    const payload = { car: selectedCar, extras: selectedExtrasMap, xrsEquipment: xrsEquipmentPayload, xrsInsurances: xrsInsurancesPayload, quoteInsurances: quoteInsurances, pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, contractID: cidForTariff, tariffType: selectedTariffType, zeroExcess: zeroExcessUpgrade, driverCountry, driverCountryName, stationCountry, quoteMileage };
+                    const enrichedCar = { ...selectedCar, ...quoteTotals };
+                    const payload = { car: enrichedCar, extras: selectedExtrasMap, xrsEquipment: xrsEquipmentPayload, xrsInsurances: xrsInsurancesPayload, quoteInsurances: quoteInsurances, pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, contractID: cidForTariff, tariffType: selectedTariffType, zeroExcess: zeroExcessUpgrade, driverCountry, driverCountryName, stationCountry, quoteMileage };
                     sessionStorage.setItem("europcar_booking", JSON.stringify(payload));
                     // Journey tracking — Step 3: Extras selected, going to checkout
                     try {
