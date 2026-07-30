@@ -24,10 +24,28 @@ export interface CustomerData {
 
 export interface CreditCardTokenRequest {
   CustomerName: string;
-  CardNumber: string; // PAN
+  CardNumber: string; // PAN — nunca logado
   Holder: string;
   ExpirationDate: string; // MM/YYYY
   Brand: string;
+}
+
+/** Dados retornados pelo script Braspag MPI após autenticação 3DS 2.2 */
+export interface ThreeDsAuthData {
+  cavv: string;          // Cardholder Authentication Verification Value
+  xid: string;           // Transaction Identifier
+  eci: string;           // Electronic Commerce Indicator (05=Visa auth, 02=MC auth)
+  version: string;       // Versão do protocolo: "2" para 3DS 2.2
+  referenceId?: string;  // ReferenceID retornado pelo Braspag
+}
+
+/** ECI codes que garantem Liability Shift para o banco emissor */
+const LIABILITY_SHIFT_ECI = new Set(['02', '05', '2', '5']);
+
+/** Máscara de token: exibe apenas os últimos 4 chars */
+function maskToken(token: string): string {
+  if (!token || token.length < 4) return '****';
+  return `****${token.slice(-4)}`;
 }
 
 export async function createCreditCardToken(
@@ -39,9 +57,8 @@ export async function createCreditCardToken(
     ? 'https://apiquerysandbox.cieloecommerce.cielo.com.br/1/card'
     : 'https://api.cieloecommerce.cielo.com.br/1/card';
 
-  // 1. REGRA DE OURO: O dado real do Cartão (PAN) nunca deve ser logado pelo sistema, 
-  // e será mantido pela Cielo.
-  console.log(`[LogsCielo] [INFO] Solicitando Tokenização de Cartão (Zero Auth) para titular: ${requestData.Holder}`);
+  // REGRA DE OURO: PAN nunca é logado — apenas o nome do titular
+  console.log(`[Cielo] Tokenizando cartão para titular: ${requestData.Holder}`);
 
   try {
     const response = await axios.post(url, requestData, {
@@ -53,12 +70,12 @@ export async function createCreditCardToken(
       timeout: 10000,
     });
 
-    console.log(`[LogsCielo] [SUCCESS] Token gerado com sucesso: ${response.data.CardToken}`);
-    return response.data; // Retorna o CardToken que será utilizado em transações futuras.
+    console.log(`[Cielo] Token gerado: ${maskToken(response.data.CardToken)}`);
+    return response.data;
   } catch (error: any) {
-    console.error(`[LogsCielo] [ERROR] Falha na tokenização Cielo:`, error.message);
+    console.error(`[Cielo] Falha na tokenização:`, error.message);
     if (error.response) {
-      console.error(`[LogsCielo] [ERROR DETAILS]:`, JSON.stringify(error.response.data));
+      console.error(`[Cielo] Detalhes:`, JSON.stringify(error.response.data));
     }
     throw new Error('Não foi possível validar o cartão de crédito.');
   }
@@ -68,30 +85,47 @@ export async function processPaymentWithToken(
   amountInCents: number,
   cardToken: string,
   customerData: CustomerData,
-  merchantOrderId: string, // UUID nosso
-  config: CieloConfig
+  merchantOrderId: string,
+  config: CieloConfig,
+  authData?: ThreeDsAuthData  // 3DS 2.2 — opcional mas fortemente recomendado
 ) {
   const isSandbox = config.environment !== 'production';
   const url = isSandbox
     ? 'https://apisandbox.cieloecommerce.cielo.com.br/1/sales'
     : 'https://api.cieloecommerce.cielo.com.br/1/sales';
 
-  // O Payload transacional Antifraude/3DS requer os dados do Customer
-  const payload = {
+  const hasLiabilityShift = authData ? LIABILITY_SHIFT_ECI.has(authData.eci) : false;
+
+  const payload: any = {
     MerchantOrderId: merchantOrderId,
     Customer: customerData,
     Payment: {
       Type: 'CreditCard',
-      Amount: amountInCents, // Regra Ouro 3.0: Valor sempre em centavos R$ 50,00 -> 5000
-      Installments: 1, // À vista
-      SoftDescriptor: 'EUROPCAR', // Regra Ouro 3.0: Fatura amigável
+      Amount: amountInCents,
+      Installments: 1,
+      SoftDescriptor: 'EUROPCAR', // Nome na fatura do cliente
       CreditCard: {
         CardToken: cardToken,
       },
     },
   };
 
-  console.log(`[LogsCielo] [INFO] Processando Pagamento Card-on-File. Pedido: ${merchantOrderId}, Valor (centavos): ${amountInCents}`);
+  // Inclui nó de autenticação 3DS quando disponível (garante Liability Shift)
+  if (authData) {
+    payload.Payment.ExternalAuthentication = {
+      Cavv: authData.cavv,
+      Xid: authData.xid,
+      Eci: authData.eci,
+      Version: authData.version,
+      ReferenceID: authData.referenceId || '',
+    };
+  }
+
+  console.log(
+    `[Cielo] Autorizando pagamento. Pedido: ${merchantOrderId} | ` +
+    `Valor: ${amountInCents} centavos | Token: ${maskToken(cardToken)} | ` +
+    `3DS: ${authData ? `ECI=${authData.eci} LiabilityShift=${hasLiabilityShift}` : 'NÃO'}`
+  );
 
   try {
     const response = await axios.post(url, payload, {
@@ -103,13 +137,18 @@ export async function processPaymentWithToken(
       timeout: 20000,
     });
 
-    console.log(`[LogsCielo] [SUCCESS] Transação processada. Status: ${response.data.Payment.Status}`);
-    return response.data;
+    const payment = response.data.Payment;
+    console.log(
+      `[Cielo] Transação processada. Status: ${payment.Status} | ` +
+      `ReasonCode: ${payment.ReasonCode} | LiabilityShift: ${hasLiabilityShift}`
+    );
+
+    return { ...response.data, liabilityShift: hasLiabilityShift };
   } catch (error: any) {
-     console.error(`[LogsCielo] [ERROR] Falha no pagamento Cielo:`, error.message);
-     if (error.response) {
-       console.error(`[LogsCielo] [ERROR DETAILS]:`, JSON.stringify(error.response.data));
-     }
-     throw new Error('Transação financeira recusada ou falhou.');
+    console.error(`[Cielo] Falha no pagamento:`, error.message);
+    if (error.response) {
+      console.error(`[Cielo] Detalhes:`, JSON.stringify(error.response.data));
+    }
+    throw new Error('Transação financeira recusada ou falhou.');
   }
 }

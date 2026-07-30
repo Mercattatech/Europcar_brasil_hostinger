@@ -130,20 +130,50 @@ export async function POST(request: Request) {
              validityFormatted = `${mm}/20${yy}`;
          }
 
+         const threeDsAuth = paymentData.creditCard?.threeDsAuth;
+         const cardNumClean = paymentData.creditCard.number.replace(/\D/g, '');
+         // SEGURANÇA: nunca loga o PAN completo — apenas os 4 últimos dígitos
+         const cardMasked = `**** **** **** ${cardNumClean.slice(-4)}`;
+
+         const cieloPaymentNode: any = {
+             "Type": "CreditCard",
+             "Amount": paymentData.amountInCents,
+             "Installments": 1,
+             "Capture": true,
+             "SoftDescriptor": "EUROPCAR",
+             "CreditCard": {
+                 "CardNumber": cardNumClean,
+                 "Holder": paymentData.creditCard.name,
+                 "ExpirationDate": validityFormatted,
+                 "SecurityCode": paymentData.creditCard.cvv,
+                 "Brand": brand
+             }
+         };
+
+         // Adiciona nó 3DS quando autenticação foi realizada pelo script Braspag MPI
+         if (threeDsAuth?.cavv && threeDsAuth?.eci) {
+             cieloPaymentNode.ExternalAuthentication = {
+                 Cavv: threeDsAuth.cavv,
+                 Xid: threeDsAuth.xid,
+                 Eci: threeDsAuth.eci,
+                 Version: threeDsAuth.version || '2',
+                 ReferenceID: threeDsAuth.referenceId || '',
+             };
+             console.log(`[Cielo] Cartão ${cardMasked} | 3DS ECI=${threeDsAuth.eci} | LiabilityShift=${['02','05','2','5'].includes(threeDsAuth.eci) ? 'SIM' : 'NÃO'}`);
+         } else {
+             console.warn(`[Cielo] Cartão ${cardMasked} | SEM 3DS — processando sem Liability Shift`);
+         }
+
          const cieloPayload = {
              "MerchantOrderId": merchantOrderId,
              "Customer": { "Name": customerData.nome + " " + customerData.sobrenome, "Identity": customerData.cpf.replace(/\D/g, '') },
-             "Payment": {
-                 "Type": "CreditCard", "Amount": paymentData.amountInCents, "Installments": 1, "Capture": true,
-                 "CreditCard": {
-                     "CardNumber": paymentData.creditCard.number.replace(/\D/g, ''),
-                     "Holder": paymentData.creditCard.name,
-                     "ExpirationDate": validityFormatted,
-                     "SecurityCode": paymentData.creditCard.cvv,
-                     "Brand": brand
-                 }
-             }
+             "Payment": cieloPaymentNode
          };
+
+         // Log seguro: substitui CardNumber pelo valor mascarado
+         const safePayload = JSON.parse(JSON.stringify(cieloPayload));
+         safePayload.Payment.CreditCard.CardNumber = cardMasked;
+         safePayload.Payment.CreditCard.SecurityCode = '***';
 
          const resCielo = await fetch(CIELO_API_URL, {
              method: 'POST',
@@ -153,14 +183,15 @@ export async function POST(request: Request) {
          
          const rawText = await resCielo.text();
          
-         // Salva log no banco para aparecer no painel
+         // Salva log no banco com dados mascarados
          prisma.logCielo.create({
              data: {
                  endpoint: CIELO_API_URL,
-                 payload: JSON.stringify(cieloPayload),
+                 payload: JSON.stringify(safePayload),
                  response: rawText || `[Resposta Vazia] HTTP ${resCielo.status}`
              }
          }).catch(console.error);
+
 
          let cieloResponseJson: any = {};
          try {

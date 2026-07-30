@@ -56,6 +56,14 @@ export default function CheckoutPage() {
   const [ccValidity, setCcValidity] = useState("");
   const [ccCvv, setCcCvv] = useState("");
 
+  // 3DS 2.2 — dados retornados pelo script Braspag MPI após autenticação
+  const [threeDsCavv, setThreeDsCavv] = useState("");
+  const [threeDsXid, setThreeDsXid] = useState("");
+  const [threeDsEci, setThreeDsEci] = useState("");
+  const [threeDsVersion, setThreeDsVersion] = useState("2");
+  const [threeDsRefId, setThreeDsRefId] = useState("");
+  const [threeDsReady, setThreeDsReady] = useState(false); // script MPI carregado
+
   // Status
   const [loading, setLoading] = useState(false);
   const [pixQrCode, setPixQrCode] = useState<string | null>(null);
@@ -124,6 +132,41 @@ export default function CheckoutPage() {
       })
       .catch(console.error);
   }, []);
+
+  // Carrega o script Braspag MPI para autenticação 3DS 2.2
+  useEffect(() => {
+    if (paymentMethod !== 'CREDIT') return;
+    const scriptId = 'braspag-mpi-3ds';
+    if (document.getElementById(scriptId)) { setThreeDsReady(true); return; }
+    const script = document.createElement('script');
+    script.id = scriptId;
+    // Sandbox vs Produção — o endpoint é determinado pelo ambiente configurado
+    const isSandboxEnv = process.env.NODE_ENV !== 'production';
+    script.src = isSandboxEnv
+      ? 'https://mpisandbox.braspag.com.br/Scripts/BP.Mpi.3ds20.min.js'
+      : 'https://mpi.braspag.com.br/Scripts/BP.Mpi.3ds20.min.js';
+    script.async = true;
+    script.onload = () => {
+      setThreeDsReady(true);
+      // Listener: autenticação concluída com sucesso
+      window.addEventListener('bpmpi_Authenticated', (e: any) => {
+        const d = e.detail || {};
+        setThreeDsCavv(d.Cavv || '');
+        setThreeDsXid(d.Xid || d.TransactionId || '');
+        setThreeDsEci(d.Eci || '');
+        setThreeDsVersion(d.Version || '2');
+        setThreeDsRefId(d.ReferenceId || '');
+        console.log('[3DS] Autenticado:', { eci: d.Eci, cavv: d.Cavv ? '***' : 'n/a' });
+      });
+      // Listener: não autenticado (continua sem Liability Shift)
+      window.addEventListener('bpmpi_Unauthenticated', (e: any) => {
+        console.warn('[3DS] Não autenticado — sem Liability Shift:', e.detail);
+        // Permite prosseguir mesmo sem autenticação (decisão de negócio)
+      });
+    };
+    document.head.appendChild(script);
+    return () => { /* script permanece — evita reload em re-renders */ };
+  }, [paymentMethod]);
 
   // Fetch available terms documents
   useEffect(() => {
@@ -401,7 +444,20 @@ export default function CheckoutPage() {
           paymentData: {
             method: paymentMethod,
             amountInCents,
-            creditCard: paymentMethod === "CREDIT" ? { name: ccName, number: ccNumber, validity: ccValidity, cvv: ccCvv } : undefined,
+            creditCard: paymentMethod === "CREDIT" ? {
+              name: ccName,
+              number: ccNumber,
+              validity: ccValidity,
+              cvv: ccCvv,
+              // 3DS 2.2 — preenchido automaticamente pelo script Braspag MPI
+              threeDsAuth: threeDsCavv ? {
+                cavv: threeDsCavv,
+                xid: threeDsXid,
+                eci: threeDsEci,
+                version: threeDsVersion,
+                referenceId: threeDsRefId,
+              } : undefined,
+            } : undefined,
           },
           xrsEquipment: booking?.xrsEquipment || [],
           xrsInsurances: booking?.xrsInsurances || [],
@@ -867,24 +923,71 @@ export default function CheckoutPage() {
                   </label>
                   {paymentMethod === "CREDIT" && (
                     <div className="p-6 space-y-4">
+                      {/* Campos com classes bpmpi_* — coletadas pelo script Braspag MPI para device fingerprint 3DS */}
+                      {/* Campos ocultos com metadados obrigatórios para o MPI */}
+                      <input type="hidden" className="bpmpi_auth" value="true" readOnly />
+                      <input type="hidden" className="bpmpi_auth_notifyonly" value="false" readOnly />
+                      <input type="hidden" className="bpmpi_merchantid" value="" readOnly />
+
                       <div>
                         <label className="block text-xs font-bold text-gray-700 mb-1">Nome no Cartão</label>
-                        <input required value={ccName} onChange={e => setCcName(e.target.value)} className="w-full border rounded p-3 outline-none focus:border-[#008d36]" placeholder="NOME DO TITULAR" />
+                        <input
+                          required
+                          id="cc-holder-name"
+                          value={ccName}
+                          onChange={e => setCcName(e.target.value)}
+                          className="bpmpi_card_holder w-full border rounded p-3 outline-none focus:border-[#008d36]"
+                          placeholder="NOME DO TITULAR"
+                          autoComplete="cc-name"
+                        />
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-gray-700 mb-1">Número do Cartão</label>
-                        <input required value={ccNumber} onChange={e => setCcNumber(e.target.value)} className="w-full border rounded p-3 outline-none focus:border-[#008d36] tracking-widest" placeholder="0000 0000 0000 0000" maxLength={19} />
+                        <input
+                          required
+                          id="cc-number"
+                          value={ccNumber}
+                          onChange={e => setCcNumber(e.target.value)}
+                          className="bpmpi_card_number w-full border rounded p-3 outline-none focus:border-[#008d36] tracking-widest"
+                          placeholder="0000 0000 0000 0000"
+                          maxLength={19}
+                          autoComplete="cc-number"
+                        />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-bold text-gray-700 mb-1">Validade (MM/AAAA)</label>
-                          <input required value={ccValidity} onChange={e => { let v = e.target.value.replace(/\D/g,""); if(v.length>=2) v=v.slice(0,2)+"/"+v.slice(2,6); setCcValidity(v); }} className="w-full border rounded p-3 outline-none focus:border-[#008d36]" placeholder="12/2030" maxLength={7} />
+                          <input
+                            required
+                            id="cc-expiry"
+                            value={ccValidity}
+                            onChange={e => { let v = e.target.value.replace(/\D/g,""); if(v.length>=2) v=v.slice(0,2)+"/"+v.slice(2,6); setCcValidity(v); }}
+                            className="bpmpi_card_expiration w-full border rounded p-3 outline-none focus:border-[#008d36]"
+                            placeholder="12/2030"
+                            maxLength={7}
+                            autoComplete="cc-exp"
+                          />
                         </div>
                         <div>
                           <label className="block text-xs font-bold text-gray-700 mb-1">CVV</label>
-                          <input required value={ccCvv} onChange={e => setCcCvv(e.target.value)} className="w-full border rounded p-3 outline-none focus:border-[#008d36]" placeholder="123" maxLength={4} />
+                          <input
+                            required
+                            id="cc-cvv"
+                            value={ccCvv}
+                            onChange={e => setCcCvv(e.target.value)}
+                            className="bpmpi_card_cvvnumber w-full border rounded p-3 outline-none focus:border-[#008d36]"
+                            placeholder="123"
+                            maxLength={4}
+                            autoComplete="cc-csc"
+                          />
                         </div>
                       </div>
+                      {threeDsReady && (
+                        <p className="text-[10px] text-gray-400 flex items-center gap-1">
+                          <svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
+                          Proteção 3DS 2.2 ativa — autenticação segura pelo seu banco
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>

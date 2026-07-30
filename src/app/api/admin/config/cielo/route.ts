@@ -16,18 +16,18 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { merchantId, merchantKey, isSandbox } = await req.json();
+    const { merchantId, merchantKey, isSandbox, clientId3ds, clientSecret3ds } = await req.json();
 
     let config = await prisma.cieloConfig.findFirst();
 
     if (config) {
       config = await prisma.cieloConfig.update({
         where: { id: config.id },
-        data: { merchantId, merchantKey, isSandbox }
+        data: { merchantId, merchantKey, isSandbox, clientId3ds: clientId3ds || null, clientSecret3ds: clientSecret3ds || null }
       });
     } else {
       config = await prisma.cieloConfig.create({
-        data: { merchantId, merchantKey, isSandbox }
+        data: { merchantId, merchantKey, isSandbox, clientId3ds: clientId3ds || null, clientSecret3ds: clientSecret3ds || null }
       });
     }
 

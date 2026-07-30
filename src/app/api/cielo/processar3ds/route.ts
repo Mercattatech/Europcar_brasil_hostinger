@@ -1,49 +1,88 @@
 import { NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
+import { processPaymentWithToken, ThreeDsAuthData } from '@/lib/cielo/cieloClient';
 export const dynamic = 'force-dynamic';
 
-// Mock SDK ou Client Interno da Cielo
+/**
+ * POST /api/cielo/processar3ds
+ * Processa autorização financeira após autenticação 3DS 2.2 concluída no frontend.
+ * Recebe CAVV, XID e ECI do script Braspag MPI e inclui no nó ExternalAuthentication.
+ */
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { amountInCents, customerData, returnUrl, merchantOrderId } = body;
-    
-    // Regra do Arquiteto (Antifraude 3DS 2.2):
-    // "Implemente a autenticação 3DS 2.2 (enviando a ReturnUrl) para forçar o Liability Shift"
-    
-    // Configurações e SDK Cielo seriam injetados aqui via Prisma + CieloClient real.
-    
-    const PaymentPayload3DS = {
-        Type: "CreditCard",
-        Amount: amountInCents,
-        Installments: 1,
-        SoftDescriptor: "EUROPCAR",
-        Authenticate: true, // Força a tela do 3DS
-        ReturnUrl: returnUrl || "https://localhost:3000/checkout/callback",
-        CreditCard: {
-            // Em tese seria o Token ou dados em transito (nunca logado)
-            CardToken: "token_seguro_da_cielo_aqui"
-        }
+    const {
+      amountInCents,
+      cardToken,
+      customerData,
+      merchantOrderId,
+      // Dados 3DS retornados pelo script Braspag MPI no frontend
+      cavv,
+      xid,
+      eci,
+      version,
+      referenceId,
+    } = body;
+
+    if (!amountInCents || !cardToken || !merchantOrderId) {
+      return NextResponse.json(
+        { error: 'Parâmetros obrigatórios ausentes: amountInCents, cardToken, merchantOrderId' },
+        { status: 400 }
+      );
+    }
+
+    // Busca configuração Cielo do banco
+    const config = await prisma.cieloConfig.findFirst();
+    if (!config?.merchantId || !config?.merchantKey) {
+      return NextResponse.json(
+        { error: 'Configuração Cielo não encontrada. Configure no painel admin.' },
+        { status: 503 }
+      );
+    }
+
+    const cieloConfig = {
+      merchantId: config.merchantId,
+      merchantKey: config.merchantKey,
+      environment: config.isSandbox ? 'sandbox' as const : 'production' as const,
     };
 
-    console.log(`[LogsCielo] [INFO] Iniciando transação 3DS Liability Shift. Pedido: ${merchantOrderId}`);
+    // Monta dados de autenticação 3DS se disponíveis
+    const authData: ThreeDsAuthData | undefined = (cavv && xid && eci)
+      ? { cavv, xid, eci, version: version || '2', referenceId }
+      : undefined;
 
-    // Emulação da Resposta de Sucesso da Cielo com a URL do Banco do Cliente para o Desafio (Challenge 3DS)
-    const cieloResponseMock = {
-       Payment: {
-           Status: 0,
-           ReasonMessage: "Successful",
-           AuthenticationUrl: "https://banco.com.br/3ds-challenge?trx=123"
-       }
-    };
+    if (!authData) {
+      console.warn(`[3DS] Pedido ${merchantOrderId}: autorizando SEM autenticação 3DS (sem Liability Shift)`);
+    }
 
-    return NextResponse.json({ 
-       success: true, 
-       redirectUrl: cieloResponseMock.Payment.AuthenticationUrl 
+    const result = await processPaymentWithToken(
+      amountInCents,
+      cardToken,
+      customerData || { Name: 'Cliente Europcar' },
+      merchantOrderId,
+      cieloConfig,
+      authData
+    );
+
+    const payment = result.Payment;
+    const isApproved = payment?.Status === 1 || payment?.Status === 2;
+
+    return NextResponse.json({
+      success: isApproved,
+      status: payment?.Status,
+      reasonCode: payment?.ReasonCode,
+      reasonMessage: payment?.ReasonMessage,
+      liabilityShift: result.liabilityShift,
+      paymentId: payment?.PaymentId,
+      authorizationCode: payment?.AuthorizationCode,
+      // ECI retornado: indica nível de autenticação aplicado
+      eciApplied: authData?.eci,
     });
 
   } catch (error: any) {
+    console.error('[Cielo 3DS] Erro:', error.message);
     return NextResponse.json(
-      { error: error.message || 'Erro ao processar 3DS Cielo' },
+      { error: error.message || 'Erro ao processar pagamento 3DS' },
       { status: 500 }
     );
   }

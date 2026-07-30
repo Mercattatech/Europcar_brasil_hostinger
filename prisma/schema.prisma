@@ -32,11 +32,13 @@ model XRSConfig {
 }
 
 model CieloConfig {
-  id          String   @id @default(uuid())
-  merchantId  String
-  merchantKey String
-  isSandbox   Boolean  @default(true)
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(uuid())
+  merchantId      String
+  merchantKey     String
+  isSandbox       Boolean  @default(true)
+  clientId3ds     String?  // Credencial exclusiva Braspag 3DS (ClientId)
+  clientSecret3ds String?  // Credencial exclusiva Braspag 3DS (ClientSecret)
+  updatedAt       DateTime @updatedAt
 }
 
 model LocalReservation {
