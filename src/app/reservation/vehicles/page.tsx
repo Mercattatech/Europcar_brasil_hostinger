@@ -705,28 +705,74 @@ function VehiclesContent() {
                 prepaid:                       a.prepaid                       || '',
               };
             }).filter((ins: any) => ins.code);
-            if (quote?.chargeList?.charge) {
-              const rawCharge = quote.chargeList.charge;
-              const chargeArr = Array.isArray(rawCharge) ? rawCharge : [rawCharge];
+
+            // Codes already captured from insuranceList — avoid duplicates from chargeList
+            const alreadyCaptured = new Set(parsedInsurances.map((i: any) => i.code));
+            // Equipment codes that should not appear in the included section
+            const equipmentCodes = new Set(['ADD','SNO','DAB','CST','RSA','SKI','GPS','BBY','CSI','BBS']);
+            // Rental structure charge types to skip (Basic Rental, Free Miles, etc.)
+            const skipChrgTy = new Set(['00001','00048']);
+
+            // ── chargeList — API returns <chargeLine> elements (NOT <charge>) ──
+            const rawChargeLine = quote?.chargeList?.chargeLine;
+            if (rawChargeLine) {
+              const chargeArr = Array.isArray(rawChargeLine) ? rawChargeLine : [rawChargeLine];
+              let vatAddedFromChargeLine = false;
               chargeArr.forEach((c: any) => {
                 const a = c.$ || c;
-                if (a.code) {
-                  const code = (a.code || '').toUpperCase();
-                  parsedInsurances.push({
-                    code,
-                    descr:                         translateDescr(code, a.descr || ''),
-                    type:                          a.type || 'M',
-                    includedInTotal:               a.includedInTotal || 'Y',
-                    price:                         parseFloat(a.price || '0'),
-                    priceInBookingCurrency:        parseFloat(a.priceInBookingCurrency || '0'),
-                    rentalPriceAI:                 parseFloat(a.rentalPriceAI || '0'),
-                    rentalPriceInBookingCurrencyAI:parseFloat(a.rentalPriceInBookingCurrencyAI || '0'),
-                    prepaid:                       a.prepaid || '',
-                  });
+                const auxK     = (a.auxK     || '').toUpperCase();
+                const chrgTy   = (a.chrgTy   || '');
+                const chrgTyDesc = (a.chrgTyDesc || '').trim();
+                const chrgPct  = parseFloat(a.chrgPct || '0');
+                const price    = parseFloat(a.price || '0');
+                const priceBK  = parseFloat(a.priceInBookingCurrency || '0');
+
+                // Skip pure rental/mileage infrastructure lines
+                if (skipChrgTy.has(chrgTy)) return;
+                // Skip equipment items (already shown in extras section)
+                if (equipmentCodes.has(auxK)) return;
+                // Skip insurance items already captured from insuranceList
+                if (alreadyCaptured.has(auxK)) return;
+
+                // VAT / Tax line
+                if (chrgTy === '00028' || chrgTyDesc.toUpperCase() === 'VAT') {
+                  if (!vatAddedFromChargeLine) {
+                    vatAddedFromChargeLine = true;
+                    const pct = chrgPct > 0 && chrgPct <= 100 ? ` ${chrgPct}%` : '';
+                    parsedInsurances.push({
+                      code: 'VAT',
+                      descr: `IVA${pct}`,
+                      type: 'M',
+                      includedInTotal: 'Y',
+                      price,
+                      priceInBookingCurrency: priceBK,
+                      rentalPriceAI: 0,
+                      rentalPriceInBookingCurrencyAI: 0,
+                      prepaid: '',
+                    });
+                  }
+                  return;
                 }
+
+                // Use auxK as code if meaningful, else use chrgTy
+                const code = auxK && auxK !== '8' && auxK !== '' ? auxK : chrgTy;
+                const descr = translateDescr(code, chrgTyDesc);
+
+                parsedInsurances.push({
+                  code,
+                  descr,
+                  type: 'M',
+                  includedInTotal: 'Y',
+                  price,
+                  priceInBookingCurrency: priceBK,
+                  rentalPriceAI: 0,
+                  rentalPriceInBookingCurrencyAI: 0,
+                  prepaid: '',
+                });
               });
             }
 
+            // ── taxList fallback (if API returns a separate taxList) ──
             if (quote?.taxList?.tax) {
               const rawTax = quote.taxList.tax;
               const taxArr = Array.isArray(rawTax) ? rawTax : [rawTax];
@@ -734,6 +780,7 @@ function VehiclesContent() {
                 const a = t.$ || t;
                 const percent = parseFloat(a.percent || a.amount || '0');
                 const isVAT = (a.type || '').toUpperCase() === 'VAT';
+                if (parsedInsurances.some((i: any) => i.code === 'VAT') && isVAT) return; // already added
                 const taxName = isVAT
                   ? `IVA${percent > 0 && percent <= 100 ? ' ' + percent + '%' : ''}`
                   : `Taxa/Imposto${percent > 0 && percent <= 100 ? ' ' + percent + '%' : ''}`;
