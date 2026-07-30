@@ -1082,12 +1082,13 @@ export default function CheckoutPage() {
                 {!booking?.quoteInsurances?.some((i: any) => {
                   const c = (i.code || '').toUpperCase();
                   const d = (i.descr || '').toLowerCase();
-                  const airportCodes = ['APF','APT','AIRPORTFEE','CITYFEE','LOC','PRM','YSC','APS','ASF','APF2','APTF','STF','STA','STT'];
+                  const airportCodes = ['APF','APT','AIRPORTFEE','APS','ASF','APF2','APTF','STF'];
                   return airportCodes.includes(c) ||
+                    d === 'sobretaxa de aeroporto/estação ferroviária' ||
                     d.includes('airport') || d.includes('aeroporto') ||
-                    d.includes('station') || d.includes('estação') ||
-                    d.includes('ferroviária') || d.includes('railway') ||
-                    d.includes('surcharge') || d.includes('sobretaxa');
+                    d.includes('railway') || d.includes('ferroviária') ||
+                    d.includes('airport fee') || d.includes('airport surcharge') ||
+                    d.includes('station fee') || d.includes('station surcharge');
                 }) && (
                   <div className="mt-3 flex items-start gap-2 bg-yellow-50 border border-yellow-300 rounded-lg p-2.5">
                     <span className="text-yellow-500 text-base leading-none mt-0.5">⚠️</span>

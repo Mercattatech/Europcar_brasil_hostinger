@@ -615,8 +615,14 @@ function VehiclesContent() {
           }
 
           // ── Insurance list from getQuote (same regardless of equipment chunk) ──
-          // Codes that indicate an airport/station surcharge in ANY Europcar market
-          const AIRPORT_SURCHARGE_CODES = ['APF', 'APT', 'AIRPORTFEE', 'CITYFEE', 'LOC', 'PRM', 'YSC', 'APS', 'ASF', 'APF2', 'APTF', 'STF', 'STA', 'STT'];
+          // Known airport/station surcharge codes in the Europcar XRS API
+          const AIRPORT_SURCHARGE_CODES = ['APF','APT','AIRPORTFEE','APS','ASF','APF2','APTF','STF'];
+          // Known high-season surcharge codes
+          const HIGH_SEASON_CODES = ['YSC','HSS','HSCH','HSC','HSSE','HSSF'];
+
+          const AIRPORT_LABEL = 'Sobretaxa de aeroporto/estação ferroviária';
+          const HIGH_SEASON_LABEL = 'Sobretaxa de Alta Estação';
+
           const insuranceNamesPT: Record<string, string> = {
             CDW:        'Cobertura por Danos à Colisão (CDW)',
             THW:        'Cobertura por Roubo/Furto (THW)',
@@ -630,42 +636,61 @@ function VehiclesContent() {
             RSA:        'Assistência na Estrada (RSA)',
             PREMIUM:    'Cobertura Premium',
             PREMPRE:    'Cobertura Premium Pré-paga',
-            APF:        'Sobretaxa de aeroporto/estação ferroviária',
-            APT:        'Sobretaxa de aeroporto/estação ferroviária',
-            APS:        'Sobretaxa de aeroporto/estação ferroviária',
-            ASF:        'Sobretaxa de aeroporto/estação ferroviária',
-            AIRPORTFEE: 'Sobretaxa de aeroporto',
+            APF:        AIRPORT_LABEL,
+            APT:        AIRPORT_LABEL,
+            APS:        AIRPORT_LABEL,
+            ASF:        AIRPORT_LABEL,
+            AIRPORTFEE: AIRPORT_LABEL,
             CITYFEE:    'Sobretaxa de Cidade',
             LOC:        'Sobretaxa Local',
             PRM:        'Sobretaxa de Estação Premium',
-            YSC:        'Sobretaxa de Alta Estação',
-            HSS:        'Sobretaxa de Alta Estação',
-            HSCH:       'Sobretaxa de Alta Estação',
+            YSC:        HIGH_SEASON_LABEL,
+            HSS:        HIGH_SEASON_LABEL,
+            HSCH:       HIGH_SEASON_LABEL,
+            HSC:        HIGH_SEASON_LABEL,
+            HSSE:       HIGH_SEASON_LABEL,
             LAF:        'Taxas de Licença e Administração',
             RTF:        'Taxa Rodoviária',
             LIC:        'Licenças e Taxas',
             TAX:        'Impostos e Taxas',
             VAT:        'IVA (Imposto sobre Valor Acrescentado)',
           };
-          // Helper: detect airport surcharge by code OR by description keyword
-          const isAirportSurcharge = (code: string, descr: string) => {
+
+          // Narrow airport detection: requires airport/railway/aeroporto keyword (NOT generic "surcharge")
+          const isAirportSurcharge = (code: string, descr: string): boolean => {
             const c = (code || '').toUpperCase();
             const d = (descr || '').toLowerCase();
-            return AIRPORT_SURCHARGE_CODES.includes(c) ||
+            if (AIRPORT_SURCHARGE_CODES.includes(c)) return true;
+            return (
               d.includes('airport') || d.includes('aeroporto') ||
-              d.includes('station') || d.includes('estação') ||
-              d.includes('ferroviária') || d.includes('railway') ||
-              d.includes('surcharge') || d.includes('sobretaxa');
+              d.includes('railway') || d.includes('ferroviária') ||
+              d.includes('terminal fee') || d.includes('station fee') ||
+              d.includes('airport fee') || d.includes('airport surcharge') ||
+              d.includes('station surcharge') || d.includes('railway surcharge')
+            );
           };
+
+          // Translate any description to Portuguese using keywords
+          const translateDescr = (code: string, apiDescr: string): string => {
+            const c = (code || '').toUpperCase();
+            const d = (apiDescr || '').toLowerCase();
+            if (insuranceNamesPT[c]) return insuranceNamesPT[c];
+            if (isAirportSurcharge(c, apiDescr)) return AIRPORT_LABEL;
+            if (HIGH_SEASON_CODES.includes(c) || d.includes('high season') || d.includes('alta estação') || d.includes('season surcharge')) return HIGH_SEASON_LABEL;
+            if (d.includes('road tax') || d.includes('license fee') || d.includes('licence fee')) return 'Taxas de Licença e Administração';
+            if (d.includes('collision') || d.includes('damage waiver') || d.includes('cdw')) return 'Cobertura por Danos à Colisão (CDW)';
+            if (d.includes('theft') || d.includes('thw')) return 'Cobertura por Roubo/Furto (THW)';
+            if (d.includes('vat') || d.includes('imposto') || d.includes('tax')) return 'Impostos e Taxas';
+            return apiDescr || code; // fallback to API description
+          };
+
           if (quote?.insuranceList?.insurance) {
             const rawIns  = quote.insuranceList.insurance;
             const insArr  = Array.isArray(rawIns) ? rawIns : [rawIns];
             const parsedInsurances = insArr.map((ins: any) => {
               const a = ins.$ || ins;
               const code = (a.code || '').toUpperCase();
-              const apiDescr = a.descr || '';
-              // Use Portuguese name if available, fallback to API descr, then code
-              const descr = insuranceNamesPT[code] || apiDescr || code;
+              const descr = translateDescr(code, a.descr || '');
               return {
                 code,
                 descr,
@@ -689,7 +714,7 @@ function VehiclesContent() {
                   const code = (a.code || '').toUpperCase();
                   parsedInsurances.push({
                     code,
-                    descr:                         insuranceNamesPT[code] || a.descr || code,
+                    descr:                         translateDescr(code, a.descr || ''),
                     type:                          a.type || 'M',
                     includedInTotal:               a.includedInTotal || 'Y',
                     price:                         parseFloat(a.price || '0'),
