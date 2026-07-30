@@ -1078,6 +1078,19 @@ export default function CheckoutPage() {
                     ))}
                   </div>
                 </div>
+                {/* Alerta de Sobretaxa de aeroporto — exibido apenas quando a API NÃO retornar APF/APT */}
+                {!booking?.quoteInsurances?.some((i: any) =>
+                  ['APF', 'APT', 'AIRPORTFEE', 'CITYFEE', 'LOC', 'PRM', 'YSC'].includes(i.code)
+                ) && (
+                  <div className="mt-3 flex items-start gap-2 bg-yellow-50 border border-yellow-300 rounded-lg p-2.5">
+                    <span className="text-yellow-500 text-base leading-none mt-0.5">⚠️</span>
+                    <p className="text-[10px] text-yellow-700 leading-snug">
+                      <strong>Atenção:</strong> Verificar a necessidade de pagamento de{' '}
+                      <strong>Sobretaxa de aeroporto/estação ferroviária</strong> junto à Europcar
+                      no momento da retirada do veículo.
+                    </p>
+                  </div>
+                )}
                 {parseFloat(car?.amountToPayOnArrivalInBookingCurrency || car?.amountToPayOnArrival || '0') > 0 && (
                   <div className="flex flex-col text-xs font-bold text-[#e67e00] mt-1 bg-[#fff8f0] p-2 rounded">
                     <div className="flex justify-between">
