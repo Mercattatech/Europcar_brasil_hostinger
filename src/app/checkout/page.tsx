@@ -1067,10 +1067,14 @@ export default function CheckoutPage() {
                       <span>Quilometragem {car?.mileageType === 'Livre' ? 'Ilimitada' : 'Limitada'}</span>
                       <span className="text-gray-400">Incluída</span>
                     </div>
-                    {/* Todos os itens inclusos da API — mandatórios OU includedInTotal=Y */}
-                    {booking?.quoteInsurances?.filter((i: any) =>
-                      i.type === 'M' || i.type === 'I' || i.includedInTotal === 'Y'
-                    ).map((ins: any, idx: number) => (
+                    {/* Itens inclusos da API — excluindo sobretaxa de aeroporto (exibida separadamente) */}
+                    {booking?.quoteInsurances?.filter((i: any) => {
+                      const d = (i.descr || '').toLowerCase();
+                      const isAirport = d.includes('aeroporto') || d.includes('airport') ||
+                        d.includes('ferroviária') || d.includes('railway') ||
+                        d === 'sobretaxa de aeroporto/estação ferroviária';
+                      return !isAirport && (i.type === 'M' || i.type === 'I' || i.includedInTotal === 'Y');
+                    }).map((ins: any, idx: number) => (
                       <div key={idx} className="flex justify-between text-[10px] text-gray-500">
                         <span>{ins.descr || ins.code}</span>
                         <span className="text-gray-400">Incluída</span>
@@ -1078,27 +1082,42 @@ export default function CheckoutPage() {
                     ))}
                   </div>
                 </div>
-                {/* Alerta de Sobretaxa de aeroporto — exibido apenas quando a API NÃO retornar APF/APT ou similar */}
-                {!booking?.quoteInsurances?.some((i: any) => {
-                  const c = (i.code || '').toUpperCase();
-                  const d = (i.descr || '').toLowerCase();
-                  const airportCodes = ['APF','APT','AIRPORTFEE','APS','ASF','APF2','APTF','STF'];
-                  return airportCodes.includes(c) ||
-                    d === 'sobretaxa de aeroporto/estação ferroviária' ||
-                    d.includes('airport') || d.includes('aeroporto') ||
-                    d.includes('railway') || d.includes('ferroviária') ||
-                    d.includes('airport fee') || d.includes('airport surcharge') ||
-                    d.includes('station fee') || d.includes('station surcharge');
-                }) && (
-                  <div className="mt-3 flex items-start gap-2 bg-yellow-50 border border-yellow-300 rounded-lg p-2.5">
-                    <span className="text-yellow-500 text-base leading-none mt-0.5">⚠️</span>
-                    <p className="text-[10px] text-yellow-700 leading-snug">
-                      <strong>Atenção:</strong> Verificar a necessidade de pagamento de{' '}
-                      <strong>Sobretaxa de aeroporto/estação ferroviária</strong> junto à Europcar
-                      no momento da retirada do veículo.
-                    </p>
-                  </div>
-                )}
+                {/* Sobretaxa de aeroporto/estação ferroviária — box destacado com valor */}
+                {(() => {
+                  const airportFees = booking?.quoteInsurances?.filter((i: any) => {
+                    const d = (i.descr || '').toLowerCase();
+                    return d.includes('aeroporto') || d.includes('airport') ||
+                      d.includes('ferroviária') || d.includes('railway') ||
+                      d === 'sobretaxa de aeroporto/estação ferroviária';
+                  }) || [];
+                  if (airportFees.length === 0) return null;
+                  return (
+                    <div className="mt-3 flex flex-col gap-1 bg-orange-50 border border-orange-200 rounded-lg p-2.5">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-[10px] font-bold text-orange-700 uppercase tracking-wide">✈ Sobretaxa de aeroporto/estação ferroviária</span>
+                      </div>
+                      {airportFees.map((ins: any, idx: number) => {
+                        const val = ins.rentalPriceInBookingCurrencyAI > 0
+                          ? ins.rentalPriceInBookingCurrencyAI
+                          : (ins.priceInBookingCurrency > 0 ? ins.priceInBookingCurrency : ins.price);
+                        const curr = bookingCurrency || currency || 'EUR';
+                        return (
+                          <div key={idx} className="flex justify-between text-[10px] text-orange-800">
+                            <span className="flex-1 pr-2">{ins.descr || ins.code}</span>
+                            {val > 0 ? (
+                              <span className="font-bold whitespace-nowrap">{curr} {val.toFixed(2).replace('.', ',')}</span>
+                            ) : (
+                              <span className="text-orange-500 italic">Verificar na retirada</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                      <p className="text-[9px] text-orange-600 mt-1 leading-tight border-t border-orange-200 pt-1">
+                        ⓘ Este valor é cobrado diretamente pela Europcar no balcão de retirada.
+                      </p>
+                    </div>
+                  );
+                })()}
                 {parseFloat(car?.amountToPayOnArrivalInBookingCurrency || car?.amountToPayOnArrival || '0') > 0 && (
                   <div className="flex flex-col text-xs font-bold text-[#e67e00] mt-1 bg-[#fff8f0] p-2 rounded">
                     <div className="flex justify-between">
@@ -1108,7 +1127,6 @@ export default function CheckoutPage() {
                         {parseFloat(car?.amountToPayOnArrivalInBookingCurrency || car?.amountToPayOnArrival || '0').toFixed(2).replace('.', ',')}
                       </span>
                     </div>
-                    {/* List specific local mandatory fees like Premium Station Surcharge if available in quoteInsurances */}
                     {booking?.quoteInsurances?.filter((i: any) => i.type === 'M' && ['APF', 'APT', 'AIRPORTFEE', 'CITYFEE', 'LOC', 'PRM', 'YSC'].includes(i.code)).map((ins: any, idx: number) => (
                       <div key={idx} className="text-[10px] text-gray-500 font-normal flex justify-between mt-1.5 border-t border-[#e67e00]/10 pt-1.5">
                         <span className="flex-1 truncate pr-2">- {ins.descr || 'Suplemento de Estação Premium'} ({ins.code})</span>
