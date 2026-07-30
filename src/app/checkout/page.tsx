@@ -1067,8 +1067,10 @@ export default function CheckoutPage() {
                       <span>Quilometragem {car?.mileageType === 'Livre' ? 'Ilimitada' : 'Limitada'}</span>
                       <span className="text-gray-400">Incluída</span>
                     </div>
-                    {/* Todos os itens mandatórios/inclusos da API — incluindo taxas de aeroporto */}
-                    {booking?.quoteInsurances?.filter((i: any) => i.type === 'M' || i.type === 'I').map((ins: any, idx: number) => (
+                    {/* Todos os itens inclusos da API — mandatórios OU includedInTotal=Y */}
+                    {booking?.quoteInsurances?.filter((i: any) =>
+                      i.type === 'M' || i.type === 'I' || i.includedInTotal === 'Y'
+                    ).map((ins: any, idx: number) => (
                       <div key={idx} className="flex justify-between text-[10px] text-gray-500">
                         <span>{ins.descr || ins.code}</span>
                         <span className="text-gray-400">Incluída</span>

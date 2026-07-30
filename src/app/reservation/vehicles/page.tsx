@@ -615,15 +615,42 @@ function VehiclesContent() {
           }
 
           // ── Insurance list from getQuote (same regardless of equipment chunk) ──
+          const insuranceNamesPT: Record<string, string> = {
+            CDW: 'Cobertura por Danos à Colisão (CDW)',
+            THW: 'Cobertura por Roubo/Furto (THW)',
+            PAI: 'Seguro de Acidentes Pessoais (PAI)',
+            PEC: 'Proteção de Pertences Pessoais (PEC)',
+            SCDW: 'Super CDW',
+            STHW: 'Super THW',
+            SPCDW: 'Proteção Premium CDW',
+            SPTHW: 'Proteção Premium THW',
+            APP: 'Proteção de Aparência',
+            RSA: 'Assistência na Estrada (RSA)',
+            PREMIUM: 'Cobertura Premium',
+            PREMPRE: 'Cobertura Premium Pré-paga',
+            APF: 'Sobretaxa de aeroporto/estação ferroviária',
+            APT: 'Sobretaxa de aeroporto/estação ferroviária',
+            AIRPORTFEE: 'Sobretaxa de aeroporto',
+            CITYFEE: 'Sobretaxa de Cidade',
+            LOC: 'Sobretaxa Local',
+            PRM: 'Sobretaxa de Estação Premium',
+            YSC: 'Sobretaxa de Alta Estação',
+            VAT: 'IVA (Imposto sobre Valor Acrescentado)',
+          };
           if (quote?.insuranceList?.insurance) {
             const rawIns  = quote.insuranceList.insurance;
             const insArr  = Array.isArray(rawIns) ? rawIns : [rawIns];
             const parsedInsurances = insArr.map((ins: any) => {
               const a = ins.$ || ins;
+              const code = (a.code || '').toUpperCase();
+              const apiDescr = a.descr || '';
+              // Use Portuguese name if available, fallback to API descr, then code
+              const descr = insuranceNamesPT[code] || apiDescr || code;
               return {
-                code:                          a.code                          || '',
-                descr:                         a.descr                         || '',
+                code,
+                descr,
                 type:                          a.type                          || 'O',
+                includedInTotal:               a.includedInTotal               || '',
                 price:                         parseFloat(a.price              || '0'),
                 priceInBookingCurrency:        parseFloat(a.priceInBookingCurrency || '0'),
                 rentalPriceAI:                 parseFloat(a.rentalPriceAI      || '0'),
@@ -631,7 +658,6 @@ function VehiclesContent() {
                 excessWithPOM:                 parseFloat(a.excessWithPOM      || '0'),
                 bkExcessWithPOM:               parseFloat(a.bkExcessWithPOM    || '0'),
                 prepaid:                       a.prepaid                       || '',
-                includedInTotal:               a.includedInTotal               || '',
               };
             }).filter((ins: any) => ins.code);
             if (quote?.chargeList?.charge) {
@@ -640,16 +666,17 @@ function VehiclesContent() {
               chargeArr.forEach((c: any) => {
                 const a = c.$ || c;
                 if (a.code) {
+                  const code = (a.code || '').toUpperCase();
                   parsedInsurances.push({
-                    code:                          a.code,
-                    descr:                         a.descr || a.code,
+                    code,
+                    descr:                         insuranceNamesPT[code] || a.descr || code,
                     type:                          a.type || 'M',
+                    includedInTotal:               a.includedInTotal || 'Y',
                     price:                         parseFloat(a.price || '0'),
                     priceInBookingCurrency:        parseFloat(a.priceInBookingCurrency || '0'),
                     rentalPriceAI:                 parseFloat(a.rentalPriceAI || '0'),
                     rentalPriceInBookingCurrencyAI:parseFloat(a.rentalPriceInBookingCurrencyAI || '0'),
                     prepaid:                       a.prepaid || '',
-                    includedInTotal:               a.includedInTotal || '',
                   });
                 }
               });
@@ -660,18 +687,21 @@ function VehiclesContent() {
               const taxArr = Array.isArray(rawTax) ? rawTax : [rawTax];
               taxArr.forEach((t: any) => {
                 const a = t.$ || t;
-                const percent = parseFloat(a.amount || '0');
-                const taxName = a.type === 'VAT' ? `IVA ${percent > 0 ? percent + '%' : ''}` : `Taxa/Imposto ${percent > 0 ? percent + '%' : ''}`;
+                const percent = parseFloat(a.percent || a.amount || '0');
+                const isVAT = (a.type || '').toUpperCase() === 'VAT';
+                const taxName = isVAT
+                  ? `IVA${percent > 0 && percent <= 100 ? ' ' + percent + '%' : ''}`
+                  : `Taxa/Imposto${percent > 0 && percent <= 100 ? ' ' + percent + '%' : ''}`;
                 parsedInsurances.push({
-                  code:                          a.type || 'TAX',
+                  code:                          (a.type || 'TAX').toUpperCase(),
                   descr:                         taxName.trim(),
                   type:                          'M',
+                  includedInTotal:               'Y',
                   price:                         parseFloat(a.price || '0'),
                   priceInBookingCurrency:        parseFloat(a.priceInBookingCurrency || '0'),
                   rentalPriceAI:                 parseFloat(a.rentalPriceAI || '0'),
                   rentalPriceInBookingCurrencyAI:parseFloat(a.rentalPriceInBookingCurrencyAI || '0'),
                   prepaid:                       a.prepaid || '',
-                  includedInTotal:               a.includedInTotal || '',
                 });
               });
             }
