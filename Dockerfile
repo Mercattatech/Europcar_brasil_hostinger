@@ -88,6 +88,7 @@ EXPOSE 3000
 ENV PORT=3000 \
     HOSTNAME="0.0.0.0"
 
-# Roda migrate deploy (aplica novas colunas no banco) e inicia o servidor
-CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
+# Roda migrate deploy ao iniciar (|| true = não falha se já aplicado ou se houver erro)
+# Usa caminho direto ao binário — evita tentativa de download do npx
+CMD ["sh", "-c", "node node_modules/.bin/prisma migrate deploy 2>&1 || true && node server.js"]
 
