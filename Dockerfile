@@ -73,12 +73,21 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
+# Copia prisma CLI necessário para rodar migrate deploy no startup
+COPY --from=builder /app/node_modules/.bin ./node_modules/.bin
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+
+# Muda para root para dar permissão de execução, depois volta para nextjs
+USER root
+RUN chown -R nextjs:nodejs /app/node_modules/.bin /app/node_modules/prisma 2>/dev/null || true
 USER nextjs
+
 
 EXPOSE 3000
 
 ENV PORT=3000 \
     HOSTNAME="0.0.0.0"
 
-# Inicia o servidor standalone do Next.js
-CMD ["node", "server.js"]
+# Roda migrate deploy (aplica novas colunas no banco) e inicia o servidor
+CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
+
