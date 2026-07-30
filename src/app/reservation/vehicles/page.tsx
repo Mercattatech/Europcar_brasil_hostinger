@@ -615,27 +615,47 @@ function VehiclesContent() {
           }
 
           // ── Insurance list from getQuote (same regardless of equipment chunk) ──
+          // Codes that indicate an airport/station surcharge in ANY Europcar market
+          const AIRPORT_SURCHARGE_CODES = ['APF', 'APT', 'AIRPORTFEE', 'CITYFEE', 'LOC', 'PRM', 'YSC', 'APS', 'ASF', 'APF2', 'APTF', 'STF', 'STA', 'STT'];
           const insuranceNamesPT: Record<string, string> = {
-            CDW: 'Cobertura por Danos à Colisão (CDW)',
-            THW: 'Cobertura por Roubo/Furto (THW)',
-            PAI: 'Seguro de Acidentes Pessoais (PAI)',
-            PEC: 'Proteção de Pertences Pessoais (PEC)',
-            SCDW: 'Super CDW',
-            STHW: 'Super THW',
-            SPCDW: 'Proteção Premium CDW',
-            SPTHW: 'Proteção Premium THW',
-            APP: 'Proteção de Aparência',
-            RSA: 'Assistência na Estrada (RSA)',
-            PREMIUM: 'Cobertura Premium',
-            PREMPRE: 'Cobertura Premium Pré-paga',
-            APF: 'Sobretaxa de aeroporto/estação ferroviária',
-            APT: 'Sobretaxa de aeroporto/estação ferroviária',
+            CDW:        'Cobertura por Danos à Colisão (CDW)',
+            THW:        'Cobertura por Roubo/Furto (THW)',
+            PAI:        'Seguro de Acidentes Pessoais (PAI)',
+            PEC:        'Proteção de Pertences Pessoais (PEC)',
+            SCDW:       'Super CDW',
+            STHW:       'Super THW',
+            SPCDW:      'Proteção Premium CDW',
+            SPTHW:      'Proteção Premium THW',
+            APP:        'Proteção de Aparência',
+            RSA:        'Assistência na Estrada (RSA)',
+            PREMIUM:    'Cobertura Premium',
+            PREMPRE:    'Cobertura Premium Pré-paga',
+            APF:        'Sobretaxa de aeroporto/estação ferroviária',
+            APT:        'Sobretaxa de aeroporto/estação ferroviária',
+            APS:        'Sobretaxa de aeroporto/estação ferroviária',
+            ASF:        'Sobretaxa de aeroporto/estação ferroviária',
             AIRPORTFEE: 'Sobretaxa de aeroporto',
-            CITYFEE: 'Sobretaxa de Cidade',
-            LOC: 'Sobretaxa Local',
-            PRM: 'Sobretaxa de Estação Premium',
-            YSC: 'Sobretaxa de Alta Estação',
-            VAT: 'IVA (Imposto sobre Valor Acrescentado)',
+            CITYFEE:    'Sobretaxa de Cidade',
+            LOC:        'Sobretaxa Local',
+            PRM:        'Sobretaxa de Estação Premium',
+            YSC:        'Sobretaxa de Alta Estação',
+            HSS:        'Sobretaxa de Alta Estação',
+            HSCH:       'Sobretaxa de Alta Estação',
+            LAF:        'Taxas de Licença e Administração',
+            RTF:        'Taxa Rodoviária',
+            LIC:        'Licenças e Taxas',
+            TAX:        'Impostos e Taxas',
+            VAT:        'IVA (Imposto sobre Valor Acrescentado)',
+          };
+          // Helper: detect airport surcharge by code OR by description keyword
+          const isAirportSurcharge = (code: string, descr: string) => {
+            const c = (code || '').toUpperCase();
+            const d = (descr || '').toLowerCase();
+            return AIRPORT_SURCHARGE_CODES.includes(c) ||
+              d.includes('airport') || d.includes('aeroporto') ||
+              d.includes('station') || d.includes('estação') ||
+              d.includes('ferroviária') || d.includes('railway') ||
+              d.includes('surcharge') || d.includes('sobretaxa');
           };
           if (quote?.insuranceList?.insurance) {
             const rawIns  = quote.insuranceList.insurance;
