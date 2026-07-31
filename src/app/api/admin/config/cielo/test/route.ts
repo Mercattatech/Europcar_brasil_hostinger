@@ -8,7 +8,8 @@ export const dynamic = "force-dynamic";
  *
  * Cielo: tenta tokenizar um cartão de teste — 401 = chaves erradas, qualquer
  *        outro código (200 ou erro de bandeira) = chaves válidas.
- * 3DS:   solicita um Access Token ao servidor Braspag MPI.
+ * 3DS:   solicita um Access Token ao servidor Braspag MPI, incluindo os campos
+ *        obrigatórios EstablishmentCode (605), MerchantName (606) e MCC (607).
  */
 export async function POST() {
   const config = await prisma.cieloConfig.findFirst();
@@ -30,7 +31,6 @@ export async function POST() {
     ? "https://apiquerysandbox.cieloecommerce.cielo.com.br/1/card"
     : "https://api.cieloecommerce.cielo.com.br/1/card";
 
-  // Cartão de teste padrão Cielo (nunca gera cobrança real)
   const testCard = isSandbox
     ? { CustomerName: "Teste Cielo", CardNumber: "4551870000000183", Holder: "TESTE CIELO", ExpirationDate: "12/2030", Brand: "Visa" }
     : { CustomerName: "Teste Cielo", CardNumber: "4532117080573700", Holder: "TESTE CIELO", ExpirationDate: "12/2030", Brand: "Visa" };
@@ -62,8 +62,6 @@ export async function POST() {
         detail: "Suas chaves não têm permissão para esta operação. Verifique o portal Cielo.",
       };
     } else {
-      // Qualquer outro código (200, 400 por cartão inválido em produção, etc.)
-      // significa que as chaves foram aceitas pelo gateway.
       results.cielo = {
         ok: true,
         label: `✅ Credenciais válidas (HTTP ${cieloRes.status})`,
@@ -82,7 +80,7 @@ export async function POST() {
   }
 
   /* ------------------------------------------------------------------ */
-  /* 2. Teste 3DS — Solicita Access Token ao Braspag MPI                 */
+  /* 2. Teste 3DS — Access Token Braspag MPI (com campos 605/606/607)    */
   /* ------------------------------------------------------------------ */
   if (config.clientId3ds && config.clientSecret3ds) {
     const authUrl = isSandbox
@@ -93,6 +91,14 @@ export async function POST() {
       `${config.clientId3ds}:${config.clientSecret3ds}`
     ).toString("base64");
 
+    // Campos obrigatórios no body do token Braspag MPI (Erros 605, 606, 607)
+    const tokenBody = new URLSearchParams({
+      grant_type:        "client_credentials",
+      EstablishmentCode: config.establishmentCode || "",
+      MerchantName:      config.merchantName      || "Europcar Brasil",
+      MCC:               config.mcc               || "7512",
+    });
+
     try {
       const dsRes = await fetch(authUrl, {
         method: "POST",
@@ -100,7 +106,7 @@ export async function POST() {
           "Content-Type": "application/x-www-form-urlencoded",
           Authorization: `Basic ${credentials}`,
         },
-        body: "grant_type=client_credentials",
+        body: tokenBody.toString(),
         signal: AbortSignal.timeout(10000),
       });
 
@@ -116,7 +122,7 @@ export async function POST() {
         results.threeds = {
           ok: false,
           label: `❌ Credenciais 3DS inválidas (HTTP ${dsRes.status})`,
-          detail: `Resposta Braspag: ${errText.slice(0, 200)}`,
+          detail: `Resposta Braspag: ${errText.slice(0, 300)}`,
         };
       }
     } catch (err: any) {
