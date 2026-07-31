@@ -4,6 +4,12 @@ export interface CieloConfig {
   merchantId: string;
   merchantKey: string;
   environment?: 'sandbox' | 'production';
+  /** Número de afiliação Cielo — obrigatório para 3DS 2.2 (Erro 605) */
+  establishmentCode?: string;
+  /** Nome fantasia exibido na tela de autenticação 3DS (Erro 606) */
+  merchantName?: string;
+  /** Merchant Category Code — 7512 para Car Rental (Erro 607) */
+  mcc?: string;
 }
 
 export interface CustomerData {
@@ -65,7 +71,7 @@ export async function createCreditCardToken(
       headers: {
         'Content-Type': 'application/json',
         'MerchantId': config.merchantId,
-        'MerchantKey': config.merchantKey
+        'MerchantKey': config.merchantKey,
       },
       timeout: 10000,
     });
@@ -96,8 +102,21 @@ export async function processPaymentWithToken(
 
   const hasLiabilityShift = authData ? LIABILITY_SHIFT_ECI.has(authData.eci) : false;
 
+  // Campos obrigatórios para 3DS 2.2 — Erros 605, 606 e 607
+  const establishmentCode = config.establishmentCode || '';
+  const merchantName      = config.merchantName      || 'Europcar Brasil';
+  const mcc               = config.mcc               || '7512'; // Car Rental Agencies
+
+  if (!establishmentCode) {
+    console.warn('[Cielo] AVISO: EstablishmentCode não configurado — pode causar Erro 605 no 3DS.');
+  }
+
   const payload: any = {
     MerchantOrderId: merchantOrderId,
+    // Campos obrigatórios 3DS 2.2 (Erros 605 / 606 / 607)
+    MerchantName:         merchantName,
+    EstablishmentCode:    establishmentCode,
+    MerchantCategoryCode: mcc,
     Customer: customerData,
     Payment: {
       Type: 'CreditCard',
@@ -113,10 +132,10 @@ export async function processPaymentWithToken(
   // Inclui nó de autenticação 3DS quando disponível (garante Liability Shift)
   if (authData) {
     payload.Payment.ExternalAuthentication = {
-      Cavv: authData.cavv,
-      Xid: authData.xid,
-      Eci: authData.eci,
-      Version: authData.version,
+      Cavv:        authData.cavv,
+      Xid:         authData.xid,
+      Eci:         authData.eci,
+      Version:     authData.version,
       ReferenceID: authData.referenceId || '',
     };
   }
@@ -124,6 +143,7 @@ export async function processPaymentWithToken(
   console.log(
     `[Cielo] Autorizando pagamento. Pedido: ${merchantOrderId} | ` +
     `Valor: ${amountInCents} centavos | Token: ${maskToken(cardToken)} | ` +
+    `EC: ${establishmentCode} | MCC: ${mcc} | ` +
     `3DS: ${authData ? `ECI=${authData.eci} LiabilityShift=${hasLiabilityShift}` : 'NÃO'}`
   );
 
@@ -131,8 +151,8 @@ export async function processPaymentWithToken(
     const response = await axios.post(url, payload, {
       headers: {
         'Content-Type': 'application/json',
-        'MerchantId': config.merchantId,
-        'MerchantKey': config.merchantKey
+        'MerchantId':  config.merchantId,
+        'MerchantKey': config.merchantKey,
       },
       timeout: 20000,
     });
@@ -148,6 +168,14 @@ export async function processPaymentWithToken(
     console.error(`[Cielo] Falha no pagamento:`, error.message);
     if (error.response) {
       console.error(`[Cielo] Detalhes:`, JSON.stringify(error.response.data));
+      // Repassa a mensagem exata da Cielo para facilitar diagnóstico no frontend
+      const cieloMsg =
+        error.response.data?.Payment?.ReturnMessage ||
+        error.response.data?.[0]?.Message ||
+        error.message;
+      throw new Error(
+        `Transação Recusada pela Operadora: HTTP ${error.response.status} (${error.response.statusText}): ${cieloMsg}`
+      );
     }
     throw new Error('Transação financeira recusada ou falhou.');
   }

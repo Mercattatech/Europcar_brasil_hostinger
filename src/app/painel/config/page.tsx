@@ -7,6 +7,9 @@ export default function PainelConfig() {
   const [merchantKey, setMerchantKey] = useState("");
   const [clientId3ds, setClientId3ds] = useState("");
   const [clientSecret3ds, setClientSecret3ds] = useState("");
+  const [establishmentCode, setEstablishmentCode] = useState("");
+  const [merchantName, setMerchantName] = useState("Europcar Brasil");
+  const [mcc, setMcc] = useState("7512");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isSandbox, setIsSandbox] = useState(true);
@@ -28,6 +31,9 @@ export default function PainelConfig() {
         if (data.isSandbox !== undefined) setIsSandbox(data.isSandbox);
         if (data.clientId3ds) setClientId3ds(data.clientId3ds);
         if (data.clientSecret3ds) setClientSecret3ds(data.clientSecret3ds);
+        if (data.establishmentCode) setEstablishmentCode(data.establishmentCode);
+        if (data.merchantName) setMerchantName(data.merchantName);
+        if (data.mcc) setMcc(data.mcc);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -54,7 +60,7 @@ export default function PainelConfig() {
       const res = await fetch("/api/admin/config/cielo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ merchantId, merchantKey, isSandbox, clientId3ds, clientSecret3ds })
+        body: JSON.stringify({ merchantId, merchantKey, isSandbox, clientId3ds, clientSecret3ds, establishmentCode, merchantName, mcc })
       });
       if (res.ok) showToast("Configurações salvas com sucesso!");
       else showToast("Erro ao salvar", "error");
@@ -116,6 +122,57 @@ export default function PainelConfig() {
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-white font-mono outline-none focus:border-green-600"
               placeholder="Sua chave secreta..."
             />
+          </div>
+
+          {/* Campos obrigatórios 3DS 2.2 — Erros 605, 606 e 607 */}
+          <div className="border-t border-gray-700 pt-5">
+            <div className="flex items-start gap-3 bg-orange-500/10 border border-orange-500/20 rounded-lg p-4 mb-4">
+              <svg className="w-5 h-5 text-orange-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+              <div>
+                <p className="text-sm text-orange-300 font-bold mb-1">Identificação do Lojista (3DS 2.2)</p>
+                <p className="text-xs text-orange-400">
+                  Campos obrigatórios para evitar os erros <strong>605</strong> (EstablishmentCode), <strong>606</strong> (MerchantName) e <strong>607</strong> (MCC).
+                  O <strong>Establishment Code</strong> é o número de afiliação fornecido pela Cielo — diferente do MerchantId.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Establishment Code <span className="text-orange-400">(Afiliação Cielo)</span></label>
+                <input
+                  type="text"
+                  value={establishmentCode}
+                  onChange={e => setEstablishmentCode(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-white font-mono outline-none focus:border-orange-600"
+                  placeholder="Ex: 1234567890"
+                />
+                <p className="text-[10px] text-gray-600 mt-1">Portal Cielo → Minha Conta → Dados do Estabelecimento</p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Nome do Lojista (MerchantName)</label>
+                <input
+                  type="text"
+                  value={merchantName}
+                  onChange={e => setMerchantName(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-white outline-none focus:border-orange-600"
+                  placeholder="Europcar Brasil"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-2">MCC — Merchant Category Code</label>
+                <input
+                  type="text"
+                  value={mcc}
+                  onChange={e => setMcc(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-white font-mono outline-none focus:border-orange-600"
+                  placeholder="7512"
+                />
+                <p className="text-[10px] text-gray-600 mt-1">7512 = Car Rental Agencies (padrão para locadoras)</p>
+              </div>
+            </div>
           </div>
 
           {/* Credenciais 3DS 2.2 */}

@@ -7,6 +7,11 @@ export const dynamic = 'force-dynamic';
  * POST /api/cielo/processar3ds
  * Processa autorização financeira após autenticação 3DS 2.2 concluída no frontend.
  * Recebe CAVV, XID e ECI do script Braspag MPI e inclui no nó ExternalAuthentication.
+ *
+ * Campos obrigatórios Cielo API 3.0 para 3DS:
+ *   - EstablishmentCode (Erro 605) → config.establishmentCode
+ *   - MerchantName      (Erro 606) → config.merchantName
+ *   - MerchantCategoryCode (Erro 607) → config.mcc
  */
 export async function POST(request: Request) {
   try {
@@ -31,7 +36,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Busca configuração Cielo do banco
+    // Busca configuração Cielo do banco (inclui campos 3DS obrigatórios)
     const config = await prisma.cieloConfig.findFirst();
     if (!config?.merchantId || !config?.merchantKey) {
       return NextResponse.json(
@@ -40,10 +45,19 @@ export async function POST(request: Request) {
       );
     }
 
+    // Avisa se campos 3DS obrigatórios não estão configurados
+    if (!config.establishmentCode) {
+      console.warn('[3DS] EstablishmentCode não configurado — Erro 605 provável. Configure no painel admin.');
+    }
+
     const cieloConfig = {
-      merchantId: config.merchantId,
-      merchantKey: config.merchantKey,
-      environment: config.isSandbox ? 'sandbox' as const : 'production' as const,
+      merchantId:        config.merchantId,
+      merchantKey:       config.merchantKey,
+      environment:       config.isSandbox ? 'sandbox' as const : 'production' as const,
+      // Campos obrigatórios 3DS 2.2 (Erros 605, 606, 607)
+      establishmentCode: config.establishmentCode || '',
+      merchantName:      config.merchantName      || 'Europcar Brasil',
+      mcc:               config.mcc               || '7512',
     };
 
     // Monta dados de autenticação 3DS se disponíveis
@@ -52,7 +66,7 @@ export async function POST(request: Request) {
       : undefined;
 
     if (!authData) {
-      console.warn(`[3DS] Pedido ${merchantOrderId}: autorizando SEM autenticação 3DS (sem Liability Shift)`);
+      console.warn(`[3DS] Pedido ${merchantOrderId}: autorizando SEM autenticação 3DS (sem Liability Shift).`);
     }
 
     const result = await processPaymentWithToken(
@@ -69,14 +83,13 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: isApproved,
-      status: payment?.Status,
-      reasonCode: payment?.ReasonCode,
-      reasonMessage: payment?.ReasonMessage,
-      liabilityShift: result.liabilityShift,
-      paymentId: payment?.PaymentId,
+      status:            payment?.Status,
+      reasonCode:        payment?.ReasonCode,
+      reasonMessage:     payment?.ReasonMessage,
+      liabilityShift:    result.liabilityShift,
+      paymentId:         payment?.PaymentId,
       authorizationCode: payment?.AuthorizationCode,
-      // ECI retornado: indica nível de autenticação aplicado
-      eciApplied: authData?.eci,
+      eciApplied:        authData?.eci,
     });
 
   } catch (error: any) {
