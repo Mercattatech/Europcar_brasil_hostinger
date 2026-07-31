@@ -36,7 +36,7 @@ export async function POST(request: Request) {
         console.warn('[reservas] Prisma findFirst falhou (migration pendente?):', dbErr.message);
         // Fallback: busca apenas as colunas base via query SQL raw para não crashar se 3DS columns não existem
         try {
-          const rows = await prisma.$queryRaw<any[]>`SELECT "merchantId", "merchantKey", "isSandbox" FROM "CieloConfig" LIMIT 1`;
+          const rows = await prisma.$queryRaw<any[]>`SELECT "id", "merchantId", "merchantKey", "isSandbox", "clientId3ds", "clientSecret3ds", "updatedAt" FROM "CieloConfig" LIMIT 1`;
           if (rows.length > 0) cieloConfig = rows[0];
         } catch (rawErr: any) {
           console.warn('[reservas] Raw query também falhou:', rawErr.message);
@@ -61,9 +61,16 @@ export async function POST(request: Request) {
       // 1. Iniciar transação CIELO baseada no paymentData.method
       let cieloLog = "Não enviou para Cielo";
       let pixData: any = null;
-      const CIELO_API_URL = cieloConfig?.isSandbox 
+
+      // CRITICAL: força coerção explícita de boolean para isSandbox
+      // Evita bugs onde raw SQL retorna tipo inesperado ou migration não rodou
+      const isSandboxMode = cieloConfig?.isSandbox === true;
+      
+      const CIELO_API_URL = isSandboxMode
           ? "https://apisandbox.cieloecommerce.cielo.com.br/1/sales/"
           : "https://api.cieloecommerce.cielo.com.br/1/sales/";
+          
+      console.log(`[reservas] Modo: ${isSandboxMode ? '🧪 SANDBOX' : '🚀 PRODUÇÃO'} | URL: ${CIELO_API_URL} | MerchantId: ${cieloConfig?.merchantId?.substring(0,8)}...`);
           
       const cieloHeaders = {
          "Content-Type": "application/json",
@@ -71,11 +78,20 @@ export async function POST(request: Request) {
          "MerchantKey": cieloConfig?.merchantKey || ''
       };
 
+      // Campos de identificação do lojista para 3DS 2.2 (Erros 605, 606, 607)
+      const merchantName      = cieloConfig?.merchantName      || 'Europcar Brasil';
+      const establishmentCode = cieloConfig?.establishmentCode || '';
+      const mcc               = cieloConfig?.mcc               || '7512';
+
       let paymentApproved = false;
 
       if (paymentData.method === 'PIX') {
          const pixPayload = {
              "MerchantOrderId": merchantOrderId,
+             // Campos de identificação do lojista — obrigatórios para 3DS 2.2 (Erros 605/606/607)
+             ...(establishmentCode && { "EstablishmentCode": establishmentCode }),
+             ...(merchantName      && { "MerchantName":      merchantName }),
+             "MerchantCategoryCode": mcc,
              "Customer": { "Name": customerData.nome + " " + customerData.sobrenome, "Identity": customerData.cpf },
              "Payment": { "Type": "Pix", "Amount": paymentData.amountInCents }
          };
@@ -173,6 +189,10 @@ export async function POST(request: Request) {
 
          const cieloPayload = {
              "MerchantOrderId": merchantOrderId,
+             // Campos de identificação do lojista — obrigatórios para 3DS 2.2 (Erros 605/606/607)
+             ...(establishmentCode && { "EstablishmentCode": establishmentCode }),
+             ...(merchantName      && { "MerchantName":      merchantName }),
+             "MerchantCategoryCode": mcc,
              "Customer": { "Name": customerData.nome + " " + customerData.sobrenome, "Identity": customerData.cpf.replace(/\D/g, '') },
              "Payment": cieloPaymentNode
          };
