@@ -33,7 +33,14 @@ export async function POST(request: Request) {
       try {
         cieloConfig = await prisma.cieloConfig.findFirst();
       } catch (dbErr: any) {
-        console.warn('[reservas] DB indisponível:', dbErr.message);
+        console.warn('[reservas] Prisma findFirst falhou (migration pendente?):', dbErr.message);
+        // Fallback: busca apenas as colunas base via query SQL raw para não crashar se 3DS columns não existem
+        try {
+          const rows = await prisma.$queryRaw<any[]>`SELECT "merchantId", "merchantKey", "isSandbox" FROM "CieloConfig" LIMIT 1`;
+          if (rows.length > 0) cieloConfig = rows[0];
+        } catch (rawErr: any) {
+          console.warn('[reservas] Raw query também falhou:', rawErr.message);
+        }
       }
 
       // Fallback para .env caso não tenha sido configurado no painel ou o banco falhe

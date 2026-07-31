@@ -63,6 +63,8 @@ export default function CheckoutPage() {
   const [threeDsVersion, setThreeDsVersion] = useState("2");
   const [threeDsRefId, setThreeDsRefId] = useState("");
   const [threeDsReady, setThreeDsReady] = useState(false); // script MPI carregado
+  const [threeDsAccessToken, setThreeDsAccessToken] = useState(""); // token Braspag MPI
+  const [threeDsMerchantId, setThreeDsMerchantId] = useState(""); // MerchantId 3DS
 
   // Status
   const [loading, setLoading] = useState(false);
@@ -136,11 +138,34 @@ export default function CheckoutPage() {
   // Carrega o script Braspag MPI para autenticação 3DS 2.2
   useEffect(() => {
     if (paymentMethod !== 'CREDIT') return;
+
+    // 1. Busca o Access Token 3DS do backend (credenciais Braspag salvas no admin)
+    fetch('/api/cielo/get3dsToken', { method: 'POST' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.accessToken) {
+          setThreeDsAccessToken(data.accessToken);
+          console.log('[3DS] Access Token obtido. Ambiente:', data.environment);
+        } else {
+          console.warn('[3DS] Sem access token:', data.error);
+        }
+      })
+      .catch(err => console.warn('[3DS] Falha ao buscar token:', err));
+
+    // 2. Busca o MerchantId 3DS da configuração
+    fetch('/api/admin/config/cielo')
+      .then(r => r.json())
+      .then(data => {
+        if (data.clientId3ds) setThreeDsMerchantId(data.clientId3ds);
+      })
+      .catch(() => {});
+
+    // 3. Carrega o script Braspag MPI
     const scriptId = 'braspag-mpi-3ds';
     if (document.getElementById(scriptId)) { setThreeDsReady(true); return; }
     const script = document.createElement('script');
     script.id = scriptId;
-    // Sandbox vs Produção — o endpoint é determinado pelo ambiente configurado
+    // Em produção usa o script de produção; em desenvolvimento usa sandbox
     const isSandboxEnv = process.env.NODE_ENV !== 'production';
     script.src = isSandboxEnv
       ? 'https://mpisandbox.braspag.com.br/Scripts/BP.Mpi.3ds20.min.js'
@@ -148,7 +173,7 @@ export default function CheckoutPage() {
     script.async = true;
     script.onload = () => {
       setThreeDsReady(true);
-      // Listener: autenticação concluída com sucesso
+      // Listener: autenticação concluída com sucesso — captura CAVV/XID/ECI
       window.addEventListener('bpmpi_Authenticated', (e: any) => {
         const d = e.detail || {};
         setThreeDsCavv(d.Cavv || '');
@@ -156,17 +181,19 @@ export default function CheckoutPage() {
         setThreeDsEci(d.Eci || '');
         setThreeDsVersion(d.Version || '2');
         setThreeDsRefId(d.ReferenceId || '');
-        console.log('[3DS] Autenticado:', { eci: d.Eci, cavv: d.Cavv ? '***' : 'n/a' });
+        console.log('[3DS] Autenticado com sucesso! ECI:', d.Eci);
       });
-      // Listener: não autenticado (continua sem Liability Shift)
+      // Listener: não autenticado (continua sem Liability Shift por decisão de negócio)
       window.addEventListener('bpmpi_Unauthenticated', (e: any) => {
-        console.warn('[3DS] Não autenticado — sem Liability Shift:', e.detail);
-        // Permite prosseguir mesmo sem autenticação (decisão de negócio)
+        console.warn('[3DS] Autenticação não completada:', e.detail);
+      });
+      window.addEventListener('bpmpi_Disabled', () => {
+        console.warn('[3DS] 3DS desabilitado para este cartão/BIN');
       });
     };
     document.head.appendChild(script);
-    return () => { /* script permanece — evita reload em re-renders */ };
   }, [paymentMethod]);
+
 
   // Fetch available terms documents
   useEffect(() => {
@@ -923,11 +950,12 @@ export default function CheckoutPage() {
                   </label>
                   {paymentMethod === "CREDIT" && (
                     <div className="p-6 space-y-4">
-                      {/* Campos com classes bpmpi_* — coletadas pelo script Braspag MPI para device fingerprint 3DS */}
-                      {/* Campos ocultos com metadados obrigatórios para o MPI */}
+                      {/* Campos ocultos obrigatórios para o script Braspag MPI 3DS 2.2 */}
                       <input type="hidden" className="bpmpi_auth" value="true" readOnly />
                       <input type="hidden" className="bpmpi_auth_notifyonly" value="false" readOnly />
-                      <input type="hidden" className="bpmpi_merchantid" value="" readOnly />
+                      {/* MerchantId e AccessToken 3DS — preenchidos dinamicamente após buscar credenciais */}
+                      <input type="hidden" className="bpmpi_merchantid" value={threeDsMerchantId} readOnly />
+                      <input type="hidden" className="bpmpi_accesstoken" value={threeDsAccessToken} readOnly />
 
                       <div>
                         <label className="block text-xs font-bold text-gray-700 mb-1">Nome no Cartão</label>
