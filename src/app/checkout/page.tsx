@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import LoginModal from "@/components/auth/LoginModal";
@@ -56,15 +56,18 @@ export default function CheckoutPage() {
   const [ccValidity, setCcValidity] = useState("");
   const [ccCvv, setCcCvv] = useState("");
 
-  // 3DS 2.2 — dados retornados pelo script Braspag MPI após autenticação
-  const [threeDsCavv, setThreeDsCavv] = useState("");
-  const [threeDsXid, setThreeDsXid] = useState("");
-  const [threeDsEci, setThreeDsEci] = useState("");
-  const [threeDsVersion, setThreeDsVersion] = useState("2");
-  const [threeDsRefId, setThreeDsRefId] = useState("");
   const [threeDsReady, setThreeDsReady] = useState(false); // script MPI carregado
   const [threeDsAccessToken, setThreeDsAccessToken] = useState(""); // token Braspag MPI
-  const [threeDsMerchantId, setThreeDsMerchantId] = useState(""); // MerchantId 3DS
+  const [threeDsProcessing, setThreeDsProcessing] = useState(false); // aguardando desafio/resposta do banco
+  // MerchantOrderId gerado no cliente quando o método é CREDIT — precisa ser o MESMO
+  // valor usado na autenticação 3DS (bpmpi_ordernumber) e depois na venda na Cielo,
+  // senão o banco emissor pode recusar por inconsistência entre auth e cobrança.
+  const [ccOrderNumber, setCcOrderNumber] = useState("");
+  // Ref sempre atualizada com a função de submissão mais recente — necessária porque
+  // window.bpmpi_config() é lida pelo script UMA vez no carregamento; os callbacks
+  // precisam chamar a versão atual do handler (com o estado atual do formulário),
+  // não a closure capturada no momento em que o script carregou.
+  const submitReservationRef = useRef<(threeDsAuth?: any) => void>(() => {});
 
   // Status
   const [loading, setLoading] = useState(false);
@@ -135,9 +138,24 @@ export default function CheckoutPage() {
       .catch(console.error);
   }, []);
 
-  // Carrega o script Braspag MPI para autenticação 3DS 2.2
+  // Carrega o script Braspag MPI para autenticação 3DS 2.2.
+  //
+  // Contrato real do BP.Mpi.3ds20.min.js (confirmado no exemplo oficial da Braspag):
+  // - window.bpmpi_config() precisa existir ANTES do script carregar e retorna os
+  //   callbacks (onSuccess/onFailure/onUnenrolled/onDisabled/onError/onUnsupportedBrand)
+  //   + Environment ("SDB"/"PRD") + Debug.
+  // - A autenticação só roda quando window.bpmpi_authenticate() é chamada explicitamente
+  //   (não há interceptação automática do submit do form).
+  // - Os callbacks recebem os dados direto no objeto (e.Cavv, e.Xid, e.Eci, ...), sem
+  //   CustomEvent/.detail — a versão anterior deste código escutava eventos que o script
+  //   nunca dispara, por isso o 3DS nunca completava (nenhum alerta de confirmação surgia).
   useEffect(() => {
     if (paymentMethod !== 'CREDIT') return;
+
+    // MerchantOrderId gerado uma única vez ao entrar no modo CREDIT — precisa estar
+    // pronto bem antes do clique em "Finalizar", pois é lido do DOM (bpmpi_ordernumber)
+    // no momento da autenticação, e reaproveitado depois na cobrança real na Cielo.
+    setCcOrderNumber(prev => prev || ('ORD' + Date.now()));
 
     // 1. Busca o Access Token 3DS do backend (credenciais Braspag salvas no admin)
     fetch('/api/cielo/get3dsToken', { method: 'POST' })
@@ -160,36 +178,65 @@ export default function CheckoutPage() {
     fetch('/api/admin/config/cielo')
       .then(r => r.json())
       .then(data => {
-        if (data.clientId3ds) setThreeDsMerchantId(data.clientId3ds);
+        const isSandboxEnv = data.isSandbox !== false;
+
+        // window.bpmpi_config() precisa existir antes do <script> executar — é lida pelo
+        // próprio script no carregamento. Os callbacks disparam a submissão real via ref
+        // (sempre aponta para a versão mais atual de submitReservation, com o estado
+        // corrente do formulário — o config em si só é montado uma vez).
+        (window as any).bpmpi_config = function () {
+          return {
+            onReady: function () {
+              setThreeDsReady(true);
+              console.log('[3DS] Script MPI pronto.');
+            },
+            onSuccess: function (e: any) {
+              setThreeDsProcessing(false);
+              console.log('[3DS] Autenticado com sucesso! ECI:', e?.Eci);
+              submitReservationRef.current({
+                cavv: e?.Cavv || '', xid: e?.Xid || '', eci: e?.Eci || '',
+                version: e?.Version || '2', referenceId: e?.ReferenceId || '',
+              });
+            },
+            onFailure: function (e: any) {
+              setThreeDsProcessing(false);
+              console.warn('[3DS] Autenticação falhou — prosseguindo sem Liability Shift:', e);
+              submitReservationRef.current(undefined);
+            },
+            onUnenrolled: function (e: any) {
+              setThreeDsProcessing(false);
+              console.warn('[3DS] Cartão não elegível para 3DS — prosseguindo sem Liability Shift:', e);
+              submitReservationRef.current(undefined);
+            },
+            onDisabled: function () {
+              setThreeDsProcessing(false);
+              console.warn('[3DS] Autenticação desabilitada (bpmpi_auth=false) — prosseguindo sem 3DS.');
+              submitReservationRef.current(undefined);
+            },
+            onError: function (e: any) {
+              setThreeDsProcessing(false);
+              console.error('[3DS] Erro sistêmico na autenticação:', e);
+              alert('Não foi possível validar o cartão com o banco (erro no sistema de segurança 3DS). Tente novamente em instantes.\n\n' + (e?.ReturnMessage || ''));
+              setLoading(false);
+            },
+            onUnsupportedBrand: function (e: any) {
+              setThreeDsProcessing(false);
+              console.error('[3DS] Bandeira não suportada pelo 3DS:', e);
+              alert('A bandeira deste cartão não é suportada pela autenticação 3DS.\n\n' + (e?.ReturnMessage || ''));
+              setLoading(false);
+            },
+            Environment: isSandboxEnv ? 'SDB' : 'PRD',
+            Debug: true,
+          };
+        };
 
         if (document.getElementById(scriptId)) { setThreeDsReady(true); return; }
         const script = document.createElement('script');
         script.id = scriptId;
-        const isSandboxEnv = data.isSandbox !== false;
         script.src = isSandboxEnv
           ? 'https://mpisandbox.braspag.com.br/Scripts/BP.Mpi.3ds20.min.js'
           : 'https://mpi.braspag.com.br/Scripts/BP.Mpi.3ds20.min.js';
         script.async = true;
-        script.onload = () => {
-          setThreeDsReady(true);
-          // Listener: autenticação concluída com sucesso — captura CAVV/XID/ECI
-          window.addEventListener('bpmpi_Authenticated', (e: any) => {
-            const d = e.detail || {};
-            setThreeDsCavv(d.Cavv || '');
-            setThreeDsXid(d.Xid || d.TransactionId || '');
-            setThreeDsEci(d.Eci || '');
-            setThreeDsVersion(d.Version || '2');
-            setThreeDsRefId(d.ReferenceId || '');
-            console.log('[3DS] Autenticado com sucesso! ECI:', d.Eci);
-          });
-          // Listener: não autenticado (continua sem Liability Shift por decisão de negócio)
-          window.addEventListener('bpmpi_Unauthenticated', (e: any) => {
-            console.warn('[3DS] Autenticação não completada:', e.detail);
-          });
-          window.addEventListener('bpmpi_Disabled', () => {
-            console.warn('[3DS] 3DS desabilitado para este cartão/BIN');
-          });
-        };
         document.head.appendChild(script);
       })
       .catch(err => console.warn('[3DS] Falha ao buscar configuração:', err));
@@ -447,21 +494,15 @@ export default function CheckoutPage() {
     || (carCode ? `https://static.europcar.com/carvisuals/partners/835x557/${carCode}_IT.png` : "")
     || `https://placehold.co/400x200/f5f5f5/008d36?text=${carCode || "CAR"}`;
 
-  const handleCheckout = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!booking) return;
-    if (!validateEmail(email)) {
-      setEmailError("Por favor, insira um e-mail válido.");
-      return;
-    }
-    setEmailError("");
+  // Proteções e acessórios (extrasDetails / xrsEquipment) são pagos na loja de
+  // destino — não entram na cobrança online. Só a tarifa do veículo é cobrada agora.
+  const baseAmountBRL = totalBRL > 0 ? totalBRL : totalRateXRS;
+  const amountInCents = Math.round(baseAmountBRL * 100);
 
-    setLoading(true);
-    // Proteções e acessórios (extrasDetails / xrsEquipment) são pagos na loja de
-    // destino — não entram na cobrança online. Só a tarifa do veículo é cobrada agora.
-    const baseAmountBRL = totalBRL > 0 ? totalBRL : totalRateXRS;
-    const amountInCents = Math.round(baseAmountBRL * 100);
-
+  // Envia a reserva de fato para o backend. threeDsAuth vem preenchido quando o
+  // callback onSuccess do BP.Mpi trouxe CAVV/ECI; undefined nos demais casos
+  // (falha, não elegível, desabilitado) — a cobrança segue sem Liability Shift.
+  const submitReservation = async (threeDsAuth?: { cavv: string; xid: string; eci: string; version: string; referenceId: string }) => {
     try {
       const res = await fetch("/api/reservas", {
         method: "POST",
@@ -472,19 +513,15 @@ export default function CheckoutPage() {
           paymentData: {
             method: paymentMethod,
             amountInCents,
+            // Reaproveita o mesmo MerchantOrderId autenticado no 3DS — evita
+            // inconsistência entre a autenticação e a cobrança na Cielo.
+            merchantOrderId: paymentMethod === "CREDIT" ? ccOrderNumber : undefined,
             creditCard: paymentMethod === "CREDIT" ? {
               name: ccName,
               number: ccNumber,
               validity: ccValidity,
               cvv: ccCvv,
-              // 3DS 2.2 — preenchido automaticamente pelo script Braspag MPI
-              threeDsAuth: threeDsCavv ? {
-                cavv: threeDsCavv,
-                xid: threeDsXid,
-                eci: threeDsEci,
-                version: threeDsVersion,
-                referenceId: threeDsRefId,
-              } : undefined,
+              threeDsAuth,
             } : undefined,
           },
           xrsEquipment: booking?.xrsEquipment || [],
@@ -536,6 +573,40 @@ export default function CheckoutPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Ref sempre com a versão mais atual de submitReservation — os callbacks do BP.Mpi
+  // (montados uma vez em window.bpmpi_config) chamam submitReservationRef.current(...).
+  useEffect(() => {
+    submitReservationRef.current = submitReservation;
+  });
+
+  const handleCheckout = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!booking) return;
+    if (!validateEmail(email)) {
+      setEmailError("Por favor, insira um e-mail válido.");
+      return;
+    }
+    setEmailError("");
+    setLoading(true);
+
+    // Cartão de crédito precisa autenticar 3DS ANTES de cobrar — a submissão real
+    // acontece dentro dos callbacks do BP.Mpi (onSuccess/onFailure/onUnenrolled/...),
+    // chamados via submitReservationRef depois que window.bpmpi_authenticate() resolver.
+    if (paymentMethod === "CREDIT") {
+      if (!threeDsReady || !threeDsAccessToken || typeof (window as any).bpmpi_authenticate !== 'function') {
+        alert("O sistema de segurança 3DS ainda está carregando. Aguarde alguns segundos e tente novamente.");
+        setLoading(false);
+        return;
+      }
+      setThreeDsProcessing(true);
+      (window as any).bpmpi_authenticate();
+      return;
+    }
+
+    // PIX / BALCÃO / VOUCHER não passam por 3DS — envia direto.
+    await submitReservation();
   };
 
   // ---- On Request confirmation screen ----
@@ -951,12 +1022,17 @@ export default function CheckoutPage() {
                   </label>
                   {paymentMethod === "CREDIT" && (
                     <div className="p-6 space-y-4">
-                      {/* Campos ocultos obrigatórios para o script Braspag MPI 3DS 2.2 */}
+                      {/* Campos ocultos obrigatórios para o script Braspag MPI 3DS 2.2 —
+                          nomes de classe conferidos com o exemplo oficial da Braspag
+                          (github.com/Braspag/braspag.github.io, _posts/emv3ds/exemplo.html) */}
                       <input type="hidden" className="bpmpi_auth" value="true" readOnly />
                       <input type="hidden" className="bpmpi_auth_notifyonly" value="false" readOnly />
-                      {/* MerchantId e AccessToken 3DS — preenchidos dinamicamente após buscar credenciais */}
-                      <input type="hidden" className="bpmpi_merchantid" value={threeDsMerchantId} readOnly />
                       <input type="hidden" className="bpmpi_accesstoken" value={threeDsAccessToken} readOnly />
+                      <input type="hidden" className="bpmpi_ordernumber" value={ccOrderNumber} readOnly />
+                      <input type="hidden" className="bpmpi_currency" value="BRL" readOnly />
+                      <input type="hidden" className="bpmpi_totalamount" value={amountInCents} readOnly />
+                      <input type="hidden" className="bpmpi_paymentmethod" value="Credit" readOnly />
+                      <input type="hidden" className="bpmpi_installments" value="1" readOnly />
 
                       <div>
                         <label className="block text-xs font-bold text-gray-700 mb-1">Nome no Cartão</label>
@@ -965,7 +1041,7 @@ export default function CheckoutPage() {
                           id="cc-holder-name"
                           value={ccName}
                           onChange={e => setCcName(e.target.value)}
-                          className="bpmpi_card_holder w-full border rounded p-3 outline-none focus:border-[#008d36]"
+                          className="w-full border rounded p-3 outline-none focus:border-[#008d36]"
                           placeholder="NOME DO TITULAR"
                           autoComplete="cc-name"
                         />
@@ -977,7 +1053,7 @@ export default function CheckoutPage() {
                           id="cc-number"
                           value={ccNumber}
                           onChange={e => setCcNumber(e.target.value)}
-                          className="bpmpi_card_number w-full border rounded p-3 outline-none focus:border-[#008d36] tracking-widest"
+                          className="bpmpi_cardnumber w-full border rounded p-3 outline-none focus:border-[#008d36] tracking-widest"
                           placeholder="0000 0000 0000 0000"
                           maxLength={19}
                           autoComplete="cc-number"
@@ -991,11 +1067,14 @@ export default function CheckoutPage() {
                             id="cc-expiry"
                             value={ccValidity}
                             onChange={e => { let v = e.target.value.replace(/\D/g,""); if(v.length>=2) v=v.slice(0,2)+"/"+v.slice(2,6); setCcValidity(v); }}
-                            className="bpmpi_card_expiration w-full border rounded p-3 outline-none focus:border-[#008d36]"
+                            className="w-full border rounded p-3 outline-none focus:border-[#008d36]"
                             placeholder="12/2030"
                             maxLength={7}
                             autoComplete="cc-exp"
                           />
+                          {/* O script MPI espera mês/ano separados, não um campo combinado */}
+                          <input type="hidden" className="bpmpi_cardexpirationmonth" value={ccValidity.split('/')[0] || ''} readOnly />
+                          <input type="hidden" className="bpmpi_cardexpirationyear" value={ccValidity.split('/')[1] || ''} readOnly />
                         </div>
                         <div>
                           <label className="block text-xs font-bold text-gray-700 mb-1">CVV</label>
@@ -1004,19 +1083,24 @@ export default function CheckoutPage() {
                             id="cc-cvv"
                             value={ccCvv}
                             onChange={e => setCcCvv(e.target.value)}
-                            className="bpmpi_card_cvvnumber w-full border rounded p-3 outline-none focus:border-[#008d36]"
+                            className="w-full border rounded p-3 outline-none focus:border-[#008d36]"
                             placeholder="123"
                             maxLength={4}
                             autoComplete="cc-csc"
                           />
                         </div>
                       </div>
-                      {threeDsReady && (
+                      {threeDsProcessing ? (
+                        <p className="text-xs text-blue-600 flex items-center gap-2 font-bold">
+                          <span className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin inline-block" />
+                          Aguardando confirmação do seu banco — se aparecer uma tela ou notificação de aprovação, confirme para continuar.
+                        </p>
+                      ) : threeDsReady ? (
                         <p className="text-[10px] text-gray-400 flex items-center gap-1">
                           <svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
                           Proteção 3DS 2.2 ativa — autenticação segura pelo seu banco
                         </p>
-                      )}
+                      ) : null}
                     </div>
                   )}
                 </div>

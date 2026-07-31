@@ -34,6 +34,8 @@ export interface PaymentAttrsContext {
   carCategory?: string;
   pickupDate?: string;    // YYYYMMDD
   returnDate?: string;    // YYYYMMDD
+  /** MerchantOrderId da cobrança Cielo — usado como voucherID do nó VCH/PP quando captured=true */
+  merchantOrderId?: string;
 }
 
 function voucherDurationDays(pickupDate?: string, returnDate?: string): number {
@@ -74,13 +76,17 @@ export function buildReservationPaymentAttrs(ctx: PaymentAttrsContext): PaymentA
     return { prepaidAttrs, meanOfPaymentXml };
   }
 
-  // Pago online (PIX confirmado ou Cartão capturado pela Cielo agora): informa
-  // ao XRS que a tarifa já foi quitada antecipadamente.
+  // Pago online (PIX confirmado ou Cartão capturado pela Cielo agora): informa ao XRS
+  // que a tarifa já foi quitada antecipadamente (prepaidMode="PP") E registra um nó
+  // meanOfPayment typeCode="VCH" voucherType="PP" para o Greenway — sigla combinada com
+  // a Europcar para identificar pagamentos feitos via gateway online (Cielo), distinta
+  // dos vouchers de agência (ETO/EXO/EOTTO).
   if (ctx.captured) {
     const amount = (ctx.amountBRL ?? 0).toFixed(2);
+    const numericOrderId = (ctx.merchantOrderId || '').replace(/\D/g, '').slice(-8) || Date.now().toString().slice(-8);
     return {
       prepaidAttrs: ` prepaidMode="PP" prepaidPercentage="100.00" prepaidAmountInBookingCurrency="${amount}"`,
-      meanOfPaymentXml: '',
+      meanOfPaymentXml: `\n        <meanOfPayment typeCode="VCH" voucherType="PP" voucherID="${numericOrderId}"/>`,
     };
   }
 

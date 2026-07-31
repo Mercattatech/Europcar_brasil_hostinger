@@ -53,7 +53,7 @@ export async function GET(request: Request) {
                      const { resNumber: europcarResNumber } = await executeXRSBooking({
                          bookingData: parsedData.booking,
                          customerData: parsedData,
-                         paymentData: { method: 'PIX', amountInCents: reservaLocal.amountInCents },
+                         paymentData: { method: 'PIX', amountInCents: reservaLocal.amountInCents, merchantOrderId: reservaLocal.merchantOrderId },
                          xrsEquipment: parsedData.booking?.xrsEquipment || [],
                      });
                      if (europcarResNumber) resNumber = europcarResNumber;

@@ -24,7 +24,14 @@ export async function POST(request: Request) {
       const username = session?.user?.name || session?.user?.email || 'Visitante/Deslogado';
       const logOrigem = `Usuário: ${username} | IP: ${ip}`;
 
-      const merchantOrderId = "ORD" + Date.now();
+      // Cartão de crédito autentica o 3DS no cliente ANTES de chamar esta rota, usando um
+      // MerchantOrderId próprio (bpmpi_ordernumber). Reaproveita o mesmo valor na cobrança
+      // Cielo — se vierem diferentes, o banco emissor pode recusar por inconsistência entre
+      // a autenticação e a venda. Sanitiza para não injetar valor arbitrário no payload Cielo/XRS.
+      const clientOrderId = typeof paymentData?.merchantOrderId === 'string'
+        ? paymentData.merchantOrderId.replace(/[^A-Za-z0-9]/g, '').slice(0, 40)
+        : '';
+      const merchantOrderId = clientOrderId || ("ORD" + Date.now());
       
       let cieloConfig: any = null;
       try {
@@ -87,6 +94,8 @@ export async function POST(request: Request) {
       // Preenchido no fluxo CREDIT — usado depois para decidir prepaidMode="PP" (cobrado
       // agora) e, se algum dia existir um fluxo de garantia sem captura, o nó meanOfPayment CC.
       let capturedCreditCard: { number: string; holderName: string; validity: string; cardIssuer: string; captured: boolean } | undefined;
+      // PaymentId da Cielo (CREDIT) — guardado no registro local para permitir estorno (void) em caso de cancelamento.
+      let cieloPaymentId: string | undefined;
 
       if (paymentData.method === 'PIX') {
          const pixPayload = {
@@ -282,6 +291,8 @@ export async function POST(request: Request) {
          paymentApproved = true;
          // Cartão cobrado agora pela Cielo (Capture:true) → XRS recebe prepaidMode="PP".
          capturedCreditCard = { number: cardNumClean, holderName: paymentData.creditCard.name, validity: validityFormatted, cardIssuer, captured: true };
+         // Guarda o PaymentId da Cielo — necessário para estornar (void) se a reserva for cancelada depois.
+         cieloPaymentId = cieloResponseJson.Payment.PaymentId;
       } else if (paymentData.method === 'BALCAO' || paymentData.method === 'VOUCHER') {
          paymentApproved = true;
       }
@@ -316,6 +327,7 @@ export async function POST(request: Request) {
           carCategory,
           pickupDate,
           returnDate,
+          merchantOrderId,
         });
 
         // ✅ Refresh do rateId via getQuote antes de reservar
@@ -539,7 +551,7 @@ export async function POST(request: Request) {
               customerData: JSON.stringify({
                 ...safeCustomerData,      // sem creditCard, cvv, cardNumber
                 booking: bookingData,
-                paymentId: pixData?.paymentId,
+                paymentId: pixData?.paymentId || cieloPaymentId,
                 systemLogOrigem: logOrigem,
                 ...(cardLastFour && { cardLastFour }), // apenas **** **** **** 1234
               })

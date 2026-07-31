@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { cancelXRSReservation } from '@/lib/europcar/cancelService';
+import { cancelXRSReservation, voidCieloPaymentForLocalReservation } from '@/lib/europcar/cancelService';
 import prisma from '@/lib/prisma';
 import { sendTransactionalEmail } from '@/lib/emailService';
 
@@ -26,7 +26,8 @@ export async function POST(request: Request) {
             where: { resNumber },
             data: { status: 'CANCELLED' }
           });
-          
+          voidCieloPaymentForLocalReservation(localRes.id).catch(() => {});
+
           if (localRes?.customerData) {
              const cd: any = localRes.customerData;
              if (cd.email) {
@@ -62,7 +63,8 @@ export async function POST(request: Request) {
           where: { resNumber },
           data: { status: 'CANCELLED' }
         });
-        
+        voidCieloPaymentForLocalReservation(localRes.id).catch(() => {});
+
         // Trigger Email
         if (localRes?.customerData) {
            const cd: any = localRes.customerData;

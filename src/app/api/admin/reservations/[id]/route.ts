@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
-import { cancelXRSReservation } from '@/lib/europcar/cancelService';
+import { cancelXRSReservation, voidCieloPaymentForLocalReservation } from '@/lib/europcar/cancelService';
 export const dynamic = 'force-dynamic';
 
 const ADMIN_EMAILS = ["grupomercatta@gmail.com", "matheus@grupomercatta.com.br", "matheusconti@gmail.com", "matheus@grupomercatta.com"];
@@ -49,6 +49,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
          where: { id: params.id },
          data: updateData,
       });
+      if (body.status === 'CANCELLED') {
+         voidCieloPaymentForLocalReservation(params.id).catch(() => {});
+      }
 
       return NextResponse.json({ ...updated, xrsCancelled: xrsCancelResult?.success });
    } catch (error: any) {
@@ -91,6 +94,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
          where: { id: params.id },
          data: { status: 'CANCELLED' }
       });
+      voidCieloPaymentForLocalReservation(params.id).catch(() => {});
 
       return NextResponse.json({
          success: true,

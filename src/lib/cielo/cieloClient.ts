@@ -306,3 +306,51 @@ export async function processPaymentWithToken(
     throw new Error('Transação financeira recusada ou falhou.');
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Void / Estorno — cancela na Cielo o pagamento de uma reserva que foi */
+/* cancelada. Mesmo endpoint da API 3.0 serve para Cartão e Pix.        */
+/* ------------------------------------------------------------------ */
+
+export interface VoidResult {
+  success: boolean;
+  message?: string;
+  raw?: any;
+}
+
+export async function voidCieloPayment(
+  paymentId: string,
+  merchantId: string,
+  merchantKey: string,
+  isSandbox: boolean
+): Promise<VoidResult> {
+  const url = isSandbox
+    ? `https://apisandbox.cieloecommerce.cielo.com.br/1/sales/${paymentId}/void`
+    : `https://api.cieloecommerce.cielo.com.br/1/sales/${paymentId}/void`;
+
+  try {
+    const response = await axios.put(
+      url,
+      {},
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          MerchantId: merchantId.trim(),
+          MerchantKey: merchantKey.trim(),
+        },
+        timeout: 15000,
+      }
+    );
+
+    // Status 10 = Voided, 11 = Refunded — ambos indicam estorno bem-sucedido
+    const status = response.data?.Status;
+    const success = status === 10 || status === 11 || response.status === 200;
+    console.log(`[Cielo] Void ${paymentId} → HTTP ${response.status} | Status: ${status}`);
+    return { success, raw: response.data };
+  } catch (error: any) {
+    const data = error.response?.data;
+    const msg = data?.Message || data?.[0]?.Message || error.message;
+    console.error(`[Cielo] Falha ao estornar ${paymentId}:`, msg);
+    return { success: false, message: msg, raw: data };
+  }
+}

@@ -1,6 +1,7 @@
 import { callXRS } from '@/lib/europcar/xrsClient';
 import prisma from '@/lib/prisma';
 import { sendTransactionalEmail } from '@/lib/emailService';
+import { voidCieloPayment } from '@/lib/cielo/cieloClient';
 
 export async function cancelXRSReservation(resNumber: string) {
   const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
@@ -48,4 +49,34 @@ export async function cancelXRSReservation(resNumber: string) {
   }
 
   return { hasError, returnCode, errorMsg, raw: xrsResponse };
+}
+
+/**
+ * Estorna na Cielo o pagamento associado a uma reserva local cancelada (Cartão ou Pix
+ * já confirmado — ambos usam o mesmo endpoint de void da API 3.0). Não bloqueia o
+ * cancelamento no XRS/GreenWay se falhar: só loga, já que o cancelamento da reserva em
+ * si é mais crítico que o estorno (que pode ser feito manualmente no portal Cielo).
+ */
+export async function voidCieloPaymentForLocalReservation(localReservationId: string): Promise<{ attempted: boolean; success?: boolean; message?: string }> {
+  try {
+    const reservation = await prisma.localReservation.findUnique({ where: { id: localReservationId } });
+    if (!reservation?.customerData) return { attempted: false };
+
+    const parsed: any = JSON.parse(reservation.customerData as string);
+    const paymentId: string | undefined = parsed?.paymentId;
+    if (!paymentId) return { attempted: false };
+
+    const cieloConfig = await prisma.cieloConfig.findFirst();
+    if (!cieloConfig?.merchantId || !cieloConfig?.merchantKey) {
+      console.warn('[cancelService] Sem credenciais Cielo configuradas — não foi possível estornar', paymentId);
+      return { attempted: false };
+    }
+
+    const result = await voidCieloPayment(paymentId, cieloConfig.merchantId, cieloConfig.merchantKey, cieloConfig.isSandbox === true);
+    console.log(`[cancelService] Estorno Cielo ${paymentId}:`, result.success ? 'OK' : `FALHOU (${result.message})`);
+    return { attempted: true, success: result.success, message: result.message };
+  } catch (err: any) {
+    console.error('[cancelService] Erro ao estornar pagamento Cielo:', err.message);
+    return { attempted: true, success: false, message: err.message };
+  }
 }

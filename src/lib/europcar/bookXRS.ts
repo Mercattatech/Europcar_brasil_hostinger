@@ -36,6 +36,7 @@ export async function executeXRSBooking({ bookingData, customerData, paymentData
     carCategory,
     pickupDate,
     returnDate,
+    merchantOrderId: paymentData.merchantOrderId,
   });
 
   // Refresh rateId via getQuote
