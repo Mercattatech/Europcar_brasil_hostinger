@@ -4,14 +4,11 @@ import { authOptions } from "@/lib/authOptions";
 import prisma from '@/lib/prisma';
 import { callXRS, DEFAULT_POA_CID } from '@/lib/europcar/xrsClient';
 import { sendBookingConfirmation } from '@/lib/email/sendBookingConfirmation';
+import { consultarBin, guessBrandByFirstDigit, mapBrandToCardIssuer, zeroAuthCard } from '@/lib/cielo/cieloClient';
+import { buildReservationPaymentAttrs, buildCreateVoucherXml } from '@/lib/europcar/paymentMapping';
+import { getReservationErrorMessage } from '@/lib/cms/reservationErrors';
 
 export const dynamic = 'force-dynamic';
-
-// Helper to map CID to BA for ETO vouchers
-const CID_TO_BA: Record<string, string> = {
-  '56935466': '73675595',  // ETO Líquido (Excesso)
-  '56935495': '73804373',  // ETO Internacional (Excesso Zero)
-};
 
 export async function POST(request: Request) {
    let customerEmail = '';
@@ -87,6 +84,9 @@ export async function POST(request: Request) {
       const mcc               = cieloConfig?.mcc               || '7512';
 
       let paymentApproved = false;
+      // Preenchido no fluxo CREDIT — usado depois para decidir prepaidMode="PP" (cobrado
+      // agora) e, se algum dia existir um fluxo de garantia sem captura, o nó meanOfPayment CC.
+      let capturedCreditCard: { number: string; holderName: string; validity: string; cardIssuer: string; captured: boolean } | undefined;
 
       if (paymentData.method === 'PIX') {
          const pixPayload = {
@@ -131,12 +131,16 @@ export async function POST(request: Request) {
              if (!errorMsg && Array.isArray(cieloResponseJson) && cieloResponseJson[0]?.Message) {
                  errorMsg = cieloResponseJson.map((e: any) => e.Message).join(', ');
              }
+             // Mapeamento CMS: se a Cielo retornar um ReturnCode conhecido, busca a mensagem
+             // amigável em ContentBlock["reservation.error.<code>"] antes de cair no fallback técnico.
+             const pixReturnCode = cieloResponseJson.Payment?.ReturnCode ?? (Array.isArray(cieloResponseJson) ? cieloResponseJson[0]?.Code : undefined);
              if (!errorMsg) {
                  // Sem shape reconhecido (nem Payment.ReturnMessage, nem array de erros) —
                  // repassa o corpo bruto retornado pela Cielo para diagnóstico, em vez de
                  // adivinhar a causa. Ver também /painel/logs (LogCielo) para o histórico completo.
                  errorMsg = `Código HTTP ${resCielo.status}. Resposta Cielo: ${rawPixText.slice(0, 300) || '[vazia]'}`;
              }
+             errorMsg = await getReservationErrorMessage(pixReturnCode, errorMsg);
              throw new Error("Transação PIX Recusada: " + errorMsg);
          }
 
@@ -148,8 +152,6 @@ export async function POST(request: Request) {
          };
          // PIX is not approved yet, reservation will be created later by status webhook/polling
       } else if (paymentData.method === 'CREDIT') {
-         const firstDigit = paymentData.creditCard.number.charAt(0);
-         const brand = firstDigit === '4' ? 'Visa' : firstDigit === '5' ? 'Master' : firstDigit === '3' ? 'Amex' : 'Elo';
          let validityFormatted = paymentData.creditCard.validity;
          if (validityFormatted.length === 5 && validityFormatted.includes('/')) {
              const [mm, yy] = validityFormatted.split('/');
@@ -160,6 +162,23 @@ export async function POST(request: Request) {
          const cardNumClean = paymentData.creditCard.number.replace(/\D/g, '');
          // SEGURANÇA: nunca loga o PAN completo — apenas os 4 últimos dígitos
          const cardMasked = `**** **** **** ${cardNumClean.slice(-4)}`;
+
+         // Consulta BIN — identifica a bandeira real pelos 6 primeiros dígitos (mais
+         // preciso que adivinhar pelo primeiro dígito, essencial para Elo x Master x Visa).
+         const binInfo = await consultarBin(cardNumClean, cieloHeaders.MerchantId, cieloHeaders.MerchantKey, isSandboxMode);
+         const brand = binInfo?.brand || guessBrandByFirstDigit(cardNumClean);
+         const cardIssuer = binInfo?.cardIssuer || mapBrandToCardIssuer(brand);
+
+         // Zero Auth — valida se o cartão é funcional ANTES de autorizar, evitando
+         // processar uma reserva no XRS para um cartão que nem passa na validação básica.
+         const zeroAuth = await zeroAuthCard(
+           { number: cardNumClean, holder: paymentData.creditCard.name, expirationDate: validityFormatted, brand },
+           cieloHeaders.MerchantId, cieloHeaders.MerchantKey, isSandboxMode
+         );
+         if (!zeroAuth.valid) {
+           const msg = await getReservationErrorMessage('ZERO_AUTH', zeroAuth.message || 'Cartão inválido ou não autorizado pelo emissor.');
+           throw new Error("Transação Recusada pela Operadora: " + msg);
+         }
 
          const cieloPaymentNode: any = {
              "Type": "CreditCard",
@@ -236,9 +255,11 @@ export async function POST(request: Request) {
 
          if (!resCielo.ok || (cieloResponseJson.Payment?.Status !== 1 && cieloResponseJson.Payment?.Status !== 2)) {
              let errorMsg = cieloResponseJson.Payment?.ReturnMessage;
-             
-             // Tratamento específico para o Código 002 da Cielo
-             if (cieloResponseJson.Payment?.ReturnCode === "002" || cieloResponseJson.Payment?.ReturnCode === "2") {
+             const returnCode = cieloResponseJson.Payment?.ReturnCode ?? (Array.isArray(cieloResponseJson) ? cieloResponseJson[0]?.Code : undefined);
+
+             // Fallback técnico padrão — o mapeamento CMS (reservation.error.<code>) abaixo
+             // tem prioridade quando o admin cadastrar uma mensagem para o código específico.
+             if (returnCode === "002" || returnCode === "2") {
                  errorMsg = `A sua conta Cielo não está habilitada para processar esta bandeira de cartão (${brand}), ou o seu cadastro na Cielo ainda não foi ativado (Credenciais Inválidas - 002). Contate o suporte da Cielo.`;
              } else if (!errorMsg && Array.isArray(cieloResponseJson) && cieloResponseJson[0]?.Message) {
                  errorMsg = cieloResponseJson.map((e: any) => e.Message).join(', ');
@@ -250,11 +271,17 @@ export async function POST(request: Request) {
                  errorMsg = `Código HTTP ${resCielo.status}. Resposta Cielo: ${rawText.slice(0, 300) || '[vazia]'}`;
              }
 
+             // CMS: reservation.error.<ReturnCode> — mensagem amigável editável pelo admin,
+             // sem nomes fixos no código (ex: ReturnCode 129 = "Affiliation not found").
+             errorMsg = await getReservationErrorMessage(returnCode, errorMsg);
+
              throw new Error("Transação Recusada pela Operadora: " + errorMsg);
          }
 
          cieloLog = "Sucesso Cartão Cielo: " + cieloResponseJson.Payment.ReturnMessage;
          paymentApproved = true;
+         // Cartão cobrado agora pela Cielo (Capture:true) → XRS recebe prepaidMode="PP".
+         capturedCreditCard = { number: cardNumClean, holderName: paymentData.creditCard.name, validity: validityFormatted, cardIssuer, captured: true };
       } else if (paymentData.method === 'BALCAO' || paymentData.method === 'VOUCHER') {
          paymentApproved = true;
       }
@@ -274,23 +301,25 @@ export async function POST(request: Request) {
         let rateId = car.rateId;
         let productDataAttr = '';
 
+        // Atributos de pagamento (prepaidMode/prepaidPercentage/prepaidAmount + meanOfPayment)
+        // calculados uma vez e reaproveitados no getQuote (só o meanOfPayment importa lá,
+        // para precificação de voucher) e no bookReservation final.
+        const paymentAttrs = buildReservationPaymentAttrs({
+          method: paymentData.method,
+          captured: paymentData.method === 'PIX' || !!capturedCreditCard?.captured,
+          amountBRL: (paymentData.amountInCents || 0) / 100,
+          creditCardGuarantee: (paymentData.method === 'CREDIT' && !capturedCreditCard?.captured && capturedCreditCard)
+            ? { number: capturedCreditCard.number, holderName: capturedCreditCard.holderName, validity: capturedCreditCard.validity, cardIssuer: capturedCreditCard.cardIssuer }
+            : undefined,
+          voucherData: paymentData.method === 'VOUCHER' ? voucherData : undefined,
+          contractID,
+          carCategory,
+          pickupDate,
+          returnDate,
+        });
+
         // ✅ Refresh do rateId via getQuote antes de reservar
         try {
-          const numericVoucherID = (voucherData?.id && /^\d+$/.test(voucherData.id)) 
-            ? voucherData.id 
-            : Date.now().toString().slice(-8);
-
-          const meanOfPaymentForQuote = paymentData.method === 'VOUCHER' && voucherData?.type === 'ETO'
-            ? (() => {
-                const ba = CID_TO_BA[contractID] || voucherData.businessAccount || '';
-                const d1 = new Date(parseInt(pickupDate.slice(0,4)), parseInt(pickupDate.slice(4,6))-1, parseInt(pickupDate.slice(6,8)));
-                const d2 = new Date(parseInt(returnDate.slice(0,4)), parseInt(returnDate.slice(4,6))-1, parseInt(returnDate.slice(6,8)));
-                const duration = Math.max(1, Math.round((d2.getTime() - d1.getTime()) / 86400000));
-                // voucherFullCredit="Y" é essencial para faturamento total (Full Credit)
-                return `<meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="${numericVoucherID}" businessAccount="${ba}" voucherCarCategory="${carCategory}" voucherRentalDuration="${duration}"/>`;
-              })()
-            : '';
-
           const quoteXml = `<?xml version="1.0" encoding="UTF-8"?>
 <message>
   <serviceRequest serviceCode="getQuote">
@@ -298,7 +327,7 @@ export async function POST(request: Request) {
       <reservation carCategory="${carCategory}"${contractID ? ` contractID="${contractID}" type="C"` : ''} chargesDetail="TRE" rateId="${rateId}">
         <checkout stationID="${pickupStation}" date="${pickupDate}" time="${bookingData.pickupTime || '1000'}"/>
         <checkin stationID="${returnStation}" date="${returnDate}" time="${bookingData.returnTime || '1000'}"/>
-        ${meanOfPaymentForQuote}
+        ${paymentAttrs.meanOfPaymentXml}
       </reservation>
       <driver countryOfResidence="BR"/>
     </serviceParameters>
@@ -357,25 +386,6 @@ export async function POST(request: Request) {
           insuranceXml = [...allInsCodes].map(code => `\n          <insurance code="${code}"/>`).join('');
         }
 
-        let meanOfPaymentXml = '';
-        if (paymentData.method === 'VOUCHER' && voucherData?.type === 'ETO') {
-          const ba = CID_TO_BA[contractID] || voucherData.businessAccount || '';
-          const d1 = new Date(parseInt(pickupDate.slice(0,4)), parseInt(pickupDate.slice(4,6))-1, parseInt(pickupDate.slice(6,8)));
-          const d2 = new Date(parseInt(returnDate.slice(0,4)), parseInt(returnDate.slice(4,6))-1, parseInt(returnDate.slice(6,8)));
-          const duration = Math.max(1, Math.round((d2.getTime() - d1.getTime()) / 86400000));
-          
-        const numericVoucherID = (voucherData?.id && /^\d+$/.test(voucherData.id)) 
-          ? voucherData.id 
-          : Date.now().toString().slice(-8);
-
-        meanOfPaymentXml = `
-        <meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="${numericVoucherID}"
-                       businessAccount="${ba}" voucherCarCategory="${carCategory}"
-                       voucherRentalDuration="${duration}"/>`;
-        }
-
-        const prepaidAttr = (paymentData.method === 'VOUCHER' && voucherData?.type === 'ETO') ? '' : ' prepaidMode="NP"';
-
         const { loyaltyProgramId, loyaltyId } = customerData;
         let loyaltyXml = '';
         if (loyaltyProgramId && loyaltyId) {
@@ -386,10 +396,10 @@ export async function POST(request: Request) {
 <message>
   <serviceRequest serviceCode="bookReservation">
     <serviceParameters>
-      <reservation carCategory="${carCategory}" rateId="${rateId}"${prepaidAttr}${contractAttr}${productDataAttr} preferredLanguage="pt_BR" email="${customerData.email.trim()}">
+      <reservation carCategory="${carCategory}" rateId="${rateId}"${paymentAttrs.prepaidAttrs}${contractAttr}${productDataAttr} preferredLanguage="pt_BR" email="${customerData.email.trim()}">
         <checkout stationID="${pickupStation}" date="${pickupDate}" time="${bookingData.pickupTime || '1000'}"/>
         <checkin stationID="${returnStation}" date="${returnDate}" time="${bookingData.returnTime || '1000'}"/>
-        <equipmentList>${equipmentXml}</equipmentList>${insuranceXml ? `\n        <insuranceList>${insuranceXml}\n        </insuranceList>` : ''}${meanOfPaymentXml}${loyaltyXml}
+        <equipmentList>${equipmentXml}</equipmentList>${insuranceXml ? `\n        <insuranceList>${insuranceXml}\n        </insuranceList>` : ''}${paymentAttrs.meanOfPaymentXml}${loyaltyXml}
       </reservation>
       <driver countryOfResidence="BR"
               firstName="${customerData.nome.trim()}"
@@ -489,22 +499,13 @@ export async function POST(request: Request) {
         }
 
         // Se for EXO Voucher, envia requisição adicional createVoucher após criar reserva como POA
+        // (segunda etapa do fluxo em duas etapas: bookReservation → createVoucher registra o
+        // documento no GreenWay)
         if (resNumber && paymentData.method === 'VOUCHER' && voucherData?.type === 'EXO') {
           try {
             const voucherAmount = car.totalRateEstimate || car.total || '0';
             const voucherCurrency = car.bookingCurrencyOfTotalRateEstimate || car.currency || 'EUR';
-            const iataNumber = voucherData.iataNumber || '02170722';
-
-            const createVoucherXml = `<?xml version="1.0" encoding="UTF-8"?>
-<message>
-  <serviceRequest serviceCode="createVoucher">
-    <serviceParameters>
-      <reservation resNumber="${resNumber}">
-        <meanOfPayment typeCode="VCH" voucherType="EXO" IATANumber="${iataNumber}" voucherAmount="${voucherAmount}" voucherCurrency="${voucherCurrency}"/>
-      </reservation>
-    </serviceParameters>
-  </serviceRequest>
-</message>`;
+            const createVoucherXml = buildCreateVoucherXml(resNumber, voucherData, voucherAmount, voucherCurrency);
 
             await callXRS(createVoucherXml, {
               callerCode: process.env.XRS_CALLER_CODE || 'DEMO',

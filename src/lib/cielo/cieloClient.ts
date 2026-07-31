@@ -54,6 +54,132 @@ function maskToken(token: string): string {
   return `****${token.slice(-4)}`;
 }
 
+/* ------------------------------------------------------------------ */
+/* Consulta BIN — identifica a bandeira real a partir dos 6 primeiros  */
+/* dígitos do cartão (mais confiável que adivinhar pelo primeiro dígito) */
+/* ------------------------------------------------------------------ */
+
+export interface BinInfo {
+  /** Nome da bandeira como a Cielo retorna, ex: "Visa", "Master", "Amex", "Elo", "Diners" */
+  brand: string;
+  /** Sigla de 2 letras para o nó meanOfPayment do XRS */
+  cardIssuer: string;
+  foreignCard: boolean;
+  corporateCard: boolean;
+}
+
+/** Bandeira Cielo → sigla de 2 letras usada pelo XRS (padrão IATA onde existe;
+ *  Elo não tem código IATA oficial — confirmar com o time XRS/Europcar se
+ *  precisar de um valor diferente de "EC"). */
+const BRAND_TO_ISSUER: Record<string, string> = {
+  visa: 'VI',
+  master: 'CA',
+  mastercard: 'CA',
+  amex: 'AX',
+  elo: 'EC',
+  diners: 'DC',
+  discover: 'DS',
+  hipercard: 'HC',
+  jcb: 'JC',
+};
+
+export function mapBrandToCardIssuer(brand: string): string {
+  return BRAND_TO_ISSUER[(brand || '').toLowerCase().replace(/\s/g, '')] || 'VI';
+}
+
+/** Heurística de fallback pelo primeiro dígito — usada só se a Consulta BIN falhar */
+export function guessBrandByFirstDigit(cardNumber: string): string {
+  const d = cardNumber.charAt(0);
+  return d === '4' ? 'Visa' : d === '5' ? 'Master' : d === '3' ? 'Amex' : 'Elo';
+}
+
+/**
+ * Consulta BIN Cielo — GET /1/cardBin/{bin}. Identifica a bandeira real do
+ * cartão pelos 6 primeiros dígitos, evitando erros de Payment.CreditCard.Brand
+ * incorreto (que a Cielo recusa) quando o BIN não segue a heurística simples.
+ */
+export async function consultarBin(
+  cardNumber: string,
+  merchantId: string,
+  merchantKey: string,
+  isSandbox: boolean
+): Promise<BinInfo | null> {
+  const bin = cardNumber.replace(/\D/g, '').slice(0, 6);
+  if (bin.length < 6) return null;
+
+  const url = isSandbox
+    ? `https://apiquerysandbox.cieloecommerce.cielo.com.br/1/cardBin/${bin}`
+    : `https://apiquery.cieloecommerce.cielo.com.br/1/cardBin/${bin}`;
+
+  try {
+    const response = await axios.get(url, {
+      headers: { MerchantId: merchantId, MerchantKey: merchantKey },
+      timeout: 8000,
+    });
+    const provider = response.data?.Provider;
+    if (!provider) return null;
+    return {
+      brand: provider,
+      cardIssuer: mapBrandToCardIssuer(provider),
+      foreignCard: !!response.data?.ForeignCard,
+      corporateCard: !!response.data?.CorporateCard,
+    };
+  } catch (err: any) {
+    console.warn('[Cielo] Consulta BIN falhou, usando heurística de fallback:', err.message);
+    return null;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Zero Auth — valida se o cartão é funcional ANTES de autorizar ou    */
+/* autenticar via 3DS, evitando processamentos inúteis no XRS quando   */
+/* o cartão já nasce inválido.                                         */
+/* ------------------------------------------------------------------ */
+
+export interface ZeroAuthResult {
+  valid: boolean;
+  message?: string;
+}
+
+export async function zeroAuthCard(
+  card: { number: string; holder: string; expirationDate: string; brand: string },
+  merchantId: string,
+  merchantKey: string,
+  isSandbox: boolean
+): Promise<ZeroAuthResult> {
+  const url = isSandbox
+    ? 'https://apisandbox.cieloecommerce.cielo.com.br/1/zeroauth/card'
+    : 'https://api.cieloecommerce.cielo.com.br/1/zeroauth/card';
+
+  try {
+    const response = await axios.post(
+      url,
+      {
+        CardNumber: card.number,
+        Holder: card.holder,
+        ExpirationDate: card.expirationDate,
+        Brand: card.brand,
+        SaveCard: false,
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          MerchantId: merchantId,
+          MerchantKey: merchantKey,
+        },
+        timeout: 10000,
+      }
+    );
+    // A Cielo retorna { Valid: true } quando o cartão passa na validação Zero Auth
+    return { valid: response.data?.Valid !== false };
+  } catch (err: any) {
+    const data = err.response?.data;
+    const msg = data?.Message || data?.[0]?.Message || err.message;
+    console.warn('[Cielo] Zero Auth recusou o cartão:', msg);
+    return { valid: false, message: msg };
+  }
+}
+
 export async function createCreditCardToken(
   requestData: CreditCardTokenRequest,
   config: CieloConfig

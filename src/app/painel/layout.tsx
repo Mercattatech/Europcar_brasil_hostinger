@@ -22,6 +22,7 @@ const sidebarLinks = [
    { href: "/painel/frota", label: "Fotos da Frota", icon: "🚗" },
    { href: "/painel/fidelidade", label: "Programas Fidelidade", icon: "✈️" },
    { href: "/painel/config", label: "Config Pagamento", icon: "💳" },
+   { href: "/painel/erros-reserva", label: "Erros de Reserva (CMS)", icon: "⚠️" },
    { href: "/painel/termos", label: "Termos e Condições", icon: "📜" },
    { href: "/painel/config-email", label: "E-mails Automáticos", icon: "✉️" },
    { href: "/painel/tags", label: "Tags & Rastreamento", icon: "📈" },

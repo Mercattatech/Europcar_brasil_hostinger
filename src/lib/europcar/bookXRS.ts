@@ -1,9 +1,5 @@
 import { callXRS, DEFAULT_POA_CID } from '@/lib/europcar/xrsClient';
-
-const CID_TO_BA: Record<string, string> = {
-  '56935466': '73675595',  // ETO Líquido (Excesso)
-  '56935495': '73804373',  // ETO Internacional (Excesso Zero)
-};
+import { buildReservationPaymentAttrs, buildCreateVoucherXml } from '@/lib/europcar/paymentMapping';
 
 export interface BookXRSParams {
   bookingData: any;
@@ -29,22 +25,21 @@ export async function executeXRSBooking({ bookingData, customerData, paymentData
   let rateId = car.rateId;
   let productDataAttr = '';
 
+  // Pagamento já capturado pela Cielo antes desta função ser chamada (PIX confirmado,
+  // ou reprocessamento de CREDIT) → prepaidMode="PP" com valor e percentual quitados.
+  const paymentAttrs = buildReservationPaymentAttrs({
+    method: paymentData.method,
+    captured: paymentData.method === 'PIX' || paymentData.method === 'CREDIT',
+    amountBRL: (paymentData.amountInCents || 0) / 100,
+    voucherData: paymentData.method === 'VOUCHER' ? voucherData : undefined,
+    contractID,
+    carCategory,
+    pickupDate,
+    returnDate,
+  });
+
   // Refresh rateId via getQuote
   try {
-    const numericVoucherID = (voucherData?.id && /^\d+$/.test(voucherData.id)) 
-      ? voucherData.id 
-      : Date.now().toString().slice(-8);
-
-    const meanOfPaymentForQuote = paymentData.method === 'VOUCHER' && voucherData?.type === 'ETO'
-      ? (() => {
-          const ba = CID_TO_BA[contractID] || voucherData.businessAccount || '';
-          const d1 = new Date(parseInt(pickupDate.slice(0,4)), parseInt(pickupDate.slice(4,6))-1, parseInt(pickupDate.slice(6,8)));
-          const d2 = new Date(parseInt(returnDate.slice(0,4)), parseInt(returnDate.slice(4,6))-1, parseInt(returnDate.slice(6,8)));
-          const duration = Math.max(1, Math.round((d2.getTime() - d1.getTime()) / 86400000));
-          return `<meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="${numericVoucherID}" businessAccount="${ba}" voucherCarCategory="${carCategory}" voucherRentalDuration="${duration}"/>`;
-        })()
-      : '';
-
     const quoteXml = `<?xml version="1.0" encoding="UTF-8"?>
 <message>
 <serviceRequest serviceCode="getQuote">
@@ -52,7 +47,7 @@ export async function executeXRSBooking({ bookingData, customerData, paymentData
   <reservation carCategory="${carCategory}"${contractID ? ` contractID="${contractID}" type="C"` : ''} chargesDetail="TRE" rateId="${rateId}">
     <checkout stationID="${pickupStation}" date="${pickupDate}" time="${bookingData.pickupTime || '1000'}"/>
     <checkin stationID="${returnStation}" date="${returnDate}" time="${bookingData.returnTime || '1000'}"/>
-    ${meanOfPaymentForQuote}
+    ${paymentAttrs.meanOfPaymentXml}
   </reservation>
   <driver countryOfResidence="BR"/>
 </serviceParameters>
@@ -104,27 +99,6 @@ export async function executeXRSBooking({ bookingData, customerData, paymentData
     insuranceXml = [...allInsCodes].map(code => `\n          <insurance code="${code}"/>`).join('');
   }
 
-  let meanOfPaymentXml = '';
-  if (paymentData.method === 'VOUCHER' && voucherData?.type === 'ETO') {
-    const ba = CID_TO_BA[contractID] || voucherData.businessAccount || '';
-    const d1 = new Date(parseInt(pickupDate.slice(0,4)), parseInt(pickupDate.slice(4,6))-1, parseInt(pickupDate.slice(6,8)));
-    const d2 = new Date(parseInt(returnDate.slice(0,4)), parseInt(returnDate.slice(4,6))-1, parseInt(returnDate.slice(6,8)));
-    const duration = Math.max(1, Math.round((d2.getTime() - d1.getTime()) / 86400000));
-    
-    const numericVoucherID = (voucherData?.id && /^\d+$/.test(voucherData.id)) 
-      ? voucherData.id 
-      : Date.now().toString().slice(-8);
-
-    meanOfPaymentXml = `
-    <meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="${numericVoucherID}"
-                   businessAccount="${ba}" voucherCarCategory="${carCategory}"
-                   voucherRentalDuration="${duration}"/>`;
-  } else if (paymentData.method === 'PIX' || paymentData.method === 'CREDIT' || paymentData.method === 'BALCAO') {
-      // In PIX or Balcao, it's prepaid locally (or paid at counter), but we send no voucher to Europcar.
-  }
-
-  const prepaidAttr = (paymentData.method === 'VOUCHER' && voucherData?.type === 'ETO') ? '' : ' prepaidMode="NP"';
-
   const { loyaltyProgramId, loyaltyId } = customerData;
   let loyaltyXml = '';
   if (loyaltyProgramId && loyaltyId) {
@@ -135,10 +109,10 @@ export async function executeXRSBooking({ bookingData, customerData, paymentData
 <message>
 <serviceRequest serviceCode="bookReservation">
 <serviceParameters>
-  <reservation carCategory="${carCategory}" rateId="${rateId}"${prepaidAttr}${contractAttr}${productDataAttr} preferredLanguage="pt_BR" email="${customerData.email.trim()}">
+  <reservation carCategory="${carCategory}" rateId="${rateId}"${paymentAttrs.prepaidAttrs}${contractAttr}${productDataAttr} preferredLanguage="pt_BR" email="${customerData.email.trim()}">
     <checkout stationID="${pickupStation}" date="${pickupDate}" time="${bookingData.pickupTime || '1000'}"/>
     <checkin stationID="${returnStation}" date="${returnDate}" time="${bookingData.returnTime || '1000'}"/>
-    <equipmentList>${equipmentXml}</equipmentList>${insuranceXml ? `\n        <insuranceList>${insuranceXml}\n        </insuranceList>` : ''}${meanOfPaymentXml}${loyaltyXml}
+    <equipmentList>${equipmentXml}</equipmentList>${insuranceXml ? `\n        <insuranceList>${insuranceXml}\n        </insuranceList>` : ''}${paymentAttrs.meanOfPaymentXml}${loyaltyXml}
   </reservation>
   <driver countryOfResidence="BR"
           firstName="${customerData.nome.trim()}"
@@ -239,18 +213,7 @@ export async function executeXRSBooking({ bookingData, customerData, paymentData
     try {
       const voucherAmount = car.totalRateEstimate || car.total || '0';
       const voucherCurrency = car.bookingCurrencyOfTotalRateEstimate || car.currency || 'EUR';
-      const iataNumber = voucherData.iataNumber || '02170722';
-
-      const createVoucherXml = `<?xml version="1.0" encoding="UTF-8"?>
-<message>
-<serviceRequest serviceCode="createVoucher">
-<serviceParameters>
-  <reservation resNumber="${resNumber}">
-    <meanOfPayment typeCode="VCH" voucherType="EXO" IATANumber="${iataNumber}" voucherAmount="${voucherAmount}" voucherCurrency="${voucherCurrency}"/>
-  </reservation>
-</serviceParameters>
-</serviceRequest>
-</message>`;
+      const createVoucherXml = buildCreateVoucherXml(resNumber, voucherData, voucherAmount, voucherCurrency);
 
       await callXRS(createVoucherXml, {
         callerCode: process.env.XRS_CALLER_CODE || 'DEMO',

@@ -66,7 +66,7 @@ export async function callXRS(
 
     // Fire-and-forget: NUNCA bloquear a resposta da API por causa do log
     // Se o Supabase estiver fora, a reserva continua funcionando normalmente
-    saveLog({ action, sourceFile, endpoint: url, xmlRequest, xmlResponse: rawResponse, httpStatus, durationMs, hasError })
+    saveLog({ action, sourceFile, endpoint: url, xmlRequest: maskSensitiveXml(xmlRequest), xmlResponse: maskSensitiveXml(rawResponse), httpStatus, durationMs, hasError })
       .catch(e => console.warn('[XRS] Log não salvo:', e.message));
 
     return parsedData;
@@ -80,10 +80,23 @@ export async function callXRS(
     console.error(`[XRS] [${action}] FALHA:`, error.message);
 
     // Save error log too
-    await saveLog({ action, sourceFile, endpoint: url, xmlRequest, xmlResponse: rawResponse, httpStatus, durationMs, hasError });
+    await saveLog({ action, sourceFile, endpoint: url, xmlRequest: maskSensitiveXml(xmlRequest), xmlResponse: maskSensitiveXml(String(rawResponse)), httpStatus, durationMs, hasError });
 
     throw new Error('Serviço de Reservas Europcar indisponível. Tente novamente em instantes.');
   }
+}
+
+/**
+ * Mascara dados sensíveis (número do cartão e código de segurança) antes de
+ * persistir o XML no LogXRS. O XRS em si sempre recebe o dado real — só a
+ * cópia gravada no banco é mascarada, análogo ao mascaramento já feito nos
+ * logs da Cielo (LogCielo).
+ */
+function maskSensitiveXml(xml: string): string {
+  if (!xml) return xml;
+  return xml
+    .replace(/cardNumber="(\d{4})\d+(\d{4})"/gi, 'cardNumber="$1********$2"')
+    .replace(/(securityCode|cvv|cvc)="[^"]*"/gi, '$1="***"');
 }
 
 async function saveLog(data: {

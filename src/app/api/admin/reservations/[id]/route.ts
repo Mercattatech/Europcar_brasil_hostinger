@@ -28,12 +28,29 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       if (body.status !== undefined) updateData.status = body.status;
       if (body.operationalStatus !== undefined) updateData.operationalStatus = body.operationalStatus;
 
+      // Selecionar "Cancelada" no dropdown de status também precisa avisar o GreenWay
+      // (XRS cancelReservation) — não só marcar localmente, senão a reserva continua
+      // ativa/cobrando no sistema da Europcar.
+      let xrsCancelResult: any = null;
+      if (body.status === 'CANCELLED') {
+         const current = await prisma.localReservation.findUnique({ where: { id: params.id } });
+         if (current && current.status !== 'CANCELLED' && current.resNumber && !current.resNumber.startsWith('LOCAL_')) {
+            try {
+               const { hasError, raw, errorMsg } = await cancelXRSReservation(current.resNumber);
+               xrsCancelResult = { success: !hasError, raw, error: errorMsg };
+               console.log(`[PATCH] XRS cancelamento para ${current.resNumber}:`, JSON.stringify(xrsCancelResult));
+            } catch (xrsErr: any) {
+               console.error(`[PATCH] Falha ao cancelar no XRS (${current.resNumber}):`, xrsErr.message);
+            }
+         }
+      }
+
       const updated = await prisma.localReservation.update({
          where: { id: params.id },
          data: updateData,
       });
 
-      return NextResponse.json(updated);
+      return NextResponse.json({ ...updated, xrsCancelled: xrsCancelResult?.success });
    } catch (error: any) {
       console.error('Error updating reservation:', error);
       return NextResponse.json({ error: 'Erro ao atualizar reserva' }, { status: 500 });
