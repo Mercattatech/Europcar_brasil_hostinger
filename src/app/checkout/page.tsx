@@ -152,46 +152,47 @@ export default function CheckoutPage() {
       })
       .catch(err => console.warn('[3DS] Falha ao buscar token:', err));
 
-    // 2. Busca o MerchantId 3DS da configuração
+    // 2. Busca o MerchantId 3DS e o ambiente (isSandbox) configurados no painel admin —
+    // precisa ser a MESMA fonte de verdade usada pelo backend em get3dsToken, senão o
+    // script MPI carregado (sandbox/produção) fica dessincronizado do Access Token obtido,
+    // causando 401 no mpi.braspag.com.br/v2/3ds/init.
+    const scriptId = 'braspag-mpi-3ds';
     fetch('/api/admin/config/cielo')
       .then(r => r.json())
       .then(data => {
         if (data.clientId3ds) setThreeDsMerchantId(data.clientId3ds);
-      })
-      .catch(() => {});
 
-    // 3. Carrega o script Braspag MPI
-    const scriptId = 'braspag-mpi-3ds';
-    if (document.getElementById(scriptId)) { setThreeDsReady(true); return; }
-    const script = document.createElement('script');
-    script.id = scriptId;
-    // Em produção usa o script de produção; em desenvolvimento usa sandbox
-    const isSandboxEnv = process.env.NODE_ENV !== 'production';
-    script.src = isSandboxEnv
-      ? 'https://mpisandbox.braspag.com.br/Scripts/BP.Mpi.3ds20.min.js'
-      : 'https://mpi.braspag.com.br/Scripts/BP.Mpi.3ds20.min.js';
-    script.async = true;
-    script.onload = () => {
-      setThreeDsReady(true);
-      // Listener: autenticação concluída com sucesso — captura CAVV/XID/ECI
-      window.addEventListener('bpmpi_Authenticated', (e: any) => {
-        const d = e.detail || {};
-        setThreeDsCavv(d.Cavv || '');
-        setThreeDsXid(d.Xid || d.TransactionId || '');
-        setThreeDsEci(d.Eci || '');
-        setThreeDsVersion(d.Version || '2');
-        setThreeDsRefId(d.ReferenceId || '');
-        console.log('[3DS] Autenticado com sucesso! ECI:', d.Eci);
-      });
-      // Listener: não autenticado (continua sem Liability Shift por decisão de negócio)
-      window.addEventListener('bpmpi_Unauthenticated', (e: any) => {
-        console.warn('[3DS] Autenticação não completada:', e.detail);
-      });
-      window.addEventListener('bpmpi_Disabled', () => {
-        console.warn('[3DS] 3DS desabilitado para este cartão/BIN');
-      });
-    };
-    document.head.appendChild(script);
+        if (document.getElementById(scriptId)) { setThreeDsReady(true); return; }
+        const script = document.createElement('script');
+        script.id = scriptId;
+        const isSandboxEnv = data.isSandbox !== false;
+        script.src = isSandboxEnv
+          ? 'https://mpisandbox.braspag.com.br/Scripts/BP.Mpi.3ds20.min.js'
+          : 'https://mpi.braspag.com.br/Scripts/BP.Mpi.3ds20.min.js';
+        script.async = true;
+        script.onload = () => {
+          setThreeDsReady(true);
+          // Listener: autenticação concluída com sucesso — captura CAVV/XID/ECI
+          window.addEventListener('bpmpi_Authenticated', (e: any) => {
+            const d = e.detail || {};
+            setThreeDsCavv(d.Cavv || '');
+            setThreeDsXid(d.Xid || d.TransactionId || '');
+            setThreeDsEci(d.Eci || '');
+            setThreeDsVersion(d.Version || '2');
+            setThreeDsRefId(d.ReferenceId || '');
+            console.log('[3DS] Autenticado com sucesso! ECI:', d.Eci);
+          });
+          // Listener: não autenticado (continua sem Liability Shift por decisão de negócio)
+          window.addEventListener('bpmpi_Unauthenticated', (e: any) => {
+            console.warn('[3DS] Autenticação não completada:', e.detail);
+          });
+          window.addEventListener('bpmpi_Disabled', () => {
+            console.warn('[3DS] 3DS desabilitado para este cartão/BIN');
+          });
+        };
+        document.head.appendChild(script);
+      })
+      .catch(err => console.warn('[3DS] Falha ao buscar configuração:', err));
   }, [paymentMethod]);
 
 
