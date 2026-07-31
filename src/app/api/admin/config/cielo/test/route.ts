@@ -23,6 +23,9 @@ export async function POST() {
 
   const isSandbox = config.isSandbox !== false;
   const results: Record<string, any> = {};
+  // .trim() defensivo — mesma causa raiz do 401 divergente entre /1/card e /1/sales
+  const merchantId = String(config.merchantId).trim();
+  const merchantKey = String(config.merchantKey).trim();
 
   /* ------------------------------------------------------------------ */
   /* 1. Teste Cielo — Tokenização de cartão fictício                      */
@@ -40,8 +43,8 @@ export async function POST() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        MerchantId: config.merchantId,
-        MerchantKey: config.merchantKey,
+        MerchantId: merchantId,
+        MerchantKey: merchantKey,
       },
       body: JSON.stringify(testCard),
       signal: AbortSignal.timeout(10000),

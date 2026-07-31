@@ -28,11 +28,20 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const {
-      merchantId, merchantKey, isSandbox,
-      clientId3ds, clientSecret3ds,
-      establishmentCode, merchantName, mcc,
-    } = await req.json();
+    const body = await req.json();
+    // .trim() em todas as credenciais — copiar/colar do portal Cielo/Braspag costuma
+    // trazer espaço ou quebra de linha invisível no fim, que alguns endpoints da Cielo
+    // toleram (ex: /1/card) e outros rejeitam com 401 (ex: /1/sales), gerando o sintoma
+    // enganoso de "credenciais válidas no teste, mas pagamento real recusado".
+    const trim = (v: any) => (typeof v === 'string' ? v.trim() : v);
+    const merchantId = trim(body.merchantId);
+    const merchantKey = trim(body.merchantKey);
+    const isSandbox = body.isSandbox;
+    const clientId3ds = trim(body.clientId3ds);
+    const clientSecret3ds = trim(body.clientSecret3ds);
+    const establishmentCode = trim(body.establishmentCode);
+    const merchantName = trim(body.merchantName);
+    const mcc = trim(body.mcc);
 
     // Busca registro existente
     let existingId: string | null = null;

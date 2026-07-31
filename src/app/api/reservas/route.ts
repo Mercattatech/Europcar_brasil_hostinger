@@ -72,10 +72,13 @@ export async function POST(request: Request) {
           
       console.log(`[reservas] Modo: ${isSandboxMode ? '🧪 SANDBOX' : '🚀 PRODUÇÃO'} | URL: ${CIELO_API_URL} | MerchantId: ${cieloConfig?.merchantId?.substring(0,8)}...`);
           
+      // .trim() defensivo: dados já salvos no banco podem ter espaço/quebra de linha
+      // invisível de um copiar-colar antigo, o que a Cielo tolera em /1/card mas rejeita
+      // com 401 em /1/sales — sintoma de "teste OK, pagamento real recusado".
       const cieloHeaders = {
          "Content-Type": "application/json",
-         "MerchantId": cieloConfig?.merchantId || '',
-         "MerchantKey": cieloConfig?.merchantKey || ''
+         "MerchantId": String(cieloConfig?.merchantId || '').trim(),
+         "MerchantKey": String(cieloConfig?.merchantKey || '').trim()
       };
 
       // Campos de identificação do lojista para 3DS 2.2 (Erros 605, 606, 607)
@@ -129,10 +132,10 @@ export async function POST(request: Request) {
                  errorMsg = cieloResponseJson.map((e: any) => e.Message).join(', ');
              }
              if (!errorMsg) {
-                 errorMsg = `Código HTTP ${resCielo.status}`;
-                 if (resCielo.status === 401) {
-                     errorMsg = "HTTP 401 (Não Autorizado): Chaves incorretas ou usando chaves de Produção no modo Sandbox.";
-                 }
+                 // Sem shape reconhecido (nem Payment.ReturnMessage, nem array de erros) —
+                 // repassa o corpo bruto retornado pela Cielo para diagnóstico, em vez de
+                 // adivinhar a causa. Ver também /painel/logs (LogCielo) para o histórico completo.
+                 errorMsg = `Código HTTP ${resCielo.status}. Resposta Cielo: ${rawPixText.slice(0, 300) || '[vazia]'}`;
              }
              throw new Error("Transação PIX Recusada: " + errorMsg);
          }
@@ -241,12 +244,12 @@ export async function POST(request: Request) {
                  errorMsg = cieloResponseJson.map((e: any) => e.Message).join(', ');
              }
              if (!errorMsg) {
-                 errorMsg = `Código HTTP ${resCielo.status}`;
-                 if (resCielo.status === 401) {
-                     errorMsg = "HTTP 401 (Não Autorizado): Suas chaves estão erradas ou você está usando chaves de Produção no modo Sandbox.";
-                 }
+                 // Sem shape reconhecido (nem Payment.ReturnMessage, nem array de erros) —
+                 // repassa o corpo bruto retornado pela Cielo para diagnóstico, em vez de
+                 // adivinhar a causa. Ver também /painel/logs (LogCielo) para o histórico completo.
+                 errorMsg = `Código HTTP ${resCielo.status}. Resposta Cielo: ${rawText.slice(0, 300) || '[vazia]'}`;
              }
-             
+
              throw new Error("Transação Recusada pela Operadora: " + errorMsg);
          }
 

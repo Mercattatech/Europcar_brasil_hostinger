@@ -30,7 +30,7 @@ export async function POST() {
       ? 'https://mpisandbox.braspag.com.br/v2/auth/token'
       : 'https://mpi.braspag.com.br/v2/auth/token';
 
-    const credentials = Buffer.from(`${config.clientId3ds}:${config.clientSecret3ds}`).toString('base64');
+    const credentials = Buffer.from(`${config.clientId3ds.trim()}:${config.clientSecret3ds.trim()}`).toString('base64');
 
     // Campos obrigatórios para 3DS 2.2 — Erros 605, 606 e 607
     const establishmentCode = config.establishmentCode || '';
