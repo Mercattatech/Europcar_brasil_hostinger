@@ -68,6 +68,9 @@ export default function CheckoutPage() {
   // precisam chamar a versão atual do handler (com o estado atual do formulário),
   // não a closure capturada no momento em que o script carregou.
   const submitReservationRef = useRef<(threeDsAuth?: any) => void>(() => {});
+  // Ref direta pro campo oculto do access token — usada para escrever um token recém-buscado
+  // no DOM na hora (síncrono), sem esperar o próximo render do React.
+  const accessTokenInputRef = useRef<HTMLInputElement>(null);
 
   // Status
   const [loading, setLoading] = useState(false);
@@ -577,9 +580,11 @@ export default function CheckoutPage() {
 
   // Ref sempre com a versão mais atual de submitReservation — os callbacks do BP.Mpi
   // (montados uma vez em window.bpmpi_config) chamam submitReservationRef.current(...).
-  useEffect(() => {
-    submitReservationRef.current = submitReservation;
-  });
+  // Atribuição direta (não useEffect): este ponto do componente fica DEPOIS de vários
+  // "return" condicionais acima (status==="loading", !booking, ...) — um useEffect aqui
+  // violaria a ordem de hooks entre renders (React error #310) porque nem sempre seria
+  // alcançado. Atribuição de ref durante o render é segura e não tem essa restrição.
+  submitReservationRef.current = submitReservation;
 
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -595,11 +600,32 @@ export default function CheckoutPage() {
     // acontece dentro dos callbacks do BP.Mpi (onSuccess/onFailure/onUnenrolled/...),
     // chamados via submitReservationRef depois que window.bpmpi_authenticate() resolver.
     if (paymentMethod === "CREDIT") {
-      if (!threeDsReady || !threeDsAccessToken || typeof (window as any).bpmpi_authenticate !== 'function') {
+      if (!threeDsReady || typeof (window as any).bpmpi_authenticate !== 'function') {
         alert("O sistema de segurança 3DS ainda está carregando. Aguarde alguns segundos e tente novamente.");
         setLoading(false);
         return;
       }
+
+      // Busca um Access Token 3DS FRESCO agora — o token buscado ao entrar no modo Cartão
+      // pode ter expirado enquanto o cliente preenchia o resto do formulário, causando 401
+      // em mpi.braspag.com.br/v2/3ds/init. Escreve direto no DOM (ref) para o script ler o
+      // valor correto imediatamente, sem esperar o próximo render do React.
+      try {
+        const tokenRes = await fetch('/api/cielo/get3dsToken', { method: 'POST' });
+        const tokenData = await tokenRes.json();
+        if (!tokenData.accessToken) {
+          alert("Não foi possível iniciar a autenticação 3DS: " + (tokenData.error || "token indisponível") + ". Tente novamente.");
+          setLoading(false);
+          return;
+        }
+        setThreeDsAccessToken(tokenData.accessToken);
+        if (accessTokenInputRef.current) accessTokenInputRef.current.value = tokenData.accessToken;
+      } catch {
+        alert("Falha ao preparar a autenticação 3DS. Verifique sua conexão e tente novamente.");
+        setLoading(false);
+        return;
+      }
+
       setThreeDsProcessing(true);
       (window as any).bpmpi_authenticate();
       return;
@@ -1027,7 +1053,7 @@ export default function CheckoutPage() {
                           (github.com/Braspag/braspag.github.io, _posts/emv3ds/exemplo.html) */}
                       <input type="hidden" className="bpmpi_auth" value="true" readOnly />
                       <input type="hidden" className="bpmpi_auth_notifyonly" value="false" readOnly />
-                      <input type="hidden" className="bpmpi_accesstoken" value={threeDsAccessToken} readOnly />
+                      <input ref={accessTokenInputRef} type="hidden" className="bpmpi_accesstoken" value={threeDsAccessToken} readOnly />
                       <input type="hidden" className="bpmpi_ordernumber" value={ccOrderNumber} readOnly />
                       <input type="hidden" className="bpmpi_currency" value="BRL" readOnly />
                       <input type="hidden" className="bpmpi_totalamount" value={amountInCents} readOnly />
