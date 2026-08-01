@@ -58,7 +58,11 @@ export default function CheckoutPage() {
 
   const [threeDsReady, setThreeDsReady] = useState(false); // script MPI carregado
   const [threeDsAccessToken, setThreeDsAccessToken] = useState(""); // token Braspag MPI
-  const [threeDsProcessing, setThreeDsProcessing] = useState(false); // aguardando desafio/resposta do banco
+  const [threeDsProcessing, setThreeDsProcessingState] = useState(false); // aguardando desafio/resposta do banco
+  // Ref espelhando threeDsProcessing — os callbacks do bpmpi_config (montados uma vez, fora
+  // do ciclo de render) precisam checar o valor ATUAL, não uma closure velha do state.
+  const threeDsProcessingRef = useRef(false);
+  const setThreeDsProcessing = (val: boolean) => { threeDsProcessingRef.current = val; setThreeDsProcessingState(val); };
   // MerchantOrderId gerado no cliente quando o método é CREDIT — precisa ser o MESMO
   // valor usado na autenticação 3DS (bpmpi_ordernumber) e depois na venda na Cielo,
   // senão o banco emissor pode recusar por inconsistência entre auth e cobrança.
@@ -155,33 +159,43 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (paymentMethod !== 'CREDIT') return;
 
+    const scriptId = 'braspag-mpi-3ds';
+    if (document.getElementById(scriptId)) { setThreeDsReady(true); return; }
+
     // MerchantOrderId gerado uma única vez ao entrar no modo CREDIT — precisa estar
     // pronto bem antes do clique em "Finalizar", pois é lido do DOM (bpmpi_ordernumber)
     // no momento da autenticação, e reaproveitado depois na cobrança real na Cielo.
     setCcOrderNumber(prev => prev || ('ORD' + Date.now()));
 
-    // 1. Busca o Access Token 3DS do backend (credenciais Braspag salvas no admin)
-    fetch('/api/cielo/get3dsToken', { method: 'POST' })
-      .then(r => r.json())
-      .then(data => {
-        if (data.accessToken) {
-          setThreeDsAccessToken(data.accessToken);
-          console.log('[3DS] Access Token obtido. Ambiente:', data.environment);
-        } else {
-          console.warn('[3DS] Sem access token:', data.error);
-        }
-      })
-      .catch(err => console.warn('[3DS] Falha ao buscar token:', err));
+    let cancelled = false;
 
-    // 2. Busca o MerchantId 3DS e o ambiente (isSandbox) configurados no painel admin —
-    // precisa ser a MESMA fonte de verdade usada pelo backend em get3dsToken, senão o
-    // script MPI carregado (sandbox/produção) fica dessincronizado do Access Token obtido,
-    // causando 401 no mpi.braspag.com.br/v2/3ds/init.
-    const scriptId = 'braspag-mpi-3ds';
-    fetch('/api/admin/config/cielo')
-      .then(r => r.json())
-      .then(data => {
-        const isSandboxEnv = data.isSandbox !== false;
+    // IMPORTANTE: busca o Access Token e a config admin ANTES de anexar o <script>.
+    // O script roda uma checagem própria assim que carrega (antes de qualquer clique do
+    // usuário) e já lê o campo oculto bpmpi_accesstoken nesse momento — se as duas buscas
+    // rodassem em paralelo com o script sendo anexado assim que a config (mais rápida)
+    // resolvesse, o script podia começar a rodar com o token AINDA vazio (a busca do token
+    // depende de uma chamada externa à Braspag, mais lenta), causando 401 imediato ao
+    // carregar a página, antes mesmo do formulário ser preenchido.
+    (async () => {
+      try {
+        const [tokenRes, configRes] = await Promise.all([
+          fetch('/api/cielo/get3dsToken', { method: 'POST' }),
+          fetch('/api/admin/config/cielo'),
+        ]);
+        const tokenData = await tokenRes.json();
+        const configData = await configRes.json();
+        if (cancelled) return;
+
+        if (tokenData.accessToken) {
+          setThreeDsAccessToken(tokenData.accessToken);
+          // Grava direto no DOM — garante que o valor já está lá quando o script
+          // carregar, sem depender do próximo ciclo de render do React.
+          if (accessTokenInputRef.current) accessTokenInputRef.current.value = tokenData.accessToken;
+        } else {
+          console.warn('[3DS] Sem access token:', tokenData.error);
+        }
+
+        const isSandboxEnv = configData.isSandbox !== false;
 
         // window.bpmpi_config() precisa existir antes do <script> executar — é lida pelo
         // próprio script no carregamento. Os callbacks disparam a submissão real via ref
@@ -216,24 +230,33 @@ export default function CheckoutPage() {
               console.warn('[3DS] Autenticação desabilitada (bpmpi_auth=false) — prosseguindo sem 3DS.');
               submitReservationRef.current(undefined);
             },
+            // onError/onUnsupportedBrand: o script pode disparar isso na checagem interna
+            // de carregamento, antes do usuário sequer clicar em "Finalizar" — só mostra o
+            // alerta bloqueante quando o erro acontece DURANTE uma tentativa real (usuário
+            // já clicou e threeDsProcessingRef está true); fora disso, só loga no console.
             onError: function (e: any) {
+              const wasUserInitiated = threeDsProcessingRef.current;
               setThreeDsProcessing(false);
               console.error('[3DS] Erro sistêmico na autenticação:', e);
-              alert('Não foi possível validar o cartão com o banco (erro no sistema de segurança 3DS). Tente novamente em instantes.\n\n' + (e?.ReturnMessage || ''));
-              setLoading(false);
+              if (wasUserInitiated) {
+                alert('Não foi possível validar o cartão com o banco (erro no sistema de segurança 3DS). Tente novamente em instantes.\n\n' + (e?.ReturnMessage || ''));
+                setLoading(false);
+              }
             },
             onUnsupportedBrand: function (e: any) {
+              const wasUserInitiated = threeDsProcessingRef.current;
               setThreeDsProcessing(false);
               console.error('[3DS] Bandeira não suportada pelo 3DS:', e);
-              alert('A bandeira deste cartão não é suportada pela autenticação 3DS.\n\n' + (e?.ReturnMessage || ''));
-              setLoading(false);
+              if (wasUserInitiated) {
+                alert('A bandeira deste cartão não é suportada pela autenticação 3DS.\n\n' + (e?.ReturnMessage || ''));
+                setLoading(false);
+              }
             },
             Environment: isSandboxEnv ? 'SDB' : 'PRD',
             Debug: true,
           };
         };
 
-        if (document.getElementById(scriptId)) { setThreeDsReady(true); return; }
         const script = document.createElement('script');
         script.id = scriptId;
         script.src = isSandboxEnv
@@ -241,8 +264,12 @@ export default function CheckoutPage() {
           : 'https://mpi.braspag.com.br/Scripts/BP.Mpi.3ds20.min.js';
         script.async = true;
         document.head.appendChild(script);
-      })
-      .catch(err => console.warn('[3DS] Falha ao buscar configuração:', err));
+      } catch (err: any) {
+        console.warn('[3DS] Falha ao preparar autenticação 3DS:', err.message);
+      }
+    })();
+
+    return () => { cancelled = true; };
   }, [paymentMethod]);
 
 
