@@ -708,8 +708,24 @@ function VehiclesContent() {
 
             // Codes already captured from insuranceList — avoid duplicates from chargeList
             const alreadyCaptured = new Set(parsedInsurances.map((i: any) => i.code));
-            // Equipment codes that should not appear in the included section
-            const equipmentCodes = new Set(['ADD','SNO','DAB','CST','RSA','SKI','GPS','BBY','CSI','BBS']);
+            // Equipment codes that should not appear in the included section — precisa bater
+            // com os códigos reais do catálogo (getEquipmentList/route.ts EQUIPMENT_CATALOG),
+            // senão um item opcional (ex: cadeira infantil, GPS) que volta como chargeLine
+            // cai no fallback abaixo e é rotulado como "incluído" mesmo sem o cliente ter
+            // selecionado. A lista antiga tinha códigos inventados (DAB, SKI, GPS, BBY, BBS)
+            // que nunca batiam com os códigos reais (CSB, BST, NVS/NAV, SKR/SKB/SKV).
+            const equipmentCodes = new Set([
+              'ADD','ADR',                 // condutor adicional
+              'CSB','CSI','CST','BST',     // cadeiras/assentos infantis
+              'NVS','NAV',                 // GPS
+              'JAC','YOU',                 // sobretaxa motorista jovem
+              'TRH',                       // engate reboque
+              'CBF','LRC',                 // taxa transfronteiriça
+              'DVD',                       // diesel garantido
+              'SKR','SKB','SKV','SNO','CHN', // esqui / correntes de neve
+              'WFI','LUG','HEL','MMS','JAB', // wifi, bagagem, capacete, espelhos, antiabandono
+              'RSA',                       // roadside assistance (já capturado via insuranceList)
+            ]);
             // Rental structure charge types to skip (Basic Rental, Free Miles, etc.)
             const skipChrgTy = new Set(['00001','00048']);
 
