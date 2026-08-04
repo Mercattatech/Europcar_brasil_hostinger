@@ -708,13 +708,15 @@ function VehiclesContent() {
 
             // Codes already captured from insuranceList — avoid duplicates from chargeList
             const alreadyCaptured = new Set(parsedInsurances.map((i: any) => i.code));
-            // Equipment codes that should not appear in the included section — precisa bater
-            // com os códigos reais do catálogo (getEquipmentList/route.ts EQUIPMENT_CATALOG),
-            // senão um item opcional (ex: cadeira infantil, GPS) que volta como chargeLine
-            // cai no fallback abaixo e é rotulado como "incluído" mesmo sem o cliente ter
-            // selecionado. A lista antiga tinha códigos inventados (DAB, SKI, GPS, BBY, BBS)
-            // que nunca batiam com os códigos reais (CSB, BST, NVS/NAV, SKR/SKB/SKV).
+            // Equipment codes that should not appear in "incluído" — uma lista fixa (por
+            // catálogo) nunca cobre tudo, porque cada estação retorna seu próprio conjunto
+            // de códigos (ex: LIST01 tem BBS/CBS/PCB/WIF/TOL/EMS, nenhum coberto por um
+            // catálogo estático). A cotação por equipamento (linhas acima) já sabe
+            // exatamente quais códigos pertencem à estação — usa essa lista dinâmica como
+            // fonte principal, e a lista fixa só como reforço para códigos "clássicos"
+            // que às vezes vêm via chargeList mesmo sem estarem no getEquipmentList.
             const equipmentCodes = new Set([
+              ...codesForQuote.map((e: any) => (e.code || '').toUpperCase()),
               'ADD','ADR',                 // condutor adicional
               'CSB','CSI','CST','BST',     // cadeiras/assentos infantis
               'NVS','NAV',                 // GPS
