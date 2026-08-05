@@ -45,7 +45,7 @@ export default function ConfigEmailPage() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
-  const [editorMode, setEditorMode] = useState<'visual' | 'html'>('visual');
+  const [editorMode, setEditorMode] = useState<'visual' | 'html'>('html');
   const [showPreview, setShowPreview] = useState(false);
 
   // ─── Test Email ───────────────────────────────
@@ -475,16 +475,16 @@ export default function ConfigEmailPage() {
                     <div className="flex justify-between items-center mb-4">
                       <div className="flex gap-1 bg-gray-800 rounded-lg p-0.5">
                         <button
-                          onClick={() => setEditorMode('visual')}
-                          className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${editorMode === 'visual' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:text-gray-200'}`}
-                        >
-                          ✏️ Visual
-                        </button>
-                        <button
                           onClick={() => setEditorMode('html')}
                           className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${editorMode === 'html' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-gray-200'}`}
                         >
                           {'</>'}  HTML
+                        </button>
+                        <button
+                          onClick={() => setEditorMode('visual')}
+                          className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${editorMode === 'visual' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:text-gray-200'}`}
+                        >
+                          ✏️ Visual
                         </button>
                       </div>
                       <div className="flex gap-2">
@@ -563,10 +563,22 @@ export default function ConfigEmailPage() {
                        </div>
 
                          {editorMode === 'visual' ? (
-                           <div className="bg-white rounded-lg overflow-hidden text-black quill-wrapper">
-                              {/* @ts-ignore */}
-                              <ReactQuill theme="snow" modules={modules} value={activeTemplate.html} onChange={(content) => updateActiveTemplate('html', content)} />
-                           </div>
+                           <>
+                             <div className="mb-2 px-3 py-2.5 bg-amber-500/15 border border-amber-500/40 rounded-lg flex gap-2 items-start">
+                               <span className="text-amber-400 text-base mt-0.5">⚠️</span>
+                               <div>
+                                 <p className="text-amber-300 font-bold text-[11px] mb-0.5">Atenção: O editor visual remove estilos e estruturas de tabela</p>
+                                 <p className="text-amber-400/80 text-[10px] leading-relaxed">
+                                   Para templates HTML profissionais (com inline styles, tabelas, logos), use sempre o modo <strong className="text-amber-300">{'</>'} HTML</strong>.
+                                   O editor visual é indicado apenas para textos simples — ao colar HTML complexo aqui, a formatação será perdida ao salvar.
+                                 </p>
+                               </div>
+                             </div>
+                             <div className="bg-white rounded-lg overflow-hidden text-black quill-wrapper">
+                               {/* @ts-ignore */}
+                               <ReactQuill theme="snow" modules={modules} value={activeTemplate.html} onChange={(content) => updateActiveTemplate('html', content)} />
+                             </div>
+                           </>
                          ) : (
                            <div className="relative">
                              <textarea

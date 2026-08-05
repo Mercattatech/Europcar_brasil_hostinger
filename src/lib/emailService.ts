@@ -207,10 +207,22 @@ export async function sendEmail(fromEmail: string, to: string, subject: string, 
   return { success: false, error: resendResult.error };
 }
 
+// ─── Helper: Normaliza acentos em nomes de variáveis ────────
+// Remove diacríticos (acentos) para que {{DATA_DEVOLUÇÃO}} e
+// {{DATA_DEVOLUCAO}} sejam tratados como a mesma variável.
+function normalizeVarKey(key: string): string {
+  return key
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // remove combining diacritical marks
+    .toUpperCase()
+    .replace(/\s+/g, '_'); // espaços → underscore por segurança
+}
+
 // ─── Public: Send Transactional Email via Trigger ────────────
 /**
  * Dispara e-mail baseado no trigger.
  * dataVars: Dicionário contendo as chaves para substituir no template (ex: { NOME: 'João' })
+ * As chaves são normalizadas (sem acentos, uppercase) antes da comparação.
  */
 export async function sendTransactionalEmail(to: string, trigger: string, dataVars: Record<string, string>) {
   try {
@@ -222,14 +234,23 @@ export async function sendTransactionalEmail(to: string, trigger: string, dataVa
 
     const fromEmail = await getFromEmail();
 
-    // Replace variables (e.g. {{NOME}} => João)
-    let parsedHtml = template.html;
-    let parsedSubject = template.subject;
+    // Normaliza todas as chaves fornecidas (remove acentos, uppercase)
+    const normalizedVars: Record<string, string> = {};
     for (const [key, value] of Object.entries(dataVars)) {
-      const regex = new RegExp(`{{${key}}}`, 'g');
-      parsedHtml = parsedHtml.replace(regex, value || '');
-      parsedSubject = parsedSubject.replace(regex, value || '');
+      normalizedVars[normalizeVarKey(key)] = value || '';
     }
+
+    // Substitui {{VARIAVEL}} no template com uma única passagem regex.
+    // Normaliza o nome da variável encontrado no template antes de buscar
+    // no dicionário — assim {{DATA_DEVOLUÇÃO}} bate em DATA_DEVOLUCAO.
+    const replaceVars = (text: string) =>
+      text.replace(/\{\{([^}]+)\}\}/g, (_match, rawKey: string) => {
+        const normalized = normalizeVarKey(rawKey);
+        return normalized in normalizedVars ? normalizedVars[normalized] : _match;
+      });
+
+    const parsedHtml    = replaceVars(template.html);
+    const parsedSubject = replaceVars(template.subject);
 
     const result = await sendEmail(fromEmail, to, parsedSubject, parsedHtml);
 
