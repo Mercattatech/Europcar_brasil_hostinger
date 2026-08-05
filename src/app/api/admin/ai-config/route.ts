@@ -27,13 +27,13 @@ export async function GET(req: Request) {
       let config = await prisma.aIAgentConfig.findFirst();
       if (!config) {
          config = await prisma.aIAgentConfig.create({
-            data: { isActive: true, positivePrompt: "", negativePrompt: "" }
+            data: { isActive: true, masterPrompt: "", positivePrompt: "", negativePrompt: "" }
          });
       }
       return NextResponse.json(config);
    } catch (error) {
       console.error("Erro ao buscar AI Config:", error);
-      return NextResponse.json({ isActive: false, positivePrompt: "", negativePrompt: "" }); // Fallback on DB error
+      return NextResponse.json({ isActive: false, masterPrompt: "", positivePrompt: "", negativePrompt: "" }); // Fallback on DB error
    }
 }
 
@@ -43,17 +43,17 @@ export async function POST(req: Request) {
    }
    try {
       const body = await req.json();
-      const { isActive, positivePrompt, negativePrompt } = body;
+      const { isActive, masterPrompt, positivePrompt, negativePrompt } = body;
       
       let config = await prisma.aIAgentConfig.findFirst();
       if (config) {
          config = await prisma.aIAgentConfig.update({
             where: { id: config.id },
-            data: { isActive, positivePrompt, negativePrompt }
+            data: { isActive, masterPrompt, positivePrompt, negativePrompt }
          });
       } else {
          config = await prisma.aIAgentConfig.create({
-            data: { isActive, positivePrompt, negativePrompt }
+            data: { isActive, masterPrompt, positivePrompt, negativePrompt }
          });
       }
       return NextResponse.json(config);

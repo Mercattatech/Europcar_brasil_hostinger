@@ -228,6 +228,7 @@ model TermsDocument {
 model AIAgentConfig {
   id              String   @id @default(cuid())
   isActive        Boolean  @default(true)
+  masterPrompt    String?  @db.Text
   positivePrompt  String?  @db.Text
   negativePrompt  String?  @db.Text
   updatedAt       DateTime @updatedAt
@@ -281,4 +282,31 @@ model CustomerJourney {
   @@index([status])
   @@index([createdAt])
   @@index([currentStep])
+}
+
+// AI Knowledge Base Documents
+model AIKnowledgeDoc {
+  id            String   @id @default(cuid())
+  fileName      String
+  fileType      String   // "pdf", "txt", "image"
+  extractedText String   @db.Text
+  active        Boolean  @default(true)
+  sizeBytes     Int?     @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([active])
+}
+
+// AI Conversation Logs (for learning)
+model AIConversationLog {
+  id            String   @id @default(cuid())
+  sessionId     String
+  messages      String   @db.Text  // JSON string of all messages
+  approved      Boolean  @default(false)  // admin marked as good example
+  sessionStart  DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([approved])
+  @@index([sessionStart])
 }

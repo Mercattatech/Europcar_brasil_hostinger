@@ -9,7 +9,20 @@ export default function AIChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [input, setInput] = useState('');
-  const { messages, sendMessage, status, error } = useChat();
+  const [sessionId] = useState(() => {
+    // Generate a stable session ID for this browser session
+    if (typeof window !== 'undefined') {
+      const existing = sessionStorage.getItem('ec_chat_session');
+      if (existing) return existing;
+      const newId = `chat_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      sessionStorage.setItem('ec_chat_session', newId);
+      return newId;
+    }
+    return `chat_${Date.now()}`;
+  });
+  const { messages, sendMessage, status, error } = useChat({
+    body: { sessionId },
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
