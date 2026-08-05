@@ -105,6 +105,24 @@ export async function POST(request: Request) {
     };
 
     const xrsResponse = await callXRS(xmlRequest, config);
+
+    // ── TEMP DEBUG: log chargeList and insuranceList to identify airport surcharge field ──
+    try {
+      const reservation = xrsResponse?.message?.serviceResponse?.reservation;
+      const quote = reservation?.quote;
+      const chargeList = quote?.chargeList?.chargeLine;
+      const insuranceList = quote?.insuranceList?.insurance;
+      console.log('[getQuote DEBUG] chargeList:', JSON.stringify(
+        Array.isArray(chargeList) ? chargeList : [chargeList],
+        null, 2
+      ));
+      console.log('[getQuote DEBUG] insuranceList:', JSON.stringify(
+        Array.isArray(insuranceList) ? insuranceList : [insuranceList],
+        null, 2
+      ));
+    } catch (logErr) { /* silently ignore */ }
+    // ── END TEMP DEBUG ──
+
     // Attach the resolved prepaidMode to the response so the frontend can track it
     return NextResponse.json({ ...xrsResponse, _prepaidMode: resolvedPrepaidMode });
 
