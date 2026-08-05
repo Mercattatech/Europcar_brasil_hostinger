@@ -706,6 +706,14 @@ function VehiclesContent() {
               };
             }).filter((ins: any) => ins.code);
 
+            // Remove airport surcharges captured from insuranceList — they lack VAT and carry
+            // a lower pre-tax value. The authoritative value (with VAT, correct BRL) comes
+            // exclusively from chargeList chrgTy="00024". We'll re-add it below.
+            const airportIdx = parsedInsurances.findIndex((i: any) =>
+              isAirportSurcharge(i.code, i.descr || '')
+            );
+            if (airportIdx !== -1) parsedInsurances.splice(airportIdx, 1);
+
             // Codes already captured from insuranceList — avoid duplicates from chargeList
             const alreadyCaptured = new Set(parsedInsurances.map((i: any) => i.code));
             // Equipment codes that should not appear in "incluído" — uma lista fixa (por
@@ -732,23 +740,51 @@ function VehiclesContent() {
             const skipChrgTy = new Set(['00001','00048']);
 
             // ── chargeList — API returns <chargeLine> elements (NOT <charge>) ──
+            // Per XRS documentation: airport surcharge is EXCLUSIVELY in chargeList
+            // as chrgTy="00024" with priceInBookingCurrency = correct BRL (VAT-inclusive).
             const rawChargeLine = quote?.chargeList?.chargeLine;
             if (rawChargeLine) {
               const chargeArr = Array.isArray(rawChargeLine) ? rawChargeLine : [rawChargeLine];
               let vatAddedFromChargeLine = false;
               chargeArr.forEach((c: any) => {
                 const a = c.$ || c;
-                const auxK     = (a.auxK     || '').toUpperCase();
-                const chrgTy   = (a.chrgTy   || '');
+                const auxK       = (a.auxK     || '').toUpperCase();
+                const chrgTy     = (a.chrgTy   || '');
                 const chrgTyDesc = (a.chrgTyDesc || '').trim();
-                const chrgPct  = parseFloat(a.chrgPct || '0');
-                const price    = parseFloat(a.price || '0');
-                const priceBK  = parseFloat(a.priceInBookingCurrency || '0');
+                const chrgPct    = parseFloat(a.chrgPct || '0');
+                const price      = parseFloat(a.price || '0');
+                const priceBK    = parseFloat(a.priceInBookingCurrency || '0');
 
                 // Skip pure rental/mileage infrastructure lines
                 if (skipChrgTy.has(chrgTy)) return;
                 // Skip equipment items (already shown in extras section)
                 if (equipmentCodes.has(auxK)) return;
+
+                // ── Airport surcharge (chrgTy 00024) ─────────────────────────────────────
+                // This is the CANONICAL source for airport fee — always has correct BRL
+                // value (priceInBookingCurrency) including VAT. Do NOT skip it even if
+                // auxK happens to match something in alreadyCaptured.
+                if (chrgTy === '00024') {
+                  // Remove any duplicate airport entry that slipped in from insuranceList
+                  const dupIdx = parsedInsurances.findIndex((i: any) =>
+                    isAirportSurcharge(i.code, i.descr || '')
+                  );
+                  if (dupIdx !== -1) parsedInsurances.splice(dupIdx, 1);
+
+                  parsedInsurances.push({
+                    code: auxK && auxK !== '8' && auxK !== '' ? auxK : 'AIRPORTFEE',
+                    descr: AIRPORT_LABEL,
+                    type: 'M',
+                    includedInTotal: 'Y',
+                    price,
+                    priceInBookingCurrency: priceBK,
+                    rentalPriceAI: 0,
+                    rentalPriceInBookingCurrencyAI: 0,
+                    prepaid: '',
+                  });
+                  return;
+                }
+
                 // Skip insurance items already captured from insuranceList
                 if (alreadyCaptured.has(auxK)) return;
 
