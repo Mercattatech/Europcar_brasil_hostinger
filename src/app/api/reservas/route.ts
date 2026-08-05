@@ -588,48 +588,6 @@ export async function POST(request: Request) {
 
       // 4. Send Email Confirmation
       if (finalResNumber && paymentData.method !== 'PIX') {
-        // Only send if it's not PIX (PIX sends after payment confirmation)
-        try {
-          const xrsInsArr: any[] = Array.isArray(xrsInsurances) ? xrsInsurances : [];
-          const extrasMap2 = bookingData.extras || {};
-
-          // Format dates DDMMAAAA → DD/MM/AAAA
-          const fmtDate = (d: string) => d?.length === 8
-            ? `${d.slice(6,8)}/${d.slice(4,6)}/${d.slice(0,4)}`
-            : (d || '');
-          // Format time HHMM → HH:MM
-          const fmtTime = (t: string) => t?.length === 4
-            ? `${t.slice(0,2)}:${t.slice(2,4)}`
-            : (t || '');
-
-          // Build extras/protections list strings
-          const insuranceCodes2 = new Set(['TPL','LDW','CDW','THW','SCDW','SPCDW','STHW','SPTHW','MEDIUM','PREMIUM','PREMPRE','PREMUP','RSA','APP','PAI','PEP','SLDW','WWI','SPAI']);
-          const protectionsList = xrsInsArr
-            .filter((ins: any) => ins.code)
-            .map((ins: any) => `• ${ins.name || ins.code}${ins.priceBRL ? ` (R$ ${parseFloat(ins.priceBRL).toFixed(2)})` : ''}`)
-            .join('\n');
-          const extrasList = Object.entries(extrasMap2)
-            .filter(([code, qty]: any) => qty > 0 && !insuranceCodes2.has(code))
-            .map(([code, qty]: any) => {
-              const found = xrsInsArr.find((i: any) => i.code === code);
-              return `• ${found?.name || code} x${qty}`;
-            })
-            .join('\n');
-          // Equipment from xrsEquipment
-          const equipList = Array.isArray(xrsEquipment)
-            ? xrsEquipment
-                .filter((eq: any) => eq.qty > 0)
-                .map((eq: any) => `• ${eq.name || eq.code} x${eq.qty}`)
-                .join('\n')
-            : '';
-
-          const payMethodLabel: Record<string, string> = {
-            CREDIT: 'Cartão de Crédito',
-            PIX: 'PIX',
-            BALCAO: 'Pagamento no Balcão',
-            VOUCHER: 'Voucher',
-          };
-
         // Send HTML confirmation email with booking details
         try {
           const xrsInsArr: any[] = Array.isArray(xrsInsurances) ? xrsInsurances : [];
