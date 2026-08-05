@@ -11,7 +11,7 @@ datasource db {
 model ContentBlock {
   id         String   @id @default(uuid())
   key        String   @unique
-  value_ptBR String
+  value_ptBR String   @db.Text
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }
