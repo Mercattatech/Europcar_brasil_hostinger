@@ -80,6 +80,7 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [pixQrCode, setPixQrCode] = useState<string | null>(null);
   const [resNumber, setResNumber] = useState<string | null>(null);
+  const [accountCreated, setAccountCreated] = useState(false);
   const [merchantOrderId, setMerchantOrderId] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState(180);
 
@@ -375,14 +376,8 @@ export default function CheckoutPage() {
     fetchStandardPrice();
   }, [booking]);
 
-  // --- Enforce Login & Auto-fill ---
+  // --- Auto-fill when logged in (login still optional) ---
   const [showLogin, setShowLogin] = useState(false);
-
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      setShowLogin(true);
-    }
-  }, [status]);
 
   useEffect(() => {
     if (status === "authenticated" && session?.user?.email) {
@@ -439,22 +434,9 @@ export default function CheckoutPage() {
     return () => clearInterval(timer);
   }, [merchantOrderId, resNumber, paymentMethod]);
 
-  if (status === "loading") return (
-    <div className="min-h-screen bg-[#f7f7f7] flex items-center justify-center">
-      <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
-    </div>
-  );
-
-  if (status === "unauthenticated") return (
-    <div className="min-h-screen bg-[#f7f7f7] flex items-center justify-center">
-      {showLogin && (
-        <LoginModal 
-          onClose={() => router.push("/")} 
-          onLoginSuccess={() => setShowLogin(false)}
-        />
-      )}
-    </div>
-  );
+  // Allow rendering even when session is still loading — guests don't need a session
+  // Only show loading spinner if status===loading AND we haven't loaded the booking data yet
+  // (prevents flash for logged-in users whose data auto-fills)
 
   if (!booking) return (
     <div className="min-h-screen bg-[#f7f7f7] flex items-center justify-center">
@@ -568,6 +550,7 @@ export default function CheckoutPage() {
           setIsOnRequest(true);
           setOnRequestItems(json.onRequestItems || []);
           setResNumber(json.resNumber);
+          if (json.accountCreated) setAccountCreated(true);
           // Journey tracking — Step 5: Reservation completed (on-request)
           try {
             const sessionId = sessionStorage.getItem("europcar_journey_session");
@@ -582,6 +565,7 @@ export default function CheckoutPage() {
           } catch {}
         } else {
           setResNumber(json.resNumber);
+          if (json.accountCreated) setAccountCreated(true);
           // Journey tracking — Step 5: Reservation completed (credit/balcão)
           try {
             const sessionId = sessionStorage.getItem("europcar_journey_session");
@@ -729,6 +713,18 @@ export default function CheckoutPage() {
             <span className="text-xs font-bold text-gray-500 uppercase tracking-widest block mb-1">Código de Reserva</span>
             <span className="text-4xl font-black text-[#008d36] tracking-widest">{resNumber}</span>
           </div>
+
+          {/* Account creation notice */}
+          {accountCreated && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
+              <p className="text-blue-800 font-bold text-sm mb-1">🎉 Conta criada automaticamente!</p>
+              <p className="text-blue-700 text-sm">
+                Enviamos um e-mail para <strong>{email}</strong> com seu login e senha temporária.
+                Use-os para acessar suas reservas em qualquer momento.
+              </p>
+            </div>
+          )}
+
           <button onClick={() => window.location.href = "/"} className="font-bold text-[#008d36] hover:underline">Voltar para o início</button>
         </div>
       </div>

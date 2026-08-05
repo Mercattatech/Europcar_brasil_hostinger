@@ -4,9 +4,17 @@ import { authOptions } from "@/lib/authOptions";
 import prisma from '@/lib/prisma';
 import { callXRS, DEFAULT_POA_CID } from '@/lib/europcar/xrsClient';
 import { sendBookingConfirmation } from '@/lib/email/sendBookingConfirmation';
+import { sendWelcomeWithCredentials } from '@/lib/email/sendWelcomeWithCredentials';
 import { consultarBin, guessBrandByFirstDigit, mapBrandToCardIssuer, zeroAuthCard } from '@/lib/cielo/cieloClient';
 import { buildReservationPaymentAttrs, buildCreateVoucherXml } from '@/lib/europcar/paymentMapping';
 import { getReservationErrorMessage } from '@/lib/cms/reservationErrors';
+import bcrypt from 'bcryptjs';
+
+/** Gera senha aleatória legível de 12 caracteres */
+function generateTemporaryPassword(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#$!';
+  return Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -618,6 +626,50 @@ export async function POST(request: Request) {
         }
       }
 
+      // 5. Auto-criação de conta para clientes sem login (guest checkout)
+      // Cria uma conta se o e-mail informado ainda não existe no banco.
+      // Nunca bloqueia a reserva — erros são apenas logados.
+      let accountCreated = false;
+      if (customerData.email?.trim()) {
+        try {
+          const existingUser = await prisma.user.findUnique({
+            where: { email: customerData.email.trim().toLowerCase() },
+            select: { id: true },
+          });
+
+          if (!existingUser) {
+            const tempPassword = generateTemporaryPassword();
+            const hashedPassword = await bcrypt.hash(tempPassword, 10);
+            const fullName = `${customerData.nome || ''} ${customerData.sobrenome || ''}`.trim();
+
+            await prisma.user.create({
+              data: {
+                name: fullName,
+                email: customerData.email.trim().toLowerCase(),
+                password: hashedPassword,
+                phone: customerData.telefone || null,
+                cpf: customerData.cpf?.replace(/\D/g, '').slice(0, 11) || null,
+                role: 'USER',
+                status: 'ACTIVE',
+              },
+            });
+
+            accountCreated = true;
+            console.log(`[reservas] ✅ Conta criada automaticamente para ${customerData.email} (reserva ${finalResNumber})`);
+
+            // Envia e-mail de boas-vindas com credenciais (não bloqueia em caso de falha)
+            sendWelcomeWithCredentials({
+              toEmail: customerData.email.trim(),
+              firstName: customerData.nome || fullName,
+              password: tempPassword,
+              resNumber: finalResNumber || undefined,
+            }).catch(err => console.error('[reservas] Falha ao enviar e-mail de boas-vindas:', err));
+          }
+        } catch (accountErr: any) {
+          console.error('[reservas] Falha ao criar conta automática:', accountErr.message);
+        }
+      }
+
       return NextResponse.json({
          success: true,
          resNumber: finalResNumber,
@@ -625,6 +677,7 @@ export async function POST(request: Request) {
          pixData,
          onRequest: isOnRequest,
          onRequestItems,
+         accountCreated,
          cieloLog: `${cieloLog} | ${logOrigem}`
       });
 

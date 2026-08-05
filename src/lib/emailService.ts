@@ -178,7 +178,7 @@ async function sendViaResend(fromEmail: string, to: string, subject: string, htm
 }
 
 // ─── Core: Send Email (with provider selection + fallback) ───
-async function sendEmail(fromEmail: string, to: string, subject: string, html: string): Promise<{ success: boolean; provider?: string; error?: string; data?: any }> {
+export async function sendEmail(fromEmail: string, to: string, subject: string, html: string): Promise<{ success: boolean; provider?: string; error?: string; data?: any }> {
   const provider = await getEmailProvider();
 
   if (provider === 'SMTP') {
