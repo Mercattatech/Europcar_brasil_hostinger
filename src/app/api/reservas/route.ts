@@ -630,36 +630,8 @@ export async function POST(request: Request) {
             VOUCHER: 'Voucher',
           };
 
-          import('@/lib/emailService').then(({ sendTransactionalEmail }) => {
-             sendTransactionalEmail(customerData.email, 'RESERVA_SUCESSO', {
-               NOME: customerData.nome || '',
-               SOBRENOME: customerData.sobrenome || '',
-               TELEFONE: customerData.telefone || '',
-               EMAIL: customerData.email || '',
-               CPF: customerData.cpf || '',
-               NUMERO_RESERVA: finalResNumber || '',
-               VALOR: ((paymentData.amountInCents || 0) / 100).toFixed(2),
-               FORMA_PAGAMENTO: payMethodLabel[paymentData.method] || paymentData.method || '',
-               CARRO: bookingData.car?.carCategoryName || bookingData.car?.name || bookingData.car?.carCategorySample || '',
-               CATEGORIA_CARRO: bookingData.car?.carCategoryCode || '',
-               DATA_RETIRADA: fmtDate(bookingData.pickupDate || ''),
-               HORARIO_RETIRADA: fmtTime(bookingData.pickupTime || ''),
-               LOCAL_RETIRADA: bookingData.pickupStation || '',
-               DATA_DEVOLUCAO: fmtDate(bookingData.returnDate || ''),
-               HORARIO_DEVOLUCAO: fmtTime(bookingData.returnTime || ''),
-               LOCAL_DEVOLUCAO: bookingData.returnStation || bookingData.pickupStation || '',
-               LISTA_PROTECOES: protectionsList || '(Nenhuma)',
-               LISTA_EXTRAS: extrasList || equipList || '(Nenhum)',
-               VALOR_TOTAL: ((paymentData.amountInCents || 0) / 100).toFixed(2),
-             }).catch(console.error);
-          });
-        } catch (emailErr) {
-          console.error('[reservas] Error calling sendTransactionalEmail:', emailErr);
-        }
-
-        // Also send detailed HTML confirmation with equipment & extras
+        // Send HTML confirmation email with booking details
         try {
-          // Use xrsInsurances which now has real names and prices from getQuote
           const xrsInsArr: any[] = Array.isArray(xrsInsurances) ? xrsInsurances : [];
           const extrasMap = bookingData.extras || {};
           const extrasArr = Object.entries(extrasMap)
@@ -684,8 +656,8 @@ export async function POST(request: Request) {
             xrsEquipment: Array.isArray(xrsEquipment) ? xrsEquipment : [],
             extras: extrasArr,
           });
-        } catch (emailErr2) {
-          console.error('[reservas] Error sending detailed confirmation:', emailErr2);
+        } catch (emailErr) {
+          console.error('[reservas] Error sending booking confirmation:', emailErr);
         }
       }
 
