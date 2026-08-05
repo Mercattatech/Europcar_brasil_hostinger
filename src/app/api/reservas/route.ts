@@ -375,25 +375,34 @@ export async function POST(request: Request) {
 
         const contractAttr = contractID ? ` contractID="${contractID}" type="C"` : '';
 
-        // Build equipment XML from booking extras (correct format: code/qty)
-        let equipmentXml = '';
-        const extras = bookingData.extras || {};
-        const extraKeys = Object.keys(extras).filter(k => extras[k] > 0);
-        // Only include equipment codes (not insurance codes like CDW, LDW, etc.)
+        // Build equipment XML — merge both sources into a Map to avoid duplicates.
+        // bookingData.extras (Step 2 quick-add) and xrsEquipment (Step 3 detail selector)
+        // can contain overlapping codes. We keep the highest qty per code.
+        const equipmentMap = new Map<string, number>();
         const insuranceCodes = ['TPL','LDW','CDW','THW','SCDW','SPCDW','STHW','SPTHW','MEDIUM','PREMIUM','PREMPRE','PREMUP','RSA','APP','PAI','PEP','SLDW','WWI','SPAI'];
-        const equipmentKeys = extraKeys.filter(k => !insuranceCodes.includes(k));
-        if (equipmentKeys.length > 0) {
-          equipmentXml = equipmentKeys.map(k => `\n          <equipment code="${k}" qty="${extras[k]}"/>`).join('');
+
+        // Source 1: bookingData.extras (non-insurance codes only)
+        const extras = bookingData.extras || {};
+        Object.entries(extras).forEach(([code, qty]: any) => {
+          if (!insuranceCodes.includes(code) && qty > 0) {
+            equipmentMap.set(code, Math.max(equipmentMap.get(code) || 0, qty));
+          }
+        });
+
+        // Source 2: xrsEquipment from Step 3 — overwrites/updates qty for same code
+        if (Array.isArray(xrsEquipment)) {
+          xrsEquipment.forEach((eq: any) => {
+            if (eq.code && eq.qty > 0) {
+              equipmentMap.set(eq.code, Math.max(equipmentMap.get(eq.code) || 0, eq.qty));
+            }
+          });
         }
 
-        // Also include XRS equipment from Step 3
-        if (Array.isArray(xrsEquipment) && xrsEquipment.length > 0) {
-          const xrsEqItems = xrsEquipment
-            .filter((eq: any) => eq.code && eq.qty > 0)
-            .map((eq: any) => `\n          <equipment code="${eq.code}" qty="${eq.qty}"/>`)
-            .join('');
-          equipmentXml += xrsEqItems;
-        }
+        const equipmentXml = [...equipmentMap.entries()]
+          .map(([code, qty]) => `\n          <equipment code="${code}" qty="${qty}"/>`)
+          .join('');
+
+        const extraKeys = Object.keys(extras).filter(k => extras[k] > 0);
 
         // Build insurance XML from extras map + xrsInsurances
         let insuranceXml = '';
