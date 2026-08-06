@@ -688,19 +688,6 @@ function VehiclesContent() {
             const rawIns  = quote.insuranceList.insurance;
             const insArr  = Array.isArray(rawIns) ? rawIns : [rawIns];
 
-            // ── TEMP DEBUG: log raw XRS data to browser console ──
-            console.log('[XRS DEBUG] insuranceList raw:', JSON.stringify(insArr, null, 2));
-            console.log('[XRS DEBUG] chargeList raw:', JSON.stringify(
-              quote?.chargeList?.chargeLine
-                ? (Array.isArray(quote.chargeList.chargeLine)
-                    ? quote.chargeList.chargeLine
-                    : [quote.chargeList.chargeLine])
-                : [],
-              null, 2
-            ));
-            console.log('[XRS DEBUG] quote attrs:', JSON.stringify(quote?.$ || {}, null, 2));
-            // ── END TEMP DEBUG ──
-
             const parsedInsurances = insArr.map((ins: any) => {
               const a = ins.$ || ins;
               const code = (a.code || '').toUpperCase();
@@ -754,11 +741,27 @@ function VehiclesContent() {
             const skipChrgTy = new Set(['00001','00048']);
 
             // ── chargeList — API returns <chargeLine> elements (NOT <charge>) ──
-            // Per XRS documentation: airport surcharge is EXCLUSIVELY in chargeList
-            // as chrgTy="00024" with priceInBookingCurrency = correct BRL (VAT-inclusive).
+            // IMPORTANT: Individual chargeLine items carry PRE-VAT prices.
+            // The VAT (chrgTy="00028") is a separate line. areTaxesIncluded="Y" on
+            // the quote means the TOTAL includes VAT, not the individual lines.
+            // Confirmed by: sum(pre-VAT lines) + VAT line = totalRateEstimate.
+            // We must apply VAT multiplier to get the correct display value.
             const rawChargeLine = quote?.chargeList?.chargeLine;
             if (rawChargeLine) {
               const chargeArr = Array.isArray(rawChargeLine) ? rawChargeLine : [rawChargeLine];
+
+              // ── Pass 1: extract VAT % from the 00028 line ──────────────────────────
+              // Airport surcharge (and others) are stored PRE-VAT; we need to apply
+              // the VAT multiplier to display the correct amount to the customer.
+              let vatMultiplier = 1;
+              chargeArr.forEach((c: any) => {
+                const a = c.$ || c;
+                if ((a.chrgTy || '') === '00028') {
+                  const pct = parseFloat(a.chrgPct || '0');
+                  if (pct > 0 && pct <= 100) vatMultiplier = 1 + pct / 100;
+                }
+              });
+
               let vatAddedFromChargeLine = false;
               chargeArr.forEach((c: any) => {
                 const a = c.$ || c;
@@ -775,9 +778,8 @@ function VehiclesContent() {
                 if (equipmentCodes.has(auxK)) return;
 
                 // ── Airport surcharge (chrgTy 00024) ─────────────────────────────────────
-                // This is the CANONICAL source for airport fee — always has correct BRL
-                // value (priceInBookingCurrency) including VAT. Do NOT skip it even if
-                // auxK happens to match something in alreadyCaptured.
+                // XRS returns the airport surcharge PRE-VAT. Apply the VAT multiplier so
+                // the customer sees the correct VAT-inclusive amount at the station.
                 if (chrgTy === '00024') {
                   // Remove any duplicate airport entry that slipped in from insuranceList
                   const dupIdx = parsedInsurances.findIndex((i: any) =>
@@ -790,8 +792,9 @@ function VehiclesContent() {
                     descr: AIRPORT_LABEL,
                     type: 'M',
                     includedInTotal: 'Y',
-                    price,
-                    priceInBookingCurrency: priceBK,
+                    // Multiply by vatMultiplier to get VAT-inclusive display value
+                    price:                         price   * vatMultiplier,
+                    priceInBookingCurrency:        priceBK * vatMultiplier,
                     rentalPriceAI: 0,
                     rentalPriceInBookingCurrencyAI: 0,
                     prepaid: '',
