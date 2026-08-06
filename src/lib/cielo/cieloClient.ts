@@ -173,6 +173,17 @@ export async function zeroAuthCard(
     // A Cielo retorna { Valid: true } quando o cartão passa na validação Zero Auth
     return { valid: response.data?.Valid !== false };
   } catch (err: any) {
+    const status = err.response?.status;
+
+    // 404 = Zero Auth não está habilitado nesta conta Cielo (configuração separada).
+    // 422 = plano da conta não inclui Zero Auth.
+    // Nesses casos o recurso simplesmente não existe para este lojista — não é rejeição
+    // do cartão. Prosseguir sem a validação prévia (o cartão será validado na cobrança real).
+    if (status === 404 || status === 422) {
+      console.warn(`[Cielo] Zero Auth não disponível nesta conta (HTTP ${status}) — prosseguindo sem validação prévia.`);
+      return { valid: true };
+    }
+
     const data = err.response?.data;
     const msg = data?.Message || data?.[0]?.Message || err.message;
     console.warn('[Cielo] Zero Auth recusou o cartão:', msg);
