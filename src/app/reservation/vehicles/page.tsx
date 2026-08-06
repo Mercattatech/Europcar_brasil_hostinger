@@ -573,6 +573,63 @@ function VehiclesContent() {
           ));
         }
 
+        // ── Airport surcharge NP call ───────────────────────────────────────────
+        // Confirmed by Europcar: airport surcharge amount varies between POA (NP)
+        // and BA (PP) modes. The B2B portal shows the NP value as the "at station"
+        // charge. Always fetch NP even for ETO (PP) customers so the displayed
+        // amount matches what they will actually pay at the counter.
+        // This is a lightweight call with no equipment list (chargeList only).
+        let npAirportData: any = null;
+        if (prepaidMode === 'PP') {
+          // Only needed when the main call is PP — NP already gives the right value
+          npAirportData = await fetch('/api/europcar/getQuote', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              carCategory,
+              pickupStation,
+              returnStation: returnStation || pickupStation,
+              pickupDate,
+              returnDate,
+              pickupTime,
+              returnTime,
+              contractID:   cidForQuote,
+              rateId:       rateIdForQuote,
+              prepaidMode:  'NP',    // ← always NP to get the "at station" airport surcharge
+              equipmentList: [],
+            }),
+          })
+            .then(r => r.json())
+            .catch(err => { console.warn('[Step3] NP airport surcharge call failed:', err); return null; });
+        }
+
+        // Extract the NP airport surcharge value (EUR + BRL) for later use
+        let npAirportEntry: { price: number; priceBRL: number; vatPct: number } | null = null;
+        if (npAirportData) {
+          try {
+            const npReservation = npAirportData?.message?.serviceResponse?.reservation;
+            const npQuote       = npReservation?.quote;
+            const npChargeRaw   = npQuote?.chargeList?.chargeLine;
+            const npChargeArr   = npChargeRaw
+              ? (Array.isArray(npChargeRaw) ? npChargeRaw : [npChargeRaw])
+              : [];
+            let npVatPct = 0;
+            let npAirPrice = 0, npAirBRL = 0;
+            npChargeArr.forEach((c: any) => {
+              const a = c.$ || c;
+              if (a.chrgTy === '00028') npVatPct  = parseFloat(a.chrgPct || '0');
+              if (a.chrgTy === '00024') {
+                npAirPrice = parseFloat(a.price || '0');
+                npAirBRL   = parseFloat(a.priceInBookingCurrency || '0');
+              }
+            });
+            if (npAirBRL > 0) {
+              npAirportEntry = { price: npAirPrice, priceBRL: npAirBRL, vatPct: npVatPct };
+              console.log(`[Step3] NP airport surcharge: ${npAirPrice} EUR / ${npAirBRL} BRL (VAT ${npVatPct}%)`);
+            }
+          } catch (e) { /* ignore */ }
+        }
+
         // ── Parse prices from getQuote responses (merged across chunks) ──
         const prices: Record<string, { price: number; priceBRL: number; totalBRL: number; currency: string; exchangeRate: number; onRequest: boolean }> = {};
 
@@ -780,6 +837,7 @@ function VehiclesContent() {
                 // ── Airport surcharge (chrgTy 00024) ─────────────────────────────────────
                 // XRS returns the airport surcharge PRE-VAT. Apply the VAT multiplier so
                 // the customer sees the correct VAT-inclusive amount at the station.
+                // If we have a dedicated NP call result, use that instead (matches B2B portal).
                 if (chrgTy === '00024') {
                   // Remove any duplicate airport entry that slipped in from insuranceList
                   const dupIdx = parsedInsurances.findIndex((i: any) =>
@@ -787,14 +845,23 @@ function VehiclesContent() {
                   );
                   if (dupIdx !== -1) parsedInsurances.splice(dupIdx, 1);
 
+                  // Prefer the NP ("at station") value — matches B2B portal display.
+                  // Fall back to the current call's value with VAT applied if NP unavailable.
+                  const useNP    = !!npAirportEntry;
+                  const apVatMult = useNP
+                    ? (npAirportEntry!.vatPct > 0 ? 1 + npAirportEntry!.vatPct / 100 : vatMultiplier)
+                    : vatMultiplier;
+                  const apPrice  = useNP ? npAirportEntry!.price   : price;
+                  const apBRL    = useNP ? npAirportEntry!.priceBRL : priceBK;
+
                   parsedInsurances.push({
                     code: auxK && auxK !== '8' && auxK !== '' ? auxK : 'AIRPORTFEE',
                     descr: AIRPORT_LABEL,
                     type: 'M',
                     includedInTotal: 'Y',
                     // Multiply by vatMultiplier to get VAT-inclusive display value
-                    price:                         price   * vatMultiplier,
-                    priceInBookingCurrency:        priceBK * vatMultiplier,
+                    price:                         apPrice * apVatMult,
+                    priceInBookingCurrency:        apBRL   * apVatMult,
                     rentalPriceAI: 0,
                     rentalPriceInBookingCurrencyAI: 0,
                     prepaid: '',
