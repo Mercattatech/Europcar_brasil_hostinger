@@ -835,9 +835,12 @@ function VehiclesContent() {
                 if (equipmentCodes.has(auxK)) return;
 
                 // ── Airport surcharge (chrgTy 00024) ─────────────────────────────────────
-                // XRS returns the airport surcharge PRE-VAT. Apply the VAT multiplier so
-                // the customer sees the correct VAT-inclusive amount at the station.
-                // If we have a dedicated NP call result, use that instead (matches B2B portal).
+                // The correct \"at counter\" value depends on prepaidMode:
+                //   PP (ETO): always use the dedicated NP call (npAirportEntry).
+                //             If that call failed → skip entirely (no fallback with wrong value).
+                //   NP (POA): this call IS already NP → use its value directly.
+                // Confirmed by Europcar: airport surcharge amount varies between POA (NP)
+                // and BA (PP) modes. The NP value matches what the B2B portal shows.
                 if (chrgTy === '00024') {
                   // Remove any duplicate airport entry that slipped in from insuranceList
                   const dupIdx = parsedInsurances.findIndex((i: any) =>
@@ -845,29 +848,41 @@ function VehiclesContent() {
                   );
                   if (dupIdx !== -1) parsedInsurances.splice(dupIdx, 1);
 
-                  // Prefer the NP ("at station") value — matches B2B portal display.
-                  // Fall back to the current call's value with VAT applied if NP unavailable.
-                  const useNP    = !!npAirportEntry;
-                  const apVatMult = useNP
-                    ? (npAirportEntry!.vatPct > 0 ? 1 + npAirportEntry!.vatPct / 100 : vatMultiplier)
-                    : vatMultiplier;
-                  const apPrice  = useNP ? npAirportEntry!.price   : price;
-                  const apBRL    = useNP ? npAirportEntry!.priceBRL : priceBK;
-
-                  parsedInsurances.push({
-                    code: auxK && auxK !== '8' && auxK !== '' ? auxK : 'AIRPORTFEE',
-                    descr: AIRPORT_LABEL,
-                    type: 'M',
-                    includedInTotal: 'Y',
-                    // Multiply by vatMultiplier to get VAT-inclusive display value
-                    price:                         apPrice * apVatMult,
-                    priceInBookingCurrency:        apBRL   * apVatMult,
-                    rentalPriceAI: 0,
-                    rentalPriceInBookingCurrencyAI: 0,
-                    prepaid: '',
-                  });
+                  if (prepaidMode === 'PP') {
+                    // ETO customer: must use NP value — no fallback, no guessing.
+                    if (!npAirportEntry) {
+                      console.warn('[Step3] Airport surcharge skipped: NP call unavailable for PP customer.');
+                      return; // skip — do not show incorrect PP amount
+                    }
+                    const npVatMult = npAirportEntry.vatPct > 0 ? 1 + npAirportEntry.vatPct / 100 : 1;
+                    parsedInsurances.push({
+                      code:                          auxK && auxK !== '8' && auxK !== '' ? auxK : 'AIRPORTFEE',
+                      descr:                         AIRPORT_LABEL,
+                      type:                          'M',
+                      includedInTotal:               'Y',
+                      price:                         npAirportEntry.price    * npVatMult,
+                      priceInBookingCurrency:        npAirportEntry.priceBRL * npVatMult,
+                      rentalPriceAI:                 0,
+                      rentalPriceInBookingCurrencyAI: 0,
+                      prepaid:                       '',
+                    });
+                  } else {
+                    // POA customer: this call is already NP — value is authoritative.
+                    parsedInsurances.push({
+                      code:                          auxK && auxK !== '8' && auxK !== '' ? auxK : 'AIRPORTFEE',
+                      descr:                         AIRPORT_LABEL,
+                      type:                          'M',
+                      includedInTotal:               'Y',
+                      price:                         price   * vatMultiplier,
+                      priceInBookingCurrency:        priceBK * vatMultiplier,
+                      rentalPriceAI:                 0,
+                      rentalPriceInBookingCurrencyAI: 0,
+                      prepaid:                       '',
+                    });
+                  }
                   return;
                 }
+
 
                 // Skip insurance items already captured from insuranceList
                 if (alreadyCaptured.has(auxK)) return;
