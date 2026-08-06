@@ -687,6 +687,20 @@ function VehiclesContent() {
           if (quote?.insuranceList?.insurance) {
             const rawIns  = quote.insuranceList.insurance;
             const insArr  = Array.isArray(rawIns) ? rawIns : [rawIns];
+
+            // ── TEMP DEBUG: log raw XRS data to browser console ──
+            console.log('[XRS DEBUG] insuranceList raw:', JSON.stringify(insArr, null, 2));
+            console.log('[XRS DEBUG] chargeList raw:', JSON.stringify(
+              quote?.chargeList?.chargeLine
+                ? (Array.isArray(quote.chargeList.chargeLine)
+                    ? quote.chargeList.chargeLine
+                    : [quote.chargeList.chargeLine])
+                : [],
+              null, 2
+            ));
+            console.log('[XRS DEBUG] quote attrs:', JSON.stringify(quote?.$ || {}, null, 2));
+            // ── END TEMP DEBUG ──
+
             const parsedInsurances = insArr.map((ins: any) => {
               const a = ins.$ || ins;
               const code = (a.code || '').toUpperCase();
