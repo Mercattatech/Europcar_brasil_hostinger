@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma';
 import { callXRS, DEFAULT_POA_CID } from '@/lib/europcar/xrsClient';
 import { sendBookingConfirmation } from '@/lib/email/sendBookingConfirmation';
 import { sendWelcomeWithCredentials } from '@/lib/email/sendWelcomeWithCredentials';
-import { consultarBin, guessBrandByFirstDigit, mapBrandToCardIssuer, zeroAuthCard } from '@/lib/cielo/cieloClient';
+import { consultarBin, guessBrandByFirstDigit, mapBrandToCardIssuer, zeroAuthCard, voidCieloPayment } from '@/lib/cielo/cieloClient';
 import { buildReservationPaymentAttrs, buildCreateVoucherXml } from '@/lib/europcar/paymentMapping';
 import { getReservationErrorMessage } from '@/lib/cms/reservationErrors';
 import bcrypt from 'bcryptjs';
@@ -676,7 +676,31 @@ export async function POST(request: Request) {
 
    } catch (error: any) {
       console.error(error);
-      
+
+      // ── AUTO-VOID: se a Cielo já cobrou mas o XRS falhou, estorna automaticamente ──
+      // Evita que o cliente pague sem ter reserva criada.
+      if (cieloPaymentId && cieloConfig?.merchantId && cieloConfig?.merchantKey) {
+        try {
+          console.warn(`[reservas] XRS falhou após cobrança Cielo (${cieloPaymentId}) — iniciando void automático.`);
+          const voidResult = await voidCieloPayment(
+            cieloPaymentId,
+            cieloConfig.merchantId,
+            cieloConfig.merchantKey,
+            isSandboxMode
+          );
+          if (voidResult.voided) {
+            console.log(`[reservas] ✅ Void automático bem-sucedido: PaymentId ${cieloPaymentId}`);
+            error.message = error.message + ` | Cobrança estornada automaticamente (PaymentId: ${cieloPaymentId}).`;
+          } else {
+            console.error(`[reservas] ❌ Void automático FALHOU: ${voidResult.message} — PaymentId ${cieloPaymentId} precisa de estorno manual!`);
+            error.message = error.message + ` | ATENÇÃO: estorno automático falhou — PaymentId ${cieloPaymentId} precisa ser estornado manualmente na Cielo.`;
+          }
+        } catch (voidErr: any) {
+          console.error(`[reservas] ❌ Exceção no void automático — PaymentId ${cieloPaymentId} precisa de estorno manual:`, voidErr.message);
+          error.message = error.message + ` | ATENÇÃO: estorno automático falhou — PaymentId ${cieloPaymentId} precisa ser estornado manualmente na Cielo.`;
+        }
+      }
+
       // Trigger Falha Pagamento — envia para QUALQUER erro no processamento
       if (customerEmail) {
         try {
