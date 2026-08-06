@@ -344,10 +344,9 @@ export async function POST(request: Request) {
 <message>
   <serviceRequest serviceCode="getQuote">
     <serviceParameters>
-      <reservation carCategory="${carCategory}"${contractID ? ` contractID="${contractID}" type="C"` : ''} chargesDetail="TRE" rateId="${rateId}">
+      <reservation carCategory="${carCategory}"${contractID ? ` contractID="${contractID}" type="C"` : ''} chargesDetail="TRE" rateId="${rateId}" prepaidMode="NP">
         <checkout stationID="${pickupStation}" date="${pickupDate}" time="${bookingData.pickupTime || '1000'}"/>
         <checkin stationID="${returnStation}" date="${returnDate}" time="${bookingData.returnTime || '1000'}"/>
-        ${paymentAttrs.meanOfPaymentXml}
       </reservation>
       <driver countryOfResidence="BR"/>
     </serviceParameters>
@@ -450,7 +449,21 @@ export async function POST(request: Request) {
         resNumber = bookResNode?.$?.resNumber || null;
 
         if (!resNumber) {
-          throw new Error("Europcar não retornou número de reserva. Verifique os logs.");
+          // Extrair mensagem de erro real retornada pelo XRS para diagnóstico
+          const errNode = xrsResponse?.message?.serviceResponse?.errors
+            || xrsResponse?.message?.errors
+            || xrsResponse?.serviceResponse?.errors
+            || xrsResponse?.errors;
+          const errArr  = errNode ? (Array.isArray(errNode.error) ? errNode.error : [errNode.error]).filter(Boolean) : [];
+          const xrsMsg  = errArr.map((e: any) => {
+            const a = e.$ || e;
+            return [a.errorCode, a.description || a.text || a.message].filter(Boolean).join(': ');
+          }).join(' | ');
+          const xrsStatusMsg = bookResNode?.$?.statusCode
+            ? `XRS statusCode=${bookResNode.$.statusCode}`
+            : '';
+          const detail = [xrsMsg, xrsStatusMsg].filter(Boolean).join(' | ');
+          throw new Error(`Europcar não retornou número de reserva.${detail ? ' Motivo: ' + detail : ' Verifique os logs XRS.'}`);
         }
 
         const xrsStatusCode: string = bookResNode?.$?.statusCode || 'S';
