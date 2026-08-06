@@ -338,39 +338,10 @@ export async function POST(request: Request) {
           merchantOrderId,
         });
 
-        // ✅ Refresh do rateId via getQuote antes de reservar
-        try {
-          const quoteXml = `<?xml version="1.0" encoding="UTF-8"?>
-<message>
-  <serviceRequest serviceCode="getQuote">
-    <serviceParameters>
-      <reservation carCategory="${carCategory}"${contractID ? ` contractID="${contractID}" type="C"` : ''} chargesDetail="TRE" rateId="${rateId}" prepaidMode="NP">
-        <checkout stationID="${pickupStation}" date="${pickupDate}" time="${bookingData.pickupTime || '1000'}"/>
-        <checkin stationID="${returnStation}" date="${returnDate}" time="${bookingData.returnTime || '1000'}"/>
-      </reservation>
-      <driver countryOfResidence="BR"/>
-    </serviceParameters>
-  </serviceRequest>
-</message>`;
-
-          const quoteRes = await callXRS(quoteXml, {
-            callerCode: process.env.XRS_CALLER_CODE || 'DEMO',
-            password: process.env.XRS_PASSWORD || 'DEMO',
-            action: 'getQuote',
-            sourceFile: 'reservas/route.ts'
-          });
-          
-          const resNode = quoteRes?.message?.serviceResponse?.reservation?.$ || quoteRes?.serviceResponse?.reservation?.$;
-          if (resNode?.rateId) rateId = resNode.rateId;
-          
-          // Capturar metadados do produto que podem ser exigidos no book
-          if (resNode?.productCode) productDataAttr += ` productCode="${resNode.productCode}"`;
-          if (resNode?.productFamily) productDataAttr += ` productFamily="${resNode.productFamily}"`;
-          if (resNode?.productVersion) productDataAttr += ` productVersion="${resNode.productVersion}"`;
-          
-        } catch (quoteErr: any) {
-          console.warn('[reservas] Erro no refresh do rateId:', quoteErr.message);
-        }
+        // rateId vem do getMultipleRates (Step 2) e é válido para a sessão.
+        // ⚠️ O refresh via getQuote foi removido — adicionava 10-20s ao fluxo,
+        // causando timeout no cliente APÓS a Cielo já ter capturado o pagamento.
+        // Resultado: cliente cobrado sem reserva. O rateId do Step 2 é suficiente.
 
         const contractAttr = contractID ? ` contractID="${contractID}" type="C"` : '';
 
