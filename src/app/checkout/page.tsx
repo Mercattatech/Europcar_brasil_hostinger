@@ -508,7 +508,23 @@ export default function CheckoutPage() {
 
   // Proteções e acessórios (extrasDetails / xrsEquipment) são pagos na loja de
   // destino — não entram na cobrança online. Só a tarifa do veículo é cobrada agora.
-  const baseAmountBRL = totalBRL > 0 ? totalBRL : totalRateXRS;
+  // A sobretaxa de aeroporto também é paga no balcão — deve ser descontada do total online.
+  const airportSurchargeBRL = (() => {
+    const fees = (booking?.quoteInsurances || []).filter((i: any) => {
+      const d = (i.descr || '').toLowerCase();
+      return d.includes('aeroporto') || d.includes('airport') ||
+        d.includes('ferroviária') || d.includes('railway') ||
+        d === 'sobretaxa de aeroporto/estação ferroviária';
+    });
+    return fees.reduce((sum: number, ins: any) => {
+      const val = ins.rentalPriceInBookingCurrencyAI > 0
+        ? ins.rentalPriceInBookingCurrencyAI
+        : (ins.priceInBookingCurrency > 0 ? ins.priceInBookingCurrency : ins.price);
+      return sum + (parseFloat(val) || 0);
+    }, 0);
+  })();
+
+  const baseAmountBRL = Math.max(0, (totalBRL > 0 ? totalBRL : totalRateXRS) - airportSurchargeBRL);
   const amountInCents = Math.round(baseAmountBRL * 100);
 
   // Envia a reserva de fato para o backend. threeDsAuth vem preenchido quando o
@@ -1470,13 +1486,18 @@ export default function CheckoutPage() {
                   <div className="text-right">
                     <span className="text-2xl font-black text-gray-900">
                       {(() => {
-                        const base = totalBRL > 0 ? totalBRL : totalRateXRS;
                         const cur = totalBRL > 0 ? bookingCurrency : currency;
-                        return `${cur} ${base.toFixed(2).replace(".", ",")}`;
+                        return `${cur} ${baseAmountBRL.toFixed(2).replace(".", ",")}`;
                       })()}
                     </span>
                   </div>
                 </div>
+                {airportSurchargeBRL > 0 && (
+                  <div className="flex justify-between items-center text-xs text-orange-600 mt-1">
+                    <span>✈ Sobretaxa de aeroporto (pago no balcão)</span>
+                    <span className="font-bold">{totalBRL > 0 ? bookingCurrency : currency} {airportSurchargeBRL.toFixed(2).replace('.', ',')}</span>
+                  </div>
+                )}
                 {(extrasDetails.length > 0 || booking?.xrsEquipment?.length > 0) && (() => {
                   const extrasVal = extrasDetails.reduce((s: number, e: any) => s + e.pricePerDay * e.qty, 0) * days;
                   const equipVal = (booking?.xrsEquipment || []).reduce((s: number, eq: any) => s + parseFloat(eq.priceBRL || 0) * (eq.qty || 1) * days, 0);
@@ -1489,6 +1510,7 @@ export default function CheckoutPage() {
                     </div>
                   );
                 })()}
+
               </div>
 
 
