@@ -28,10 +28,18 @@ const TRIGGERS = [
   {
     id: "RESERVA_SUCESSO",
     label: "✅ Reserva Confirmada",
-    description: "Disparado quando o cliente confirma uma reserva real (com número de reserva).",
+    description: "Disparado quando o cliente confirma uma reserva real (com número de reserva) via cartão ou voucher.",
     color: "emerald",
     defaultBody:
       "🚗 *Reserva Confirmada - Europcar Brasil*\n\nOlá, {{NOME}}! 🎉\n\nSua reserva foi confirmada com sucesso!\n\n📋 *Nº da Reserva:* {{NUMERO_RESERVA}}\n🚘 *Veículo:* {{CARRO}}\n📅 *Retirada:* {{DATA_RETIRADA}} — {{LOCAL_RETIRADA}}\n📅 *Devolução:* {{DATA_DEVOLUCAO}} — {{LOCAL_DEVOLUCAO}}\n💰 *Valor Total:* {{VALOR_TOTAL}}\n\nEm caso de dúvidas, entre em contato conosco.\n_Europcar Brasil_",
+  },
+  {
+    id: "RESERVA_BALCAO",
+    label: "🏪 Pagamento no Balcão",
+    description: "Disparado quando a reserva é feita com pagamento na loja (balcão). Lembra o cliente de trazer os documentos.",
+    color: "blue",
+    defaultBody:
+      "🚗 *Reserva Recebida - Europcar Brasil*\n\nOlá, {{NOME}}! 👋\n\nSua reserva foi criada com sucesso e o pagamento será realizado diretamente no balcão da loja.\n\n📋 *Nº da Reserva:* {{NUMERO_RESERVA}}\n🚘 *Veículo:* {{CARRO}}\n📅 *Retirada:* {{DATA_RETIRADA}} — {{LOCAL_RETIRADA}}\n📅 *Devolução:* {{DATA_DEVOLUCAO}} — {{LOCAL_DEVOLUCAO}}\n\n⚠️ *Atenção — Documentos obrigatórios:*\n✔️ CNH (Carteira Nacional de Habilitação) válida\n✔️ Documento de identidade\n✔️ Cartão de crédito em seu nome (garantia)\n\nO pagamento e a assinatura do contrato serão feitos no momento da retirada do veículo.\n\nEm caso de dúvidas, entre em contato conosco.\n_Europcar Brasil_",
   },
   {
     id: "CANCELAMENTO",
@@ -88,6 +96,7 @@ export default function WhatsappPage() {
   // ── Triggers ───────────────────────────────────────────────────
   const [triggerConfigs, setTriggerConfigs] = useState<Record<string, TriggerConfig>>({
     RESERVA_SUCESSO: { ...DEFAULT_TRIGGER },
+    RESERVA_BALCAO: { ...DEFAULT_TRIGGER },
     CANCELAMENTO: { ...DEFAULT_TRIGGER },
   });
   const [activeTriggerId, setActiveTriggerId] = useState("RESERVA_SUCESSO");
@@ -110,12 +119,13 @@ export default function WhatsappPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [tkn, bUrl, nums, intv, trRs, trCanc] = await Promise.all([
+      const [tkn, bUrl, nums, intv, trRs, trBc, trCanc] = await Promise.all([
         waGet("TOKEN"),
         waGet("BASE_URL"),
         waGet("NUMBERS"),
         waGet("INTERVAL_MS"),
         waGet("TRIGGER_RESERVA_SUCESSO"),
+        waGet("TRIGGER_RESERVA_BALCAO"),
         waGet("TRIGGER_CANCELAMENTO"),
       ]);
 
@@ -136,6 +146,7 @@ export default function WhatsappPage() {
 
       setTriggerConfigs({
         RESERVA_SUCESSO: parseTrigger(trRs, "RESERVA_SUCESSO"),
+        RESERVA_BALCAO: parseTrigger(trBc, "RESERVA_BALCAO"),
         CANCELAMENTO: parseTrigger(trCanc, "CANCELAMENTO"),
       });
     } catch (e) {
@@ -158,6 +169,7 @@ export default function WhatsappPage() {
         waSet("NUMBERS", JSON.stringify(numbers)),
         waSet("INTERVAL_MS", String(intervalMs)),
         waSet("TRIGGER_RESERVA_SUCESSO", JSON.stringify(triggerConfigs.RESERVA_SUCESSO)),
+        waSet("TRIGGER_RESERVA_BALCAO", JSON.stringify(triggerConfigs.RESERVA_BALCAO)),
         waSet("TRIGGER_CANCELAMENTO", JSON.stringify(triggerConfigs.CANCELAMENTO)),
       ]);
       setMsg({ text: "✅ Configurações salvas com sucesso!", ok: true });
@@ -503,7 +515,9 @@ export default function WhatsappPage() {
                   className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border ${activeTriggerId === t.id
                     ? t.color === "emerald"
                       ? "bg-emerald-600/20 text-emerald-400 border-emerald-600/40"
-                      : "bg-red-600/20 text-red-400 border-red-600/40"
+                      : t.color === "blue"
+                        ? "bg-blue-600/20 text-blue-400 border-blue-600/40"
+                        : "bg-red-600/20 text-red-400 border-red-600/40"
                     : "bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-600"
                     }`}
                 >

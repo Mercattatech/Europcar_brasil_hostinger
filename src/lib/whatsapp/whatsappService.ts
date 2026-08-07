@@ -15,7 +15,7 @@
 import prisma from '@/lib/prisma';
 import { GmLeadClient } from './gmLeadClient';
 
-export type WaTrigger = 'RESERVA_SUCESSO' | 'CANCELAMENTO';
+export type WaTrigger = 'RESERVA_SUCESSO' | 'RESERVA_BALCAO' | 'CANCELAMENTO';
 
 export interface WaTriggerVariables {
   NOME?: string;

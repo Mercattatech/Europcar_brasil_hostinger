@@ -607,9 +607,11 @@ export async function POST(request: Request) {
         }
 
         // WhatsApp: disparo para o cliente + números internos (fire-and-forget)
+        // Usa RESERVA_BALCAO para pagamento no balcão (loja) e RESERVA_SUCESSO para pré-pagos
         import('@/lib/whatsapp/whatsappService').then(({ sendWhatsappTrigger }) => {
+          const waTrigger = paymentData.method === 'BALCAO' ? 'RESERVA_BALCAO' : 'RESERVA_SUCESSO';
           sendWhatsappTrigger(
-            'RESERVA_SUCESSO',
+            waTrigger,
             {
               NOME: customerData.nome || '',
               SOBRENOME: customerData.sobrenome || '',
