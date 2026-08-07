@@ -1137,9 +1137,9 @@ export default function CheckoutPage() {
                             maxLength={7}
                             autoComplete="cc-exp"
                           />
-                          {/* O script MPI espera mês/ano separados, não um campo combinado */}
+                          {/* O script MPI espera mês/ano separados em 2 dígitos (MM e YY), não um campo combinado */}
                           <input type="hidden" className="bpmpi_cardexpirationmonth" value={ccValidity.split('/')[0] || ''} readOnly />
-                          <input type="hidden" className="bpmpi_cardexpirationyear" value={ccValidity.split('/')[1] || ''} readOnly />
+                          <input type="hidden" className="bpmpi_cardexpirationyear" value={(ccValidity.split('/')[1] || '').slice(-2)} readOnly />
                         </div>
                         <div>
                           <label className="block text-xs font-bold text-gray-700 mb-1">CVV</label>
