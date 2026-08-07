@@ -327,7 +327,11 @@ export async function POST(request: Request) {
           method: paymentData.method,
           captured: paymentData.method === 'PIX' || !!capturedCreditCard?.captured,
           amountBRL: (paymentData.amountInCents || 0) / 100,
-          creditCardGuarantee: (paymentData.method === 'CREDIT' && !capturedCreditCard?.captured && capturedCreditCard)
+          // Passa os dados do cartão para QUALQUER fluxo CREDIT (capturado ou não),
+          // para que o paymentMapping envie o nó CC correto ao XRS.
+          // Antes disso, a condição !capturedCreditCard?.captured excluía o cartão
+          // exatamente quando captured=true, deixando o XRS sem meanOfPayment válido.
+          creditCardGuarantee: (paymentData.method === 'CREDIT' && capturedCreditCard)
             ? { number: capturedCreditCard.number, holderName: capturedCreditCard.holderName, validity: capturedCreditCard.validity, cardIssuer: capturedCreditCard.cardIssuer }
             : undefined,
           voucherData: paymentData.method === 'VOUCHER' ? voucherData : undefined,
