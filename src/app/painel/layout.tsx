@@ -25,6 +25,7 @@ const sidebarLinks = [
    { href: "/painel/erros-reserva", label: "Erros de Reserva (CMS)", icon: "⚠️" },
    { href: "/painel/termos", label: "Termos e Condições", icon: "📜" },
    { href: "/painel/config-email", label: "E-mails Automáticos", icon: "✉️" },
+   { href: "/painel/whatsapp", label: "WhatsApp Automático", icon: "📲" },
    { href: "/painel/tags", label: "Tags & Rastreamento", icon: "📈" },
    { href: "/painel/manutencao", label: "Modo Manutenção", icon: "🚧" },
    { href: "/painel/logs-xrs", label: "XRS Debugger", icon: "🔍" },

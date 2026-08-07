@@ -605,6 +605,27 @@ export async function POST(request: Request) {
         } catch (emailErr) {
           console.error('[reservas] Error sending booking confirmation:', emailErr);
         }
+
+        // WhatsApp: disparo para o cliente + números internos (fire-and-forget)
+        import('@/lib/whatsapp/whatsappService').then(({ sendWhatsappTrigger }) => {
+          sendWhatsappTrigger(
+            'RESERVA_SUCESSO',
+            {
+              NOME: customerData.nome || '',
+              SOBRENOME: customerData.sobrenome || '',
+              NUMERO_RESERVA: finalResNumber || '',
+              TELEFONE_CLIENTE: customerData.telefone || '',
+              CARRO: bookingData.car?.carCategoryName || bookingData.car?.name || '',
+              DATA_RETIRADA: bookingData.pickupDate || '',
+              DATA_DEVOLUCAO: bookingData.returnDate || '',
+              LOCAL_RETIRADA: bookingData.pickupStation || '',
+              LOCAL_DEVOLUCAO: bookingData.returnStation || bookingData.pickupStation || '',
+              VALOR_TOTAL: `R$ ${((paymentData.amountInCents || 0) / 100).toFixed(2).replace('.', ',')}`,
+              FORMA_PAGAMENTO: paymentData.method || '',
+            },
+            customerData.telefone || undefined,
+          );
+        }).catch(err => console.error('[reservas] WhatsApp trigger falhou:', err));
       }
 
       // 5. Auto-criação de conta para clientes sem login (guest checkout)
