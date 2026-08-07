@@ -79,24 +79,18 @@ export function buildReservationPaymentAttrs(ctx: PaymentAttrsContext): PaymentA
   // Pago online (PIX confirmado ou Cartão capturado pela Cielo agora): informa ao XRS
   // que a tarifa já foi quitada antecipadamente (prepaidMode="PP").
   //
-  // • Cartão de crédito → envia nó CC com cardmask="Y" para que o XRS registre o meio
-  //   de pagamento corretamente sem expor o PAN completo.
-  // • PIX → não existe equivalente no XRS europeu; prepaidMode="PP" + valor já bastam.
-  //   (VCH/PP era inválido — voucherType="PP" não existe na especificação XRS.)
+  // NÃO enviamos <meanOfPayment> para pagamentos capturados porque:
+  // 1. O pagamento já foi processado pela Cielo — a Europcar não precisa cobrar novamente.
+  // 2. typeCode="CC" com dados do cartão causa xrs.cctokenisationerror: o XRS tenta
+  //    tokenizar o número em um serviço interno não habilitado nesse contrato.
+  // 3. typeCode="VCH" voucherType="PP" era inválido (PP não existe na spec XRS).
+  // → prepaidMode="PP" + prepaidPercentage + prepaidAmountInBookingCurrency já bastam.
   if (ctx.captured) {
     const amount = (ctx.amountBRL ?? 0).toFixed(2);
-    const prepaidAttrs = ` prepaidMode="PP" prepaidPercentage="100.00" prepaidAmountInBookingCurrency="${amount}"`;
-
-    if (ctx.creditCardGuarantee) {
-      const cc = ctx.creditCardGuarantee;
-      return {
-        prepaidAttrs,
-        meanOfPaymentXml: `\n        <meanOfPayment typeCode="CC" cardIssuer="${cc.cardIssuer}" cardNumber="${cc.number}" cardHolderName="${cc.holderName}" validade="${cc.validity}" cardmask="Y"/>`,
-      };
-    }
-
-    // PIX ou captura sem dados de cartão disponíveis
-    return { prepaidAttrs, meanOfPaymentXml: '' };
+    return {
+      prepaidAttrs: ` prepaidMode="PP" prepaidPercentage="100.00" prepaidAmountInBookingCurrency="${amount}"`,
+      meanOfPaymentXml: '',
+    };
   }
 
   // Pagar na retirada: prepaidMode="NP". Se houver cartão de garantia (guarantee,
