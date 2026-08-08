@@ -1053,9 +1053,14 @@ function VehiclesContent() {
   }, [filteredCars]);
 
   const handleSelectCar = (car: any) => {
+    // Só aplica overrides de imagem do banco para pesquisas BRASILEIRAS.
+    // Para pesquisas internacionais, o componente CarImage usa o CDN da Europcar
+    // pelo código ACRISS — evita mostrar a foto do Kwid BR para um C3 internacional
+    // quando ambos compartilham o mesmo carCategoryCode.
+    const isBrazilianSearch = !stationCountry || stationCountry === 'BR';
     setSelectedCar({
       ...car,
-      imageUrl: carImageOverrides[car.carCategoryCode] || car.imageUrl
+      imageUrl: isBrazilianSearch ? (carImageOverrides[car.carCategoryCode] || car.imageUrl) : car.imageUrl
     });
     setZeroExcessUpgrade(false);       // reset upgrade when changing car
     setEquipmentPrices({});            // reset equipment prices for new station/car
@@ -1295,7 +1300,7 @@ function VehiclesContent() {
                     // Apply admin margin to ETO
                     const totalPriceETO = totalPriceETO_raw * (1 + etoMargin / 100);
                     const totalBRL_ETO = totalBRL_ETO_raw * (1 + etoMargin / 100);
-                    const isBrazil = stationCountry === 'BR' || pickupStation.toUpperCase().startsWith('BR'); // Brazil: POA only; international: POA + ETO
+                    const isBrazil = stationCountry === 'BR' || !stationCountry || pickupStation.toUpperCase().startsWith('BR');
                     const hasETO = !isBrazil && etoCar && totalPriceETO_raw > 0;
                     // Calculate discount % ETO vs POA
                     const discountPct = hasETO && totalPricePOA > 0 ? Math.round((1 - totalPriceETO / totalPricePOA) * 100) : 0;
@@ -1312,7 +1317,7 @@ function VehiclesContent() {
                         <div className="flex flex-col sm:flex-row p-4 md:p-5 gap-4 md:gap-6">
                           {/* Image - gold background for premium */}
                           <div className={`w-full sm:w-[200px] md:w-[240px] shrink-0 flex items-center justify-center p-2 rounded-lg ${isPremium ? "bg-gradient-to-b from-[#f5ecd0] to-[#efe3c0]" : ""}`}>
-                            <CarImage sample={sample} code={code} alt={sample || name} imageUrl={car.imageUrl} overrideUrl={carImageOverrides[code]} />
+                            <CarImage sample={sample} code={code} alt={sample || name} imageUrl={car.imageUrl} overrideUrl={isBrazil ? carImageOverrides[code] : undefined} />
                           </div>
 
                           {/* Info */}

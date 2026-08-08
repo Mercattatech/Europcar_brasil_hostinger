@@ -28,7 +28,7 @@ export default function CheckoutPage() {
   const maskPhone = (value: string) => {
     let r = value.replace(/\D/g, "");
     if (r.length > 13) r = r.substring(0, 13);
-    
+
     // +55 (11) 99999-9999
     if (r.length > 11) {
       return `+${r.substring(0, 2)} (${r.substring(2, 4)}) ${r.substring(4, 9)}-${r.substring(9, 13)}`;
@@ -71,7 +71,7 @@ export default function CheckoutPage() {
   // window.bpmpi_config() é lida pelo script UMA vez no carregamento; os callbacks
   // precisam chamar a versão atual do handler (com o estado atual do formulário),
   // não a closure capturada no momento em que o script carregou.
-  const submitReservationRef = useRef<(threeDsAuth?: any) => void>(() => {});
+  const submitReservationRef = useRef<(threeDsAuth?: any) => void>(() => { });
   // Ref direta pro campo oculto do access token — usada para escrever um token recém-buscado
   // no DOM na hora (síncrono), sem esperar o próximo render do React.
   const accessTokenInputRef = useRef<HTMLInputElement>(null);
@@ -98,7 +98,7 @@ export default function CheckoutPage() {
   // Terms & Conditions
   const [acceptTermsReserva, setAcceptTermsReserva] = useState(false);
   const [acceptTermsPais, setAcceptTermsPais] = useState(false);
-  const [termsAvailable, setTermsAvailable] = useState<{reserva: boolean, pais: boolean, paisUrl: string, brasil: boolean}>({reserva: false, pais: false, paisUrl: '', brasil: false});
+  const [termsAvailable, setTermsAvailable] = useState<{ reserva: boolean, pais: boolean, paisUrl: string, brasil: boolean }>({ reserva: false, pais: false, paisUrl: '', brasil: false });
 
 
   useEffect(() => {
@@ -122,9 +122,9 @@ export default function CheckoutPage() {
               step: 4,
               userId: undefined, // will be set once session loads
             }),
-          }).catch(() => {});
+          }).catch(() => { });
         }
-      } catch {}
+      } catch { }
     }
   }, []);
 
@@ -133,7 +133,7 @@ export default function CheckoutPage() {
     fetch('/api/loyalty-programs')
       .then(r => r.json())
       .then(data => setLoyaltyPrograms(Array.isArray(data) ? data : []))
-      .catch(() => {});
+      .catch(() => { });
 
     fetch('/api/cars/categories')
       .then(res => res.json())
@@ -289,7 +289,7 @@ export default function CheckoutPage() {
           });
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   // When booking loads, resolve selected extras from xrsInsurances (real getQuote data)
@@ -419,13 +419,13 @@ export default function CheckoutPage() {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ sessionId, step: 5, resNumber: d.resNumber, paymentMethod: "PIX", status: "COMPLETED" }),
-                      }).catch(() => {});
+                      }).catch(() => { });
                       sessionStorage.removeItem("europcar_journey_session");
                     }
-                  } catch {}
+                  } catch { }
                 }
               })
-              .catch(() => {});
+              .catch(() => { });
           }
           return t;
         });
@@ -492,8 +492,8 @@ export default function CheckoutPage() {
   // Calculate days
   const calcDays = () => {
     if (pickupDate?.length === 8 && returnDate?.length === 8) {
-      const co = new Date(parseInt(pickupDate.slice(0,4)), parseInt(pickupDate.slice(4,6))-1, parseInt(pickupDate.slice(6,8)));
-      const ci = new Date(parseInt(returnDate.slice(0,4)), parseInt(returnDate.slice(4,6))-1, parseInt(returnDate.slice(6,8)));
+      const co = new Date(parseInt(pickupDate.slice(0, 4)), parseInt(pickupDate.slice(4, 6)) - 1, parseInt(pickupDate.slice(6, 8)));
+      const ci = new Date(parseInt(returnDate.slice(0, 4)), parseInt(returnDate.slice(4, 6)) - 1, parseInt(returnDate.slice(6, 8)));
       const diff = Math.round((ci.getTime() - co.getTime()) / 86400000);
       return diff > 0 ? diff : 1;
     }
@@ -575,10 +575,10 @@ export default function CheckoutPage() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ sessionId, step: 5, resNumber: json.resNumber, paymentMethod, status: "COMPLETED", userId: session?.user?.email || undefined }),
-              }).catch(() => {});
+              }).catch(() => { });
               sessionStorage.removeItem("europcar_journey_session");
             }
-          } catch {}
+          } catch { }
         } else {
           setResNumber(json.resNumber);
           if (json.accountCreated) setAccountCreated(true);
@@ -590,10 +590,10 @@ export default function CheckoutPage() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ sessionId, step: 5, resNumber: json.resNumber, paymentMethod, status: "COMPLETED", userId: session?.user?.email || undefined }),
-              }).catch(() => {});
+              }).catch(() => { });
               sessionStorage.removeItem("europcar_journey_session");
             }
-          } catch {}
+          } catch { }
         }
       } else {
         alert("Erro ao finalizar reserva: " + (json.error || "Desconhecido"));
@@ -984,31 +984,31 @@ export default function CheckoutPage() {
               </div>
               <div className="mb-4">
                 <label className="block text-xs font-bold text-gray-700 mb-1">E-mail</label>
-                <input 
-                  required 
-                  type="email" 
-                  value={email} 
+                <input
+                  required
+                  type="email"
+                  value={email}
                   onChange={e => {
                     setEmail(e.target.value);
                     if (emailError) setEmailError("");
-                  }} 
+                  }}
                   onBlur={() => {
                     if (email && !validateEmail(email)) setEmailError("E-mail inválido");
                   }}
-                  className={`w-full border rounded p-3 outline-none focus:border-[#008d36] ${emailError ? 'border-red-500' : ''}`} 
-                  placeholder="exemplo@email.com" 
+                  className={`w-full border rounded p-3 outline-none focus:border-[#008d36] ${emailError ? 'border-red-500' : ''}`}
+                  placeholder="exemplo@email.com"
                 />
                 {emailError && <span className="text-red-500 text-[10px] font-bold mt-1">{emailError}</span>}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Telefone / Celular</label>
-                  <input 
-                    required 
-                    value={telefone} 
-                    onChange={e => setTelefone(maskPhone(e.target.value))} 
-                    className="w-full border rounded p-3 outline-none focus:border-[#008d36]" 
-                    placeholder="+55 (11) 99999-9999" 
+                  <input
+                    required
+                    value={telefone}
+                    onChange={e => setTelefone(maskPhone(e.target.value))}
+                    className="w-full border rounded p-3 outline-none focus:border-[#008d36]"
+                    placeholder="+55 (11) 99999-9999"
                   />
                 </div>
                 <div>
@@ -1016,7 +1016,7 @@ export default function CheckoutPage() {
                   <input required value={cpf} onChange={e => setCpf(e.target.value)} className="w-full border rounded p-3 outline-none focus:border-[#008d36]" placeholder="000.000.000-00" />
                 </div>
               </div>
-              
+
               {/* Programa de Fidelidade e Voo */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100">
                 <div>
@@ -1053,13 +1053,13 @@ export default function CheckoutPage() {
               <div className="space-y-4">
                 {/* Balcão — only for POA tariff */}
                 {tariffType !== 'ETO' && (
-                <label className={`block border-2 rounded-lg p-5 cursor-pointer flex items-center gap-4 transition-colors ${paymentMethod === "BALCAO" ? "border-[#008d36] bg-green-50" : "border-gray-200 hover:border-gray-300"}`}>
-                  <input type="radio" checked={paymentMethod === "BALCAO"} onChange={() => setPaymentMethod("BALCAO")} className="w-5 h-5 accent-[#008d36]" />
-                  <div>
-                    <span className="font-bold text-gray-900 block">Pagar no balcão da loja</span>
-                    <span className="text-xs text-gray-500">Pague apenas no momento de retirada do veículo.</span>
-                  </div>
-                </label>
+                  <label className={`block border-2 rounded-lg p-5 cursor-pointer flex items-center gap-4 transition-colors ${paymentMethod === "BALCAO" ? "border-[#008d36] bg-green-50" : "border-gray-200 hover:border-gray-300"}`}>
+                    <input type="radio" checked={paymentMethod === "BALCAO"} onChange={() => setPaymentMethod("BALCAO")} className="w-5 h-5 accent-[#008d36]" />
+                    <div>
+                      <span className="font-bold text-gray-900 block">Pagar no balcão da loja</span>
+                      <span className="text-xs text-gray-500">Pague apenas no momento de retirada do veículo.</span>
+                    </div>
+                  </label>
                 )}
 
                 {/* Tariff type indicator */}
@@ -1131,7 +1131,7 @@ export default function CheckoutPage() {
                             required
                             id="cc-expiry"
                             value={ccValidity}
-                            onChange={e => { let v = e.target.value.replace(/\D/g,""); if(v.length>=2) v=v.slice(0,2)+"/"+v.slice(2,6); setCcValidity(v); }}
+                            onChange={e => { let v = e.target.value.replace(/\D/g, ""); if (v.length >= 2) v = v.slice(0, 2) + "/" + v.slice(2, 6); setCcValidity(v); }}
                             className="w-full border rounded p-3 outline-none focus:border-[#008d36]"
                             placeholder="12/2030"
                             maxLength={7}
@@ -1162,7 +1162,7 @@ export default function CheckoutPage() {
                         </p>
                       ) : threeDsReady ? (
                         <p className="text-[10px] text-gray-400 flex items-center gap-1">
-                          <svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
+                          <svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
                           Proteção 3DS 2.2 ativa — autenticação segura pelo seu banco
                         </p>
                       ) : null}
@@ -1175,7 +1175,7 @@ export default function CheckoutPage() {
             {/* Terms & Conditions Checkboxes */}
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 mb-6 space-y-4">
               <h4 className="text-sm font-black text-gray-900 uppercase tracking-wide flex items-center gap-2">
-                <svg className="w-5 h-5 text-[#008d36]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <svg className="w-5 h-5 text-[#008d36]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 Termos e Condições
               </h4>
 
@@ -1212,7 +1212,7 @@ export default function CheckoutPage() {
 
               {!acceptTermsReserva || !acceptTermsPais ? (
                 <p className="text-xs text-red-500 font-medium flex items-center gap-1">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
                   Você precisa aceitar ambos os termos para finalizar a reserva.
                 </p>
               ) : null}
@@ -1240,7 +1240,7 @@ export default function CheckoutPage() {
                   const sources = [
                     car.imageUrl || null,
                     carCode ? `https://static.europcar.com/carvisuals/partners/835x557/${carCode}_IT.png` : null,
-                    carSample ? `https://www.europcar.com/vehicles/images/223/cars/${carSample.split(" ")[0].toLowerCase()}/${carSample.split(" ").slice(1,3).join("-").toLowerCase().replace(/[^a-z0-9-]/g,"")}.png` : null,
+                    carSample ? `https://www.europcar.com/vehicles/images/223/cars/${carSample.split(" ")[0].toLowerCase()}/${carSample.split(" ").slice(1, 3).join("-").toLowerCase().replace(/[^a-z0-9-]/g, "")}.png` : null,
                     `https://placehold.co/400x200/f5f5f5/008d36?text=${carCode || "CAR"}`,
                   ].filter(Boolean) as string[];
                   return (
@@ -1427,27 +1427,27 @@ export default function CheckoutPage() {
                   <p className="text-[10px] text-gray-500 mb-3 leading-tight">Opcionais reservados. O pagamento destes itens é feito na loja de destino.</p>
                   <div className="space-y-2">
                     {extrasDetails.map((extra: any) => {
-                        const insNames: Record<string, string> = {
-                          PREMIUM: "Cobertura Premium", PREMPRE: "Premium Pré-pago", PREMUP: "Premium Plus",
-                          SPCDW: "Super Proteção CDW", SPTHW: "Super Proteção THW", STHW: "Proteção THW+",
-                          SCDW: "Proteção CDW+", MEDIUM: "Cobertura Média", RSA: "Assistência na Estrada",
-                          APP: "Proteção de Aparência",
-                        };
-                        return (
-                          <div key={extra.id} className="flex justify-between items-center text-sm">
-                            <div className="flex items-center gap-2">
-                              {extra.qty > 1 && (
-                                <span className="bg-[#008d36] text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">{extra.qty}</span>
-                              )}
-                              <span className="text-gray-700 font-medium">{insNames[extra.id] || extra.id}</span>
-                            </div>
-                            <span className="font-bold text-gray-900">
-                              BRL {(extra.pricePerDay * extra.qty).toFixed(2).replace(".", ",")}
-                              <span className="text-xs text-gray-400 font-normal"> /dia</span>
-                            </span>
+                      const insNames: Record<string, string> = {
+                        PREMIUM: "Cobertura Premium", PREMPRE: "Premium Pré-pago", PREMUP: "Premium Plus",
+                        SPCDW: "Super Proteção CDW", SPTHW: "Super Proteção THW", STHW: "Proteção THW+",
+                        SCDW: "Proteção CDW+", MEDIUM: "Cobertura Média", RSA: "Assistência na Estrada",
+                        APP: "Proteção de Aparência",
+                      };
+                      return (
+                        <div key={extra.id} className="flex justify-between items-center text-sm">
+                          <div className="flex items-center gap-2">
+                            {extra.qty > 1 && (
+                              <span className="bg-[#008d36] text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">{extra.qty}</span>
+                            )}
+                            <span className="text-gray-700 font-medium">{insNames[extra.id] || extra.id}</span>
                           </div>
-                        );
-                      })}
+                          <span className="font-bold text-gray-900">
+                            BRL {(extra.pricePerDay * extra.qty).toFixed(2).replace(".", ",")}
+                            <span className="text-xs text-gray-400 font-normal"> /dia</span>
+                          </span>
+                        </div>
+                      );
+                    })}
                     <div className="flex justify-between items-center text-sm border-t border-green-200 pt-2 mt-2">
                       <span className="font-bold text-gray-600">Total extras ({days} dias)</span>
                       <span className="font-black text-[#008d36]">
