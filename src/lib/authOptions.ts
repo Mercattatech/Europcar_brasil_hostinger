@@ -74,13 +74,10 @@ export const authOptions: NextAuthOptions = {
       }
       return session;
     },
-    async jwt({ token, user, trigger, session }) {
+    async jwt({ token, user }) {
       if (user) {
         token.sub = (user as any).id;
         token.role = (user as any).role;
-      }
-      if (trigger === "update" && session?.role) {
-        token.role = session.role;
       }
       return token;
     }
@@ -88,5 +85,13 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: "/login",
   },
-  secret: process.env.NEXTAUTH_SECRET || "europcar_secret_dev",
+  secret: (() => {
+    // Durante "next build", o Next.js importa as rotas para coletar metadados
+    // (nenhuma requisição real é servida nessa fase) — não travar o build por
+    // causa disso. Em runtime real (dev ou produção), exigir a variável.
+    if (!process.env.NEXTAUTH_SECRET && process.env.NEXT_PHASE !== 'phase-production-build') {
+      throw new Error("NEXTAUTH_SECRET não está definida. Configure essa variável de ambiente.");
+    }
+    return process.env.NEXTAUTH_SECRET || 'unused-build-time-placeholder';
+  })(),
 };

@@ -1,23 +1,12 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/authOptions";
+import { checkAdmin } from "@/lib/checkAdmin";
 import prisma from "@/lib/prisma";
 export const dynamic = 'force-dynamic';
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
-    const session = await getServerSession(authOptions);
-    const bypassEmails = ["grupomercatta@gmail.com", "matheus@grupomercatta.com.br", "matheusconti@gmail.com", "matheus@grupomercatta.com"];
-    
-    if (!session || !session.user || !session.user.email) {
+    if (!(await checkAdmin())) {
        return new NextResponse("Unauthorized", { status: 403 });
-    }
-    
-    if (!bypassEmails.includes(session.user.email)) {
-       const dbUser = await prisma.user.findUnique({ where: { email: session.user.email } });
-       if (!dbUser || dbUser.role?.toUpperCase() !== "ADMIN") {
-          return new NextResponse("Unauthorized", { status: 403 });
-       }
     }
 
     const json = await req.json();
@@ -41,8 +30,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || (session.user as any).role !== "ADMIN") {
+    if (!(await checkAdmin())) {
        return new NextResponse("Unauthorized", { status: 403 });
     }
 

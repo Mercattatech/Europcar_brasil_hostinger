@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/authOptions';
 import { cancelXRSReservation, voidCieloPaymentForLocalReservation } from '@/lib/europcar/cancelService';
+import { getReservationOwnerEmail } from '@/lib/europcar/ownership';
 import prisma from '@/lib/prisma';
 import { sendTransactionalEmail } from '@/lib/emailService';
 
@@ -12,6 +15,15 @@ export async function POST(request: Request) {
 
     if (!resNumber) {
       return NextResponse.json({ error: 'resNumber é obrigatório para cancelamento' }, { status: 400 });
+    }
+
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+    }
+    const ownerEmail = await getReservationOwnerEmail(resNumber);
+    if (!ownerEmail || ownerEmail.toLowerCase() !== session.user.email.toLowerCase()) {
+      return NextResponse.json({ error: 'Você não tem permissão para cancelar esta reserva' }, { status: 403 });
     }
 
     const { hasError, returnCode, errorMsg, raw: xrsResponse } = await cancelXRSReservation(resNumber);

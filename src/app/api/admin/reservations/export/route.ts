@@ -44,7 +44,9 @@ function formatTimeBR(timeStr?: string): string {
 
 function escapeCSV(val: any): string {
    if (val === null || val === undefined) return "";
-   const str = String(val);
+   let str = String(val);
+   // Neutralize leading =, +, -, @ to prevent CSV/formula injection when opened in Excel
+   if (/^[=+\-@]/.test(str)) str = `'${str}`;
    if (str.includes(",") || str.includes('"') || str.includes("\n")) {
       return `"${str.replace(/"/g, '""')}"`;
    }

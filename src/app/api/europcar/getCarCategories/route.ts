@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { callXRS } from '@/lib/europcar/xrsClient';
 import { isValidXRSDate, isValidXRSTime } from '@/lib/europcar/validate';
+import { escapeXml } from '@/lib/europcar/xmlEscape';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Horário inválido. Use o formato HHMM.' }, { status: 400 });
     }
 
-    const contractAttr = contractID ? ` contractID="${contractID}" type="C"` : '';
+    const contractAttr = contractID ? ` contractID="${escapeXml(contractID)}" type="C"` : '';
 
     const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
 <message>
@@ -23,8 +24,8 @@ export async function POST(request: Request) {
     <serviceContext language="pt_PT"/>
     <serviceParameters>
       <reservation${contractAttr}>
-        <checkout stationID="${pickupStation}" date="${pickupDate}" time="${pickupTime || '1000'}"/>
-        <checkin stationID="${returnStation || pickupStation}" date="${returnDate}" time="${returnTime || '1000'}"/>
+        <checkout stationID="${escapeXml(pickupStation)}" date="${escapeXml(pickupDate)}" time="${escapeXml(pickupTime || '1000')}"/>
+        <checkin stationID="${escapeXml(returnStation || pickupStation)}" date="${escapeXml(returnDate)}" time="${escapeXml(returnTime || '1000')}"/>
       </reservation>
     </serviceParameters>
   </serviceRequest>

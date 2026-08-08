@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { callXRS } from '@/lib/europcar/xrsClient';
+import { escapeXml } from '@/lib/europcar/xmlEscape';
+import { getReservationOwnerEmail } from '@/lib/europcar/ownership';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
@@ -32,6 +34,11 @@ export async function POST(request: Request) {
       );
     }
 
+    const ownerEmail = await getReservationOwnerEmail(resNumber);
+    if (!ownerEmail || ownerEmail.toLowerCase() !== String(email).toLowerCase()) {
+      return NextResponse.json({ error: 'Email não corresponde à reserva' }, { status: 403 });
+    }
+
     const dCpf = (cpf || '').replace(/\D/g, '').slice(0, 11);
     const dPhone = phone || '';
     const country = paisEmissao || 'BR';
@@ -57,7 +64,7 @@ export async function POST(request: Request) {
 
       licenseListXml = `
         <licenseList>
-          <license licenseNumber="${cnhNumero || ''}"${expirationDate ? ` expirationDate="${expirationDate}"` : ''}${cnhCidade ? ` cityOfIssuance="${cnhCidade}"` : ''} countryOfIssuance="${country}"/>
+          <license licenseNumber="${escapeXml(cnhNumero || '')}"${expirationDate ? ` expirationDate="${escapeXml(expirationDate)}"` : ''}${cnhCidade ? ` cityOfIssuance="${escapeXml(cnhCidade)}"` : ''} countryOfIssuance="${escapeXml(country)}"/>
         </licenseList>`;
     }
 
@@ -65,20 +72,20 @@ export async function POST(request: Request) {
 <message>
   <serviceRequest serviceCode="createDriver">
     <serviceParameters>
-      <reservation resNumber="${resNumber}"/>
-      <driver isoLanguage="pt_BR" firstName="${firstName.trim()}" lastName="${lastName.trim()}" title="MR">
+      <reservation resNumber="${escapeXml(resNumber)}"/>
+      <driver isoLanguage="pt_BR" firstName="${escapeXml(firstName.trim())}" lastName="${escapeXml(lastName.trim())}" title="MR">
         <addressList>
-          <address addressType="P" addressKind="D" addressCountry="${country}">
+          <address addressType="P" addressKind="D" addressCountry="${escapeXml(country)}">
             <emails>
-              <email emailAddress="${email.trim()}" type="M"/>
+              <email emailAddress="${escapeXml(email.trim())}" type="M"/>
             </emails>
             <phones>
-              <phone phoneNumber="${dPhone}" phoneType="M"/>
+              <phone phoneNumber="${escapeXml(dPhone)}" phoneType="M"/>
             </phones>
           </address>
         </addressList>
         <legalIdList>
-          <legalId idTy="P" docNumber="${dCpf}" country="${country}"/>
+          <legalId idTy="P" docNumber="${escapeXml(dCpf)}" country="${escapeXml(country)}"/>
         </legalIdList>${licenseListXml}
       </driver>
     </serviceParameters>

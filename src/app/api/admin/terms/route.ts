@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { checkAdmin } from '@/lib/checkAdmin';
 import prisma from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
@@ -41,8 +41,7 @@ export async function GET() {
 // POST: upload or replace a terms document (or save external link for PAIS)
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user?.email) {
+    if (!(await checkAdmin())) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 

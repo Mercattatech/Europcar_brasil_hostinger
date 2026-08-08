@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/authOptions';
 import { callXRS } from '@/lib/europcar/xrsClient';
 import { isValidXRSDate, isValidXRSTime } from '@/lib/europcar/validate';
+import { escapeXml } from '@/lib/europcar/xmlEscape';
+import { getReservationOwnerEmail } from '@/lib/europcar/ownership';
 import prisma from '@/lib/prisma';
 import { sendTransactionalEmail } from '@/lib/emailService';
 export const dynamic = 'force-dynamic';
@@ -13,6 +17,15 @@ export async function POST(request: Request) {
     if (!resNumber) {
       return NextResponse.json({ error: 'resNumber é obrigatório para modificação' }, { status: 400 });
     }
+
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+    }
+    const ownerEmail = await getReservationOwnerEmail(resNumber);
+    if (!ownerEmail || ownerEmail.toLowerCase() !== session.user.email.toLowerCase()) {
+      return NextResponse.json({ error: 'Você não tem permissão para modificar esta reserva' }, { status: 403 });
+    }
     if (pickupDate && !isValidXRSDate(pickupDate)) {
       return NextResponse.json({ error: 'Data inválida. Use o formato YYYYMMDD.' }, { status: 400 });
     }
@@ -22,16 +35,16 @@ export async function POST(request: Request) {
 
     // Per Antonio: only send the field being modified + driver name
     const checkoutBlock = (pickupStationID && pickupDate && pickupTime)
-      ? `\n      <checkout stationID="${pickupStationID}" date="${pickupDate}" time="${pickupTime}"/>`
+      ? `\n      <checkout stationID="${escapeXml(pickupStationID)}" date="${escapeXml(pickupDate)}" time="${escapeXml(pickupTime)}"/>`
       : '';
 
     const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
 <message>
   <serviceRequest serviceCode="modifyReservation">
     <serviceParameters>
-      <reservation resNumber="${resNumber}">${checkoutBlock}
+      <reservation resNumber="${escapeXml(resNumber)}">${checkoutBlock}
       </reservation>
-      <driver countryOfResidence="BR" firstName="${firstName || 'Passageiro'}" lastName="${lastName || 'Europcar'}" title="MR"/>
+      <driver countryOfResidence="BR" firstName="${escapeXml(firstName || 'Passageiro')}" lastName="${escapeXml(lastName || 'Europcar')}" title="MR"/>
     </serviceParameters>
   </serviceRequest>
 </message>`;

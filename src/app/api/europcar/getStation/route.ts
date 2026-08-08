@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { callXRS } from '@/lib/europcar/xrsClient';
+import { escapeXml } from '@/lib/europcar/xmlEscape';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
@@ -20,7 +21,7 @@ export async function GET(request: Request) {
       </localisation>
     </serviceContext>
     <serviceParameters>
-      <station stationCode="${stationCode}"/>
+      <station stationCode="${escapeXml(stationCode)}"/>
     </serviceParameters>
   </serviceRequest>
 </message>`;

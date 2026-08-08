@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { callXRS } from '@/lib/europcar/xrsClient';
 import { isValidXRSDate, isValidXRSTime } from '@/lib/europcar/validate';
+import { escapeXml } from '@/lib/europcar/xmlEscape';
 export const dynamic = 'force-dynamic';
 
 /**
@@ -54,15 +55,15 @@ export async function POST(request: Request) {
     const resolvedPrepaidMode = prepaidMode === 'PP' ? 'PP' : 'NP';
 
     // Build optional attributes
-    const contractAttr = contractID ? ` contractID="${contractID}" type="C"` : '';
-    const rateIdAttr   = rateId     ? ` rateId="${rateId}"`               : '';
+    const contractAttr = contractID ? ` contractID="${escapeXml(contractID)}" type="C"` : '';
+    const rateIdAttr   = rateId     ? ` rateId="${escapeXml(rateId)}"`               : '';
 
     // Build equipment XML
     let equipmentXml = '';
     if (equipmentList && Array.isArray(equipmentList) && equipmentList.length > 0) {
       const items = equipmentList
         .filter((eq: any) => eq.code && eq.qty > 0)
-        .map((eq: any) => `          <equipment code="${eq.code}" qty="${eq.qty}"/>`)
+        .map((eq: any) => `          <equipment code="${escapeXml(eq.code)}" qty="${escapeXml(eq.qty)}"/>`)
         .join('\n');
       if (items) {
         equipmentXml = `\n        <equipmentList>\n${items}\n        </equipmentList>`;
@@ -74,7 +75,7 @@ export async function POST(request: Request) {
     if (insuranceList && Array.isArray(insuranceList) && insuranceList.length > 0) {
       const items = insuranceList
         .filter((ins: any) => ins.code)
-        .map((ins: any) => `          <insurance code="${ins.code}"/>`)
+        .map((ins: any) => `          <insurance code="${escapeXml(ins.code)}"/>`)
         .join('\n');
       if (items) {
         insuranceXml = `\n        <insuranceList>\n${items}\n        </insuranceList>`;
@@ -88,9 +89,9 @@ export async function POST(request: Request) {
     <serviceContext language="pt_PT"/>
     <caller/>
     <serviceParameters>
-      <reservation chargesDetail="TRE" rateDetails="Y" prepaidMode="${resolvedPrepaidMode}" carCategory="${carCategory}"${contractAttr}${rateIdAttr}>
-        <checkout stationID="${pickupStation}" date="${pickupDate}" time="${pickupTime || '1000'}"/>
-        <checkin stationID="${returnStation || pickupStation}" date="${returnDate}" time="${returnTime || '1000'}"/>${equipmentXml}${insuranceXml}
+      <reservation chargesDetail="TRE" rateDetails="Y" prepaidMode="${resolvedPrepaidMode}" carCategory="${escapeXml(carCategory)}"${contractAttr}${rateIdAttr}>
+        <checkout stationID="${escapeXml(pickupStation)}" date="${escapeXml(pickupDate)}" time="${escapeXml(pickupTime || '1000')}"/>
+        <checkin stationID="${escapeXml(returnStation || pickupStation)}" date="${escapeXml(returnDate)}" time="${escapeXml(returnTime || '1000')}"/>${equipmentXml}${insuranceXml}
       </reservation>
       <driver countryOfResidence="BR"/>
     </serviceParameters>

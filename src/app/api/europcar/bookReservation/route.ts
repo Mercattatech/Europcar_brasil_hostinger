@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { callXRS, DEFAULT_POA_CID } from '@/lib/europcar/xrsClient';
 import { isValidXRSDate, isValidXRSTime } from '@/lib/europcar/validate';
+import { escapeXml } from '@/lib/europcar/xmlEscape';
 import prisma from '@/lib/prisma';
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
 
     // Use POA CID as default when no contractID is provided
     const effectiveCID = contractID || DEFAULT_POA_CID;
-    const contractAttr = ` contractID="${effectiveCID}" type="C"`;
+    const contractAttr = ` contractID="${escapeXml(effectiveCID)}" type="C"`;
 
     // CID to BA mapping for ETO vouchers (provided by Europcar)
     const cidToBa: Record<string, string> = {
@@ -47,9 +48,9 @@ export async function POST(request: Request) {
 
       const numericVoucherID = (voucherData?.id && /^\d+$/.test(voucherData.id)) ? voucherData.id : '1234';
       meanOfPaymentXml = `
-        <meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="${numericVoucherID}" 
-                       businessAccount="${ba}" voucherCarCategory="${carCategory}" 
-                       voucherRentalDuration="${duration}"/>`;
+        <meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="${escapeXml(numericVoucherID)}"
+                       businessAccount="${escapeXml(ba)}" voucherCarCategory="${escapeXml(carCategory)}"
+                       voucherRentalDuration="${escapeXml(duration)}"/>`;
     } else if (voucherData && voucherData.type === 'EXO') {
       isVoucherEXO = true;
     }
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
 
     let loyaltyXml = '';
     if (driverData?.loyaltyProgramId && driverData?.loyaltyId) {
-      loyaltyXml = `\n        <loyaltyProgram programId="${driverData.loyaltyProgramId}" loyaltyID="${driverData.loyaltyId}"/>`;
+      loyaltyXml = `\n        <loyaltyProgram programId="${escapeXml(driverData.loyaltyProgramId)}" loyaltyID="${escapeXml(driverData.loyaltyId)}"/>`;
     }
 
     const prepaidModeAttr = (voucherData && voucherData.type === 'ETO') ? '' : ' prepaidMode="NP"';
@@ -69,7 +70,7 @@ export async function POST(request: Request) {
     const insuranceCodes = ['TPL','LDW','CDW','THW','SCDW','SPCDW','STHW','SPTHW','MEDIUM','PREMIUM','PREMPRE','PREMUP','RSA','APP','PAI','PEP','SLDW','WWI','SPAI'];
     const equipmentKeys = extraKeys.filter(k => !insuranceCodes.includes(k));
     if (equipmentKeys.length > 0) {
-      equipmentXml = equipmentKeys.map(k => `\n          <equipment code="${k}" qty="${extras[k]}"/>`).join('');
+      equipmentXml = equipmentKeys.map(k => `\n          <equipment code="${escapeXml(k)}" qty="${escapeXml(extras[k])}"/>`).join('');
     }
 
     // Also include equipment from xrsEquipment array (from Step 3 UI)
@@ -77,7 +78,7 @@ export async function POST(request: Request) {
     if (Array.isArray(xrsEquipment) && xrsEquipment.length > 0) {
       const xrsEqItems = xrsEquipment
         .filter((eq: any) => eq.code && eq.qty > 0)
-        .map((eq: any) => `\n          <equipment code="${eq.code}" qty="${eq.qty}"/>`)
+        .map((eq: any) => `\n          <equipment code="${escapeXml(eq.code)}" qty="${escapeXml(eq.qty)}"/>`)
         .join('');
       equipmentXml += xrsEqItems;
     }
@@ -94,22 +95,22 @@ export async function POST(request: Request) {
     ]);
 
     if (allInsuranceCodes.size > 0) {
-      insuranceXml = [...allInsuranceCodes].map(code => `\n          <insurance code="${code}"/>`).join('');
+      insuranceXml = [...allInsuranceCodes].map(code => `\n          <insurance code="${escapeXml(code)}"/>`).join('');
     }
 
     const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
 <message>
   <serviceRequest serviceCode="bookReservation">
     <serviceParameters>
-      <reservation carCategory="${carCategory}" rateId="${rateId}" chargesDetail="TRE"${prepaidModeAttr}${contractAttr} email="${driverData?.email || ''}">
-        <checkout stationID="${pickupStation}" date="${pickupDate}" time="${pickupTime || '1000'}"/>
-        <checkin stationID="${returnStation || pickupStation}" date="${returnDate}" time="${returnTime || '1000'}"/>
+      <reservation carCategory="${escapeXml(carCategory)}" rateId="${escapeXml(rateId)}" chargesDetail="TRE"${prepaidModeAttr}${contractAttr} email="${escapeXml(driverData?.email || '')}">
+        <checkout stationID="${escapeXml(pickupStation)}" date="${escapeXml(pickupDate)}" time="${escapeXml(pickupTime || '1000')}"/>
+        <checkin stationID="${escapeXml(returnStation || pickupStation)}" date="${escapeXml(returnDate)}" time="${escapeXml(returnTime || '1000')}"/>
         <equipmentList>${equipmentXml}</equipmentList>${insuranceXml ? `\n        <insuranceList>${insuranceXml}\n        </insuranceList>` : ''}${meanOfPaymentXml}${loyaltyXml}
       </reservation>
       <driver countryOfResidence="BR"
-              firstName="${driverData?.firstName || 'Test'}"
-              lastName="${driverData?.lastName || 'Client'}"
-              title="${driverData?.title || 'MR'}"/>
+              firstName="${escapeXml(driverData?.firstName || 'Test')}"
+              lastName="${escapeXml(driverData?.lastName || 'Client')}"
+              title="${escapeXml(driverData?.title || 'MR')}"/>
     </serviceParameters>
   </serviceRequest>
 </message>`;
@@ -152,7 +153,7 @@ export async function POST(request: Request) {
           }
           licenseListXml = `
         <licenseList>
-          <license licenseNumber="${driverData.cnhNumero || ''}"${expirationDate ? ` expirationDate="${expirationDate}"` : ''}${driverData.cnhCidade ? ` cityOfIssuance="${driverData.cnhCidade}"` : ''} countryOfIssuance="${dCountry}"/>
+          <license licenseNumber="${escapeXml(driverData.cnhNumero || '')}"${expirationDate ? ` expirationDate="${escapeXml(expirationDate)}"` : ''}${driverData.cnhCidade ? ` cityOfIssuance="${escapeXml(driverData.cnhCidade)}"` : ''} countryOfIssuance="${escapeXml(dCountry)}"/>
         </licenseList>`;
         }
 
@@ -160,20 +161,20 @@ export async function POST(request: Request) {
 <message>
   <serviceRequest serviceCode="createDriver">
     <serviceParameters>
-      <reservation resNumber="${resNumber}"/>
-      <driver isoLanguage="pt_BR" firstName="${dFirstName}" lastName="${dLastName}" title="${driverData?.title || 'MR'}">
+      <reservation resNumber="${escapeXml(resNumber)}"/>
+      <driver isoLanguage="pt_BR" firstName="${escapeXml(dFirstName)}" lastName="${escapeXml(dLastName)}" title="${escapeXml(driverData?.title || 'MR')}">
         <addressList>
-          <address addressType="P" addressKind="D" addressCountry="${dCountry}">
+          <address addressType="P" addressKind="D" addressCountry="${escapeXml(dCountry)}">
             <emails>
-              <email emailAddress="${dEmail}" type="M"/>
+              <email emailAddress="${escapeXml(dEmail)}" type="M"/>
             </emails>
             <phones>
-              <phone phoneNumber="${dPhone}" phoneType="M"/>
+              <phone phoneNumber="${escapeXml(dPhone)}" phoneType="M"/>
             </phones>
           </address>
         </addressList>
         <legalIdList>
-          <legalId idTy="P" docNumber="${dCpf}" country="${dCountry}"/>
+          <legalId idTy="P" docNumber="${escapeXml(dCpf)}" country="${escapeXml(dCountry)}"/>
         </legalIdList>${licenseListXml}
       </driver>
     </serviceParameters>
@@ -201,8 +202,8 @@ export async function POST(request: Request) {
 <message>
   <serviceRequest serviceCode="createVoucher">
     <serviceParameters>
-      <reservation resNumber="${resNumber}">
-        <meanOfPayment typeCode="VCH" voucherType="EXO" IATANumber="${iataNumber}" voucherAmount="${voucherAmount}" voucherCurrency="${voucherCurrency}"/>
+      <reservation resNumber="${escapeXml(resNumber)}">
+        <meanOfPayment typeCode="VCH" voucherType="EXO" IATANumber="${escapeXml(iataNumber)}" voucherAmount="${escapeXml(voucherAmount)}" voucherCurrency="${escapeXml(voucherCurrency)}"/>
       </reservation>
     </serviceParameters>
   </serviceRequest>
