@@ -1,5 +1,14 @@
-import { Resend } from "resend";
-
+/**
+ * sendBookingConfirmation
+ *
+ * Usa o provedor configurado no painel (/painel/config-email):
+ * SMTP (Nodemailer) ou Resend — via sendEmail() do emailService.
+ *
+ * Antes usava process.env.RESEND_API_KEY diretamente, o que
+ * causava falha silenciosa em produção (token salvo no banco, não no .env).
+ */
+import { sendEmail } from '@/lib/emailService';
+import prisma from '@/lib/prisma';
 
 interface BookingConfirmationData {
   toEmail: string;
@@ -32,8 +41,17 @@ function paymentLabel(method: string): string {
   return map[method] || method;
 }
 
+async function getFromEmail(): Promise<string> {
+  try {
+    const block = await prisma.contentBlock.findUnique({ where: { key: 'RESEND_FROM_EMAIL' } });
+    if (block?.value_ptBR) return block.value_ptBR;
+  } catch { /* ignora */ }
+  return process.env.RESEND_FROM_EMAIL || 'nao-responda@europcar.com.br';
+}
+
 export async function sendBookingConfirmation(data: BookingConfirmationData) {
-  const resend = new Resend(process.env.RESEND_API_KEY);
+  const fromEmail = await getFromEmail();
+
   const {
     toEmail, customerName, resNumber, carName,
     pickupStation, returnStation, pickupDate, returnDate,
@@ -47,12 +65,9 @@ export async function sendBookingConfirmation(data: BookingConfirmationData) {
     ? 'Sua reserva está em análise. Você receberá uma confirmação em até 8 horas úteis.'
     : 'Obrigado por escolher a Europcar. Apresente o número abaixo no balcão de retirada.';
 
-  try {
-    await resend.emails.send({
-      from: "Europcar Brasil <reservas@europcar.com.br>",
-      to: toEmail,
-      subject: `${isOnRequest ? '🕐 Reserva em análise' : '✅ Reserva confirmada'} — Europcar Brasil`,
-      html: `
+  const subject = `${isOnRequest ? '🕐 Reserva em análise' : '✅ Reserva confirmada'} — Europcar Brasil`;
+
+  const html = `
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
@@ -175,12 +190,17 @@ export async function sendBookingConfirmation(data: BookingConfirmationData) {
   </div>
 </body>
 </html>
-      `,
-    });
+  `;
 
-    console.log(`[email] Booking confirmation sent to ${toEmail} — resNumber: ${resNumber}`);
+  try {
+    const result = await sendEmail(fromEmail, toEmail, subject, html);
+    if (result.success) {
+      console.log(`[email] ✅ Confirmação de reserva enviada via ${result.provider} para ${toEmail} — resNumber: ${resNumber}`);
+    } else {
+      console.error(`[email] ❌ Falha ao enviar confirmação para ${toEmail}: ${result.error}`);
+    }
   } catch (error: any) {
     // Non-blocking: log but don't throw — reservation is already confirmed
-    console.error(`[email] Failed to send booking confirmation to ${toEmail}:`, error.message);
+    console.error(`[email] Exceção ao enviar confirmação para ${toEmail}:`, error.message);
   }
 }
