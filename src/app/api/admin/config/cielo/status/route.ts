@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { checkAdmin } from "@/lib/checkAdmin";
 export const dynamic = "force-dynamic";
 
 /**
@@ -9,6 +10,9 @@ export const dynamic = "force-dynamic";
  * Usado para confirmar o estado real do banco em produção.
  */
 export async function GET() {
+  if (!(await checkAdmin())) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   const diagnostics: Record<string, any> = {};
 
   // Leitura via Prisma ORM (falha se migration não rodou)

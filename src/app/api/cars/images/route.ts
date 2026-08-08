@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { checkAdmin } from '@/lib/checkAdmin';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,9 @@ export async function GET() {
 // POST: receive image as base64 and store directly in DB (no filesystem needed)
 export async function POST(req: Request) {
   try {
+    if (!(await checkAdmin())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const data = await req.formData();
     const file = data.get('file') as File;
     const carCode = data.get('carCode') as string;
@@ -47,6 +51,9 @@ export async function POST(req: Request) {
 // DELETE: remove override from DB only (no filesystem operations)
 export async function DELETE(req: Request) {
   try {
+    if (!(await checkAdmin())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const { searchParams } = new URL(req.url);
     const carCode = searchParams.get('carCode');
 

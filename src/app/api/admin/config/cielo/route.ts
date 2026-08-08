@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { checkAdmin } from "@/lib/checkAdmin";
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  if (!(await checkAdmin())) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const config = await prisma.cieloConfig.findFirst();
     if (!config) {
@@ -27,6 +31,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  if (!(await checkAdmin())) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const body = await req.json();
     // .trim() em todas as credenciais — copiar/colar do portal Cielo/Braspag costuma

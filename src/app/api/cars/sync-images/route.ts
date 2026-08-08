@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { callXRS } from '@/lib/europcar/xrsClient';
 import { prisma } from '@/lib/prisma';
+import { checkAdmin } from '@/lib/checkAdmin';
 import { parseStringPromise } from 'xml2js';
 
 export const dynamic = 'force-dynamic';
@@ -76,6 +77,9 @@ async function fetchImagesForStation(station: string): Promise<Record<string, st
 
 export async function POST() {
   try {
+    if (!(await checkAdmin())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const allImages: Record<string, string> = {};
 
     // Fetch images from multiple stations

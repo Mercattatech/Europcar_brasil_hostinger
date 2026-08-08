@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { callXRS } from '@/lib/europcar/xrsClient';
+import { escapeXml } from '@/lib/europcar/xmlEscape';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
@@ -15,10 +16,10 @@ export async function POST(request: Request) {
       <?xml version="1.0" encoding="UTF-8"?>
       <Request>
         <Station>
-           <StationCode>${stationCode}</StationCode>
+           <StationCode>${escapeXml(stationCode)}</StationCode>
         </Station>
-        <Date>${date}</Date>
-        <Time>${time}</Time>
+        <Date>${escapeXml(date)}</Date>
+        <Time>${escapeXml(time)}</Time>
         <Action>getOpenHours</Action>
       </Request>
     `.trim();

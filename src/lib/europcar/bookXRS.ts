@@ -1,5 +1,6 @@
 import { callXRS, DEFAULT_POA_CID } from '@/lib/europcar/xrsClient';
 import { buildReservationPaymentAttrs, buildCreateVoucherXml } from '@/lib/europcar/paymentMapping';
+import { escapeXml } from '@/lib/europcar/xmlEscape';
 
 export interface BookXRSParams {
   bookingData: any;
@@ -45,9 +46,9 @@ export async function executeXRSBooking({ bookingData, customerData, paymentData
 <message>
 <serviceRequest serviceCode="getQuote">
 <serviceParameters>
-  <reservation carCategory="${carCategory}"${contractID ? ` contractID="${contractID}" type="C"` : ''} chargesDetail="TRE" rateId="${rateId}">
-    <checkout stationID="${pickupStation}" date="${pickupDate}" time="${bookingData.pickupTime || '1000'}"/>
-    <checkin stationID="${returnStation}" date="${returnDate}" time="${bookingData.returnTime || '1000'}"/>
+  <reservation carCategory="${escapeXml(carCategory)}"${contractID ? ` contractID="${escapeXml(contractID)}" type="C"` : ''} chargesDetail="TRE" rateId="${escapeXml(rateId)}">
+    <checkout stationID="${escapeXml(pickupStation)}" date="${escapeXml(pickupDate)}" time="${escapeXml(bookingData.pickupTime || '1000')}"/>
+    <checkin stationID="${escapeXml(returnStation)}" date="${escapeXml(returnDate)}" time="${escapeXml(bookingData.returnTime || '1000')}"/>
     ${paymentAttrs.meanOfPaymentXml}
   </reservation>
   <driver countryOfResidence="BR"/>
@@ -72,7 +73,7 @@ export async function executeXRSBooking({ bookingData, customerData, paymentData
     console.warn('[xrsBook] Erro no refresh do rateId:', quoteErr.message);
   }
 
-  const contractAttr = contractID ? ` contractID="${contractID}" type="C"` : '';
+  const contractAttr = contractID ? ` contractID="${escapeXml(contractID)}" type="C"` : '';
 
   let equipmentXml = '';
   const extras = bookingData.extras || {};
@@ -80,13 +81,13 @@ export async function executeXRSBooking({ bookingData, customerData, paymentData
   const insuranceCodes = ['TPL','LDW','CDW','THW','SCDW','SPCDW','STHW','SPTHW','MEDIUM','PREMIUM','PREMPRE','PREMUP','RSA','APP','PAI','PEP','SLDW','WWI','SPAI'];
   const equipmentKeys = extraKeys.filter(k => !insuranceCodes.includes(k));
   if (equipmentKeys.length > 0) {
-    equipmentXml = equipmentKeys.map(k => `\n          <equipment code="${k}" qty="${extras[k]}"/>`).join('');
+    equipmentXml = equipmentKeys.map(k => `\n          <equipment code="${escapeXml(k)}" qty="${escapeXml(extras[k])}"/>`).join('');
   }
 
   if (Array.isArray(xrsEquipment) && xrsEquipment.length > 0) {
     equipmentXml += xrsEquipment
       .filter((eq: any) => eq.code && eq.qty > 0)
-      .map((eq: any) => `\n          <equipment code="${eq.code}" qty="${eq.qty}"/>`)
+      .map((eq: any) => `\n          <equipment code="${escapeXml(eq.code)}" qty="${escapeXml(eq.qty)}"/>`)
       .join('');
   }
 
@@ -97,27 +98,27 @@ export async function executeXRSBooking({ bookingData, customerData, paymentData
     ...(Array.isArray(xrsInsurances) ? xrsInsurances.map((ins: any) => ins.code || ins).filter(Boolean) : []),
   ]);
   if (allInsCodes.size > 0) {
-    insuranceXml = [...allInsCodes].map(code => `\n          <insurance code="${code}"/>`).join('');
+    insuranceXml = [...allInsCodes].map(code => `\n          <insurance code="${escapeXml(code)}"/>`).join('');
   }
 
   const { loyaltyProgramId, loyaltyId } = customerData;
   let loyaltyXml = '';
   if (loyaltyProgramId && loyaltyId) {
-    loyaltyXml = `\n        <loyaltyProgram programId="${loyaltyProgramId}" loyaltyID="${loyaltyId}"/>`;
+    loyaltyXml = `\n        <loyaltyProgram programId="${escapeXml(loyaltyProgramId)}" loyaltyID="${escapeXml(loyaltyId)}"/>`;
   }
 
   const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
 <message>
 <serviceRequest serviceCode="bookReservation">
 <serviceParameters>
-  <reservation carCategory="${carCategory}" rateId="${rateId}"${paymentAttrs.prepaidAttrs}${contractAttr}${productDataAttr} preferredLanguage="pt_BR" email="${customerData.email.trim()}">
-    <checkout stationID="${pickupStation}" date="${pickupDate}" time="${bookingData.pickupTime || '1000'}"/>
-    <checkin stationID="${returnStation}" date="${returnDate}" time="${bookingData.returnTime || '1000'}"/>
+  <reservation carCategory="${escapeXml(carCategory)}" rateId="${escapeXml(rateId)}"${paymentAttrs.prepaidAttrs}${contractAttr}${productDataAttr} preferredLanguage="pt_BR" email="${escapeXml(customerData.email.trim())}">
+    <checkout stationID="${escapeXml(pickupStation)}" date="${escapeXml(pickupDate)}" time="${escapeXml(bookingData.pickupTime || '1000')}"/>
+    <checkin stationID="${escapeXml(returnStation)}" date="${escapeXml(returnDate)}" time="${escapeXml(bookingData.returnTime || '1000')}"/>
     <equipmentList>${equipmentXml}</equipmentList>${insuranceXml ? `\n        <insuranceList>${insuranceXml}\n        </insuranceList>` : ''}${paymentAttrs.meanOfPaymentXml}${loyaltyXml}
   </reservation>
   <driver countryOfResidence="BR"
-          firstName="${customerData.nome.trim()}"
-          lastName="${customerData.sobrenome.trim()}"
+          firstName="${escapeXml(customerData.nome.trim())}"
+          lastName="${escapeXml(customerData.sobrenome.trim())}"
           title="MR"/>
 </serviceParameters>
 </serviceRequest>
@@ -170,7 +171,7 @@ export async function executeXRSBooking({ bookingData, customerData, paymentData
         }
         licenseListXml = `
   <licenseList>
-    <license licenseNumber="${customerData.cnhNumero || ''}"${expirationDate ? ` expirationDate="${expirationDate}"` : ''}${customerData.cnhCidade ? ` cityOfIssuance="${customerData.cnhCidade}"` : ''} countryOfIssuance="${dCountry}"/>
+    <license licenseNumber="${escapeXml(customerData.cnhNumero || '')}"${expirationDate ? ` expirationDate="${escapeXml(expirationDate)}"` : ''}${customerData.cnhCidade ? ` cityOfIssuance="${escapeXml(customerData.cnhCidade)}"` : ''} countryOfIssuance="${escapeXml(dCountry)}"/>
   </licenseList>`;
       }
 
@@ -178,20 +179,20 @@ export async function executeXRSBooking({ bookingData, customerData, paymentData
 <message>
 <serviceRequest serviceCode="createDriver">
 <serviceParameters>
-  <reservation resNumber="${resNumber}"/>
-  <driver isoLanguage="pt_BR" firstName="${dFirstName}" lastName="${dLastName}" title="MR">
+  <reservation resNumber="${escapeXml(resNumber)}"/>
+  <driver isoLanguage="pt_BR" firstName="${escapeXml(dFirstName)}" lastName="${escapeXml(dLastName)}" title="MR">
     <addressList>
-      <address addressType="P" addressKind="D" addressCountry="${dCountry}">
+      <address addressType="P" addressKind="D" addressCountry="${escapeXml(dCountry)}">
         <emails>
-          <email emailAddress="${dEmail}" type="M"/>
+          <email emailAddress="${escapeXml(dEmail)}" type="M"/>
         </emails>
         <phones>
-          <phone phoneNumber="${dPhone}" phoneType="M"/>
+          <phone phoneNumber="${escapeXml(dPhone)}" phoneType="M"/>
         </phones>
       </address>
     </addressList>
     <legalIdList>
-      <legalId idTy="P" docNumber="${dCpf}" country="${dCountry}"/>
+      <legalId idTy="P" docNumber="${escapeXml(dCpf)}" country="${escapeXml(dCountry)}"/>
     </legalIdList>${licenseListXml}
   </driver>
 </serviceParameters>

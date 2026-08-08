@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { callXRS } from '@/lib/europcar/xrsClient';
 import { isValidXRSDate } from '@/lib/europcar/validate';
+import { escapeXml } from '@/lib/europcar/xmlEscape';
 export const dynamic = 'force-dynamic';
 
 // ── CMS / Friendly name catalog ────────────────────────────────────────────
@@ -64,7 +65,7 @@ export async function GET(request: Request) {
     // Use the <checkout stationID> + <checkin stationID> format as documented.
     // The returnDate node is optional but improves availability accuracy.
     const checkinNode = returnDate
-      ? `\n        <checkin stationID="${stationID}" date="${returnDate}"/>`
+      ? `\n        <checkin stationID="${escapeXml(stationID)}" date="${escapeXml(returnDate)}"/>`
       : '';
 
     const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
@@ -72,8 +73,8 @@ export async function GET(request: Request) {
   <serviceRequest serviceCode="getEquipmentList">
     <serviceContext language="pt_PT"/>
     <serviceParameters>
-      <reservation prepaidMode="${prepaidMode}">
-        <checkout stationID="${stationID}" date="${date}"/>${checkinNode}
+      <reservation prepaidMode="${escapeXml(prepaidMode)}">
+        <checkout stationID="${escapeXml(stationID)}" date="${escapeXml(date)}"/>${checkinNode}
       </reservation>
     </serviceParameters>
   </serviceRequest>

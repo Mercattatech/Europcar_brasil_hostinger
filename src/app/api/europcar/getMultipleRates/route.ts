@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { callXRS } from '@/lib/europcar/xrsClient';
 import { isValidXRSDate, isValidXRSTime } from '@/lib/europcar/validate';
+import { escapeXml } from '@/lib/europcar/xmlEscape';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
     };
 
     // Build contractID attribute if promotion is active
-    const contractAttr = contractID ? ` contractID="${contractID}" type="C"` : '';
+    const contractAttr = contractID ? ` contractID="${escapeXml(contractID)}" type="C"` : '';
 
     const promises = chunks.map(chunk => {
       const carCategoryPattern = chunk.join('');
@@ -42,9 +43,9 @@ export async function POST(request: Request) {
   <serviceRequest serviceCode="getMultipleRates">
     <serviceContext language="pt_PT"/>
     <serviceParameters>
-      <reservation carCategoryPattern="${carCategoryPattern}" rateDetails="Y" chargesDetail="TRE"${contractAttr}>
-        <checkout stationID="${pickupStation}" date="${pickupDate}" time="${pickupTime || '1000'}"/>
-        <checkin stationID="${returnStation || pickupStation}" date="${returnDate}" time="${returnTime || '1000'}"/>
+      <reservation carCategoryPattern="${escapeXml(carCategoryPattern)}" rateDetails="Y" chargesDetail="TRE"${contractAttr}>
+        <checkout stationID="${escapeXml(pickupStation)}" date="${escapeXml(pickupDate)}" time="${escapeXml(pickupTime || '1000')}"/>
+        <checkin stationID="${escapeXml(returnStation || pickupStation)}" date="${escapeXml(returnDate)}" time="${escapeXml(returnTime || '1000')}"/>
       </reservation>
       <driver countryOfResidence="BR" />
     </serviceParameters>

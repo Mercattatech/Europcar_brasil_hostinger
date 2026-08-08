@@ -8,6 +8,7 @@ import { sendWelcomeWithCredentials } from '@/lib/email/sendWelcomeWithCredentia
 import { consultarBin, guessBrandByFirstDigit, mapBrandToCardIssuer, zeroAuthCard, voidCieloPayment } from '@/lib/cielo/cieloClient';
 import { buildReservationPaymentAttrs, buildCreateVoucherXml } from '@/lib/europcar/paymentMapping';
 import { getReservationErrorMessage } from '@/lib/cms/reservationErrors';
+import { escapeXml } from '@/lib/europcar/xmlEscape';
 import bcrypt from 'bcryptjs';
 
 /** Gera senha aleatória legível de 12 caracteres */
@@ -347,7 +348,7 @@ export async function POST(request: Request) {
         // causando timeout no cliente APÓS a Cielo já ter capturado o pagamento.
         // Resultado: cliente cobrado sem reserva. O rateId do Step 2 é suficiente.
 
-        const contractAttr = contractID ? ` contractID="${contractID}" type="C"` : '';
+        const contractAttr = contractID ? ` contractID="${escapeXml(contractID)}" type="C"` : '';
 
         // Build equipment XML — merge both sources into a Map to avoid duplicates.
         // bookingData.extras (Step 2 quick-add) and xrsEquipment (Step 3 detail selector)
@@ -373,7 +374,7 @@ export async function POST(request: Request) {
         }
 
         const equipmentXml = [...equipmentMap.entries()]
-          .map(([code, qty]) => `\n          <equipment code="${code}" qty="${qty}"/>`)
+          .map(([code, qty]) => `\n          <equipment code="${escapeXml(code)}" qty="${escapeXml(qty)}"/>`)
           .join('');
 
         const extraKeys = Object.keys(extras).filter(k => extras[k] > 0);
@@ -386,27 +387,27 @@ export async function POST(request: Request) {
           ...(Array.isArray(xrsInsurances) ? xrsInsurances.map((ins: any) => ins.code || ins).filter(Boolean) : []),
         ]);
         if (allInsCodes.size > 0) {
-          insuranceXml = [...allInsCodes].map(code => `\n          <insurance code="${code}"/>`).join('');
+          insuranceXml = [...allInsCodes].map(code => `\n          <insurance code="${escapeXml(code)}"/>`).join('');
         }
 
         const { loyaltyProgramId, loyaltyId } = customerData;
         let loyaltyXml = '';
         if (loyaltyProgramId && loyaltyId) {
-          loyaltyXml = `\n        <loyaltyProgram programId="${loyaltyProgramId}" loyaltyID="${loyaltyId}"/>`;
+          loyaltyXml = `\n        <loyaltyProgram programId="${escapeXml(loyaltyProgramId)}" loyaltyID="${escapeXml(loyaltyId)}"/>`;
         }
 
         const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
 <message>
   <serviceRequest serviceCode="bookReservation">
     <serviceParameters>
-      <reservation carCategory="${carCategory}" rateId="${rateId}"${paymentAttrs.prepaidAttrs}${contractAttr}${productDataAttr} preferredLanguage="pt_BR" email="${customerData.email.trim()}">
-        <checkout stationID="${pickupStation}" date="${pickupDate}" time="${bookingData.pickupTime || '1000'}"/>
-        <checkin stationID="${returnStation}" date="${returnDate}" time="${bookingData.returnTime || '1000'}"/>
+      <reservation carCategory="${escapeXml(carCategory)}" rateId="${escapeXml(rateId)}"${paymentAttrs.prepaidAttrs}${contractAttr}${productDataAttr} preferredLanguage="pt_BR" email="${escapeXml(customerData.email.trim())}">
+        <checkout stationID="${escapeXml(pickupStation)}" date="${escapeXml(pickupDate)}" time="${escapeXml(bookingData.pickupTime || '1000')}"/>
+        <checkin stationID="${escapeXml(returnStation)}" date="${escapeXml(returnDate)}" time="${escapeXml(bookingData.returnTime || '1000')}"/>
         <equipmentList>${equipmentXml}</equipmentList>${insuranceXml ? `\n        <insuranceList>${insuranceXml}\n        </insuranceList>` : ''}${paymentAttrs.meanOfPaymentXml}${loyaltyXml}
       </reservation>
       <driver countryOfResidence="BR"
-              firstName="${customerData.nome.trim()}"
-              lastName="${customerData.sobrenome.trim()}"
+              firstName="${escapeXml(customerData.nome.trim())}"
+              lastName="${escapeXml(customerData.sobrenome.trim())}"
               title="MR"/>
     </serviceParameters>
   </serviceRequest>
@@ -475,7 +476,7 @@ export async function POST(request: Request) {
               }
               licenseListXml = `
         <licenseList>
-          <license licenseNumber="${customerData.cnhNumero || ''}"${expirationDate ? ` expirationDate="${expirationDate}"` : ''}${customerData.cnhCidade ? ` cityOfIssuance="${customerData.cnhCidade}"` : ''} countryOfIssuance="${dCountry}"/>
+          <license licenseNumber="${escapeXml(customerData.cnhNumero || '')}"${expirationDate ? ` expirationDate="${escapeXml(expirationDate)}"` : ''}${customerData.cnhCidade ? ` cityOfIssuance="${escapeXml(customerData.cnhCidade)}"` : ''} countryOfIssuance="${escapeXml(dCountry)}"/>
         </licenseList>`;
             }
 
@@ -483,20 +484,20 @@ export async function POST(request: Request) {
 <message>
   <serviceRequest serviceCode="createDriver">
     <serviceParameters>
-      <reservation resNumber="${resNumber}"/>
-      <driver isoLanguage="pt_BR" firstName="${dFirstName}" lastName="${dLastName}" title="MR">
+      <reservation resNumber="${escapeXml(resNumber)}"/>
+      <driver isoLanguage="pt_BR" firstName="${escapeXml(dFirstName)}" lastName="${escapeXml(dLastName)}" title="MR">
         <addressList>
-          <address addressType="P" addressKind="D" addressCountry="${dCountry}">
+          <address addressType="P" addressKind="D" addressCountry="${escapeXml(dCountry)}">
             <emails>
-              <email emailAddress="${dEmail}" type="M"/>
+              <email emailAddress="${escapeXml(dEmail)}" type="M"/>
             </emails>
             <phones>
-              <phone phoneNumber="${dPhone}" phoneType="M"/>
+              <phone phoneNumber="${escapeXml(dPhone)}" phoneType="M"/>
             </phones>
           </address>
         </addressList>
         <legalIdList>
-          <legalId idTy="P" docNumber="${dCpf}" country="${dCountry}"/>
+          <legalId idTy="P" docNumber="${escapeXml(dCpf)}" country="${escapeXml(dCountry)}"/>
         </legalIdList>${licenseListXml}
       </driver>
     </serviceParameters>

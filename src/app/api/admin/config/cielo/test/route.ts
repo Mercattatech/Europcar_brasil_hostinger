@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { checkAdmin } from "@/lib/checkAdmin";
 export const dynamic = "force-dynamic";
 
 /**
@@ -12,6 +13,9 @@ export const dynamic = "force-dynamic";
  *        obrigatórios EstablishmentCode (605), MerchantName (606) e MCC (607).
  */
 export async function POST() {
+  if (!(await checkAdmin())) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   const config = await prisma.cieloConfig.findFirst();
 
   if (!config?.merchantId || !config?.merchantKey) {

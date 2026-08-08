@@ -1,11 +1,28 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { checkAdmin } from '@/lib/checkAdmin';
 
 export const dynamic = 'force-dynamic';
+
+// Only the Europcar-owned CDN host is allowed as a fetch target, to prevent SSRF.
+const ALLOWED_CDN_HOSTS = ['static.europcar.com'];
+
+function isAllowedCdnUrl(rawUrl: string): boolean {
+  try {
+    const parsed = new URL(rawUrl);
+    return parsed.protocol === 'https:' && ALLOWED_CDN_HOSTS.includes(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
 
 // Server-side proxy: fetch car image from Europcar CDN and store as base64 in DB
 export async function POST(req: Request) {
   try {
+    if (!(await checkAdmin())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { carCode, urls } = await req.json();
 
     if (!carCode || !Array.isArray(urls) || urls.length === 0) {
@@ -18,6 +35,7 @@ export async function POST(req: Request) {
 
     // Try each URL until one works
     for (const url of urls) {
+      if (!isAllowedCdnUrl(url)) continue;
       try {
         const res = await fetch(url, {
           headers: { 'User-Agent': 'Mozilla/5.0 (compatible; EuropcarBot/1.0)' },

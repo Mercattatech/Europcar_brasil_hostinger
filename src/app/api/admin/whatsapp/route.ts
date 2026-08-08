@@ -1,23 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/authOptions';
+import { checkAdmin as assertAdmin } from '@/lib/checkAdmin';
 import prisma from '@/lib/prisma';
-
-const ADMIN_EMAILS = [
-  'grupomercatta@gmail.com',
-  'matheus@grupomercatta.com.br',
-  'matheusconti@gmail.com',
-  'matheus@grupomercatta.com',
-  'admin@mercatta.com.br',
-];
-
-async function assertAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return false;
-  if (ADMIN_EMAILS.includes(session.user.email)) return true;
-  if ((session.user as any).role === 'ADMIN') return true;
-  return false;
-}
 
 /**
  * GET /api/admin/whatsapp?key=TOKEN

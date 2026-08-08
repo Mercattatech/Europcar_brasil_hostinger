@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/authOptions';
 import { callXRS } from '@/lib/europcar/xrsClient';
+import { escapeXml } from '@/lib/europcar/xmlEscape';
+import { getReservationOwnerEmail } from '@/lib/europcar/ownership';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
@@ -10,11 +14,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'resNumber é obrigatório' }, { status: 400 });
     }
 
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+    }
+    const ownerEmail = await getReservationOwnerEmail(resNumber);
+    if (!ownerEmail || ownerEmail.toLowerCase() !== session.user.email.toLowerCase()) {
+      return NextResponse.json({ error: 'Você não tem permissão para consultar esta reserva' }, { status: 403 });
+    }
+
     const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
 <message>
   <serviceRequest serviceCode="search.searchbyid">
     <serviceParameters>
-      <reservation resNumber="${resNumber}" />
+      <reservation resNumber="${escapeXml(resNumber)}" />
     </serviceParameters>
   </serviceRequest>
 </message>`;

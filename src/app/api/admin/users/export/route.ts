@@ -122,7 +122,10 @@ export async function GET(req: Request) {
       const BOM = '\uFEFF';
       
       const escapeCsv = (str: string) => {
-         const escaped = String(str).replace(/"/g, '""');
+         let safe = String(str);
+         // Neutralize leading =, +, -, @ to prevent CSV/formula injection when opened in Excel
+         if (/^[=+\-@]/.test(safe)) safe = `'${safe}`;
+         const escaped = safe.replace(/"/g, '""');
          return `"${escaped}"`;
       };
 

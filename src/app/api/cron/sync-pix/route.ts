@@ -5,7 +5,7 @@ import { executeXRSBooking } from '@/lib/europcar/bookXRS';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
+export async function GET() {
    try {
       // Find all pending PIX reservations created in the last 24 hours
       // We only check the last 24 hours to avoid polling dead/expired PIXs forever.

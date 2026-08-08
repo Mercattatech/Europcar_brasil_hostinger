@@ -2,13 +2,14 @@ import { callXRS } from '@/lib/europcar/xrsClient';
 import prisma from '@/lib/prisma';
 import { sendTransactionalEmail } from '@/lib/emailService';
 import { voidCieloPayment } from '@/lib/cielo/cieloClient';
+import { escapeXml } from '@/lib/europcar/xmlEscape';
 
 export async function cancelXRSReservation(resNumber: string) {
   const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
 <message>
   <serviceRequest serviceCode="cancelReservation">
     <serviceParameters>
-      <reservation resNumber="${resNumber}"/>
+      <reservation resNumber="${escapeXml(resNumber)}"/>
     </serviceParameters>
   </serviceRequest>
 </message>`;

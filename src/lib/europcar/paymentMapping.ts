@@ -4,6 +4,8 @@
 // reservas/route.ts (fluxo síncrono: CREDIT/BALCAO/VOUCHER) e bookXRS.ts
 // (fluxo assíncrono: PIX confirmado).
 
+import { escapeXml } from '@/lib/europcar/xmlEscape';
+
 export const CID_TO_BA: Record<string, string> = {
   '56935466': '73675595',  // ETO Líquido (Excesso)
   '56935495': '73804373',  // ETO Internacional (Excesso Zero)
@@ -57,7 +59,7 @@ function buildVoucherMeanOfPaymentXml(voucherData: VoucherContext, contractID?: 
     ? voucherData.id
     : Date.now().toString().slice(-8);
 
-  return `\n        <meanOfPayment typeCode="VCH" voucherType="${voucherData.type}" voucherID="${numericVoucherID}" businessAccount="${ba}" voucherCarCategory="${carCategory || ''}" voucherRentalDuration="${duration}"/>`;
+  return `\n        <meanOfPayment typeCode="VCH" voucherType="${escapeXml(voucherData.type)}" voucherID="${escapeXml(numericVoucherID)}" businessAccount="${escapeXml(ba)}" voucherCarCategory="${escapeXml(carCategory || '')}" voucherRentalDuration="${escapeXml(duration)}"/>`;
 }
 
 export interface PaymentAttrsResult {
@@ -97,7 +99,7 @@ export function buildReservationPaymentAttrs(ctx: PaymentAttrsContext): PaymentA
   // não cobrado agora), inclui o nó CC com cardmask="Y" para não expor o PAN.
   const cc = ctx.creditCardGuarantee;
   const meanOfPaymentXml = cc
-    ? `\n        <meanOfPayment typeCode="CC" cardIssuer="${cc.cardIssuer}" cardNumber="${cc.number}" cardHolderName="${cc.holderName}" validade="${cc.validity}" cardmask="Y"/>`
+    ? `\n        <meanOfPayment typeCode="CC" cardIssuer="${escapeXml(cc.cardIssuer)}" cardNumber="${escapeXml(cc.number)}" cardHolderName="${escapeXml(cc.holderName)}" validade="${escapeXml(cc.validity)}" cardmask="Y"/>`
     : '';
   return { prepaidAttrs: ' prepaidMode="NP"', meanOfPaymentXml };
 }
@@ -109,8 +111,8 @@ export function buildCreateVoucherXml(resNumber: string, voucherData: VoucherCon
 <message>
   <serviceRequest serviceCode="createVoucher">
     <serviceParameters>
-      <reservation resNumber="${resNumber}">
-        <meanOfPayment typeCode="VCH" voucherType="EXO" IATANumber="${iataNumber}" voucherAmount="${voucherAmount}" voucherCurrency="${voucherCurrency}"/>
+      <reservation resNumber="${escapeXml(resNumber)}">
+        <meanOfPayment typeCode="VCH" voucherType="EXO" IATANumber="${escapeXml(iataNumber)}" voucherAmount="${escapeXml(voucherAmount)}" voucherCurrency="${escapeXml(voucherCurrency)}"/>
       </reservation>
     </serviceParameters>
   </serviceRequest>
