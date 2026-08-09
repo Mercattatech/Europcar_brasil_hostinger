@@ -74,14 +74,12 @@ export async function sendWhatsappTrigger(
   // 1. Carrega configurações base
   const token = await getWaConfig('TOKEN');
   if (!token) {
-    console.warn('[whatsapp] WA_TOKEN não configurado — disparo ignorado.');
-    return;
+    throw new Error('WA_TOKEN não configurado. Salve o token GM Lead no painel.');
   }
 
   const triggerRaw = await getWaConfig(`TRIGGER_${trigger}`);
   if (!triggerRaw) {
-    console.warn(`[whatsapp] Gatilho WA_TRIGGER_${trigger} não configurado.`);
-    return;
+    throw new Error(`Gatilho "${trigger}" não configurado no banco. Acesse o painel, configure e clique em Salvar Tudo.`);
   }
 
   let triggerCfg: WaTriggerConfig;
@@ -93,8 +91,7 @@ export async function sendWhatsappTrigger(
   }
 
   if (!triggerCfg.enabled) {
-    console.log(`[whatsapp] Gatilho ${trigger} está desabilitado.`);
-    return;
+    throw new Error(`Gatilho "${trigger}" está DESABILITADO. Ative o toggle no painel e clique em Salvar Tudo.`);
   }
 
   // 2. Monta lista de destinatários
@@ -121,8 +118,7 @@ export async function sendWhatsappTrigger(
   }
 
   if (allNumbers.length === 0) {
-    console.warn('[whatsapp] Nenhum número de destino configurado.');
-    return;
+    throw new Error('Nenhum número de destino configurado. Cadastre ao menos um número interno no painel ou passe o telefone do cliente.');
   }
 
   // 3. Intervalo entre envios

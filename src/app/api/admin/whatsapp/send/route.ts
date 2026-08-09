@@ -50,10 +50,14 @@ export async function POST(request: Request) {
 
       if (!trigger) return NextResponse.json({ error: 'trigger é obrigatório' }, { status: 400 });
 
-      // Fire-and-forget (não espera — o painel recebe resposta rápida)
-      sendWhatsappTrigger(trigger, vars || {}, clientPhone).catch(console.error);
-
-      return NextResponse.json({ ok: true, message: `Disparo "${trigger}" iniciado em background.` });
+      // Para o painel de teste: aguarda o resultado para retornar erros reais
+      // (em produção, o dispatch é fire-and-forget para não bloquear o cliente)
+      try {
+        await sendWhatsappTrigger(trigger, vars || {}, clientPhone);
+        return NextResponse.json({ ok: true, message: `Disparo "${trigger}" concluído. Verifique os números cadastrados.` });
+      } catch (err: any) {
+        return NextResponse.json({ ok: false, error: err.message || 'Erro no disparo' }, { status: 500 });
+      }
     }
 
     return NextResponse.json({ error: 'action inválida. Use: test | trigger' }, { status: 400 });
