@@ -79,17 +79,14 @@ export function buildReservationPaymentAttrs(ctx: PaymentAttrsContext): PaymentA
   }
 
   // Pago online (PIX confirmado ou Cartão capturado pela Cielo):
-  // Conforme orientação da Europcar (Rafael), quando o pagamento já foi coletado
-  // pelo sistema brasileiro, o XRS deve receber:
-  //   prepaidMode="NP" + <meanOfPayment typeCode="VCH" voucherType="PP" voucherID="..."/>
+  // Conforme orientação da Europcar (Rafael):
+  //   prepaidMode="NP" + <meanOfPayment typeCode="VCH" voucherID="..."/>
   //
-  // Isso informa ao Greenway que a reserva está pré-paga via voucher (gerado pelo nosso
-  // sistema) e não que a estação deve cobrar no balcão.
   // O merchantOrderId da Cielo serve como voucherID para rastreabilidade.
+  // Não enviamos voucherType nem atributos extras para não rejeitar o XML no XRS.
   if (ctx.captured) {
-    const numericVoucherId = (ctx.merchantOrderId || Date.now().toString()).replace(/\D/g, '').slice(-10) || Date.now().toString().slice(-10);
-    const amount = (ctx.amountBRL ?? 0).toFixed(2);
-    const meanOfPaymentXml = `\n        <meanOfPayment typeCode="VCH" voucherType="PP" voucherID="${escapeXml(numericVoucherId)}" prepaidAmount="${amount}" prepaidCurrency="BRL"/>`;
+    const numericVoucherId = (ctx.merchantOrderId || '').replace(/\D/g, '').slice(-10) || Date.now().toString().slice(-10);
+    const meanOfPaymentXml = `\n        <meanOfPayment typeCode="VCH" voucherID="${escapeXml(numericVoucherId)}"/>`;
     return {
       prepaidAttrs: ' prepaidMode="NP"',
       meanOfPaymentXml,
