@@ -1509,7 +1509,8 @@ export default function CheckoutPage() {
                     <span className="text-2xl font-black text-gray-900">
                       {(() => {
                         const cur = totalBRL > 0 ? bookingCurrency : currency;
-                        return `${cur} ${baseAmountBRL.toFixed(2).replace(".", ",")}`;
+                        const displayAmt = payerSplit ? payerSplit.driverDueBRL : 0;
+                        return `${cur} ${displayAmt.toFixed(2).replace(".", ",")}`;
                       })()}
                     </span>
                   </div>
