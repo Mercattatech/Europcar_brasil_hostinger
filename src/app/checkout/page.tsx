@@ -506,9 +506,14 @@ export default function CheckoutPage() {
     || (carCode ? `https://static.europcar.com/carvisuals/partners/835x557/${carCode}_IT.png` : "")
     || `https://placehold.co/400x200/f5f5f5/008d36?text=${carCode || "CAR"}`;
 
-  // Proteções e acessórios (extrasDetails / xrsEquipment) são pagos na loja de
-  // destino — não entram na cobrança online. Só a tarifa do veículo é cobrada agora.
-  // A sobretaxa de aeroporto também é paga no balcão — deve ser descontada do total online.
+  // ── Valor a cobrar online — EXCLUSIVAMENTE via payerList do XRS ──────────────
+  // O XRS retorna payerList quando chargesDetail="TRE" está ativo:
+  //   driverDueBRL  → cobrado AGORA via Cielo (tarifa do motorista)
+  //   businessDueBRL → faturado separado para conta corporativa (NÃO vai para a Cielo)
+  // Não há fallback — o checkout exige que este dado esteja disponível.
+  const payerSplit = booking?.payerSplit ?? null;
+
+  // Sobretaxa de aeroporto exibida na UI — vem dos quoteInsurances (apenas para display)
   const airportSurchargeBRL = (() => {
     const fees = (booking?.quoteInsurances || []).filter((i: any) => {
       const d = (i.descr || '').toLowerCase();
@@ -524,8 +529,8 @@ export default function CheckoutPage() {
     }, 0);
   })();
 
-  const baseAmountBRL = Math.max(0, (totalBRL > 0 ? totalBRL : totalRateXRS) - airportSurchargeBRL);
-  const amountInCents = Math.round(baseAmountBRL * 100);
+  // VALOR REAL A COBRAR: driverDueBRL do payerList (obrigatório)
+  const amountInCents = payerSplit ? Math.round(payerSplit.driverDueBRL * 100) : 0;
 
   // Envia a reserva de fato para o backend. threeDsAuth vem preenchido quando o
   // callback onSuccess do BP.Mpi trouxe CAVV/ECI; undefined nos demais casos
@@ -758,11 +763,28 @@ export default function CheckoutPage() {
       const p = parseFloat(eq.priceBRL || 0);
       return s + p * (eq.qty || 1) * days;
     }, 0);
-    const baseBRL = totalBRL > 0 ? totalBRL : totalRateXRS;
-    // Proteções e acessórios são pagos na loja de destino — o valor do PIX
-    // gerado (amountInCents) é só a tarifa do veículo, então o "Total a pagar"
-    // aqui precisa refletir isso, não a soma de tudo.
+    const baseBRL = payerSplit ? payerSplit.driverDueBRL : (totalBRL > 0 ? totalBRL : totalRateXRS);
+    // Proteções e acessórios são pagos na loja de destino — o valor cobrado
+    // agora (amountInCents) é só o driverDueBRL do payerList XRS.
     const extrasAndEquipTotal = extrasSumBRL + equipSumBRL;
+
+    // Bloqueia o checkout se payerSplit não estiver disponível
+    if (!payerSplit) {
+      return (
+        <div className="min-h-screen bg-[#f7f7f7] flex flex-col items-center justify-center p-6">
+          <div className="bg-white rounded-xl shadow-md p-8 max-w-md text-center">
+            <div className="text-4xl mb-4">⚠️</div>
+            <h2 className="text-xl font-bold text-gray-800 mb-2">Dados de pagamento incompletos</h2>
+            <p className="text-gray-600 text-sm mb-6">
+              Não foi possível calcular o valor exato da sua reserva. Por favor, volte e selecione o veículo novamente.
+            </p>
+            <a href="/" className="inline-block bg-[#008d36] text-white font-bold px-6 py-3 rounded-lg hover:bg-[#007a2f] transition">
+              Voltar à busca
+            </a>
+          </div>
+        </div>
+      );
+    }
 
     const insNames: Record<string, string> = {
       TPL: "Resp. Civil (TPL)", LDW: "Danos e Roubo (LDW)",

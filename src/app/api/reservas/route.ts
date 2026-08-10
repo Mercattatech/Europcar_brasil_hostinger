@@ -560,6 +560,8 @@ export async function POST(request: Request) {
                 paymentId: pixData?.paymentId || cieloPaymentId,
                 systemLogOrigem: logOrigem,
                 ...(cardLastFour && { cardLastFour }), // apenas **** **** **** 1234
+                // Split de pagamento XRS (payerList) — auditoria do que foi cobrado online
+                ...(bookingData?.payerSplit && { payerSplit: bookingData.payerSplit }),
               })
            }
         });

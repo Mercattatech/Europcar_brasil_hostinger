@@ -5,6 +5,7 @@ import { useState, useMemo, useEffect, useCallback, Suspense } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import LoginModal from "@/components/auth/LoginModal";
+import { parsePayerList, type PayerSplit } from "@/lib/europcar/parsePayerList";
 
 function getVehicleType(car: any): string {
   const code = car.carCategoryCode || "";
@@ -183,6 +184,8 @@ function VehiclesContent() {
   const [quoteMileage, setQuoteMileage] = useState<{ includedKm: number; totalIncludedDist: number; extraKmPrice: number; extraKmPriceBRL: number; includedKmType: string; currency: string } | null>(null);
   // Quote totals (e.g. amount to pay on arrival)
   const [quoteTotals, setQuoteTotals] = useState<any>(null);
+  // PayerSplit from XRS payerList (chargesDetail=TRE) — quem paga o quê
+  const [payerSplit, setPayerSplit] = useState<PayerSplit | null>(null);
 
   // ETO protection skip state
   const [protectionsSkipped, setProtectionsSkipped] = useState(false);
@@ -952,6 +955,19 @@ function VehiclesContent() {
             }
 
             setQuoteInsurances(parsedInsurances);
+
+            // ── payerList — split entre motorista e conta corporativa ────────────
+            // Usa parsePayerList para extrair driverDueBRL (cobrado online) e
+            // businessDueBRL (faturado separado). Armazenado em payerSplit e
+            // incluído no payload que vai ao checkout via sessionStorage.
+            const split = parsePayerList(reservation);
+            if (split) {
+              setPayerSplit(split);
+              console.log(`[Step3] payerSplit: driver=${split.driverDueBRL} BRL, business=${split.businessDueBRL} BRL`);
+            } else {
+              setPayerSplit(null);
+              console.log('[Step3] payerList não disponível — checkout usará cálculo por nome de cobrança como fallback');
+            }
           }
 
           // ── Mileage data ────────────────────────────────────────────────
@@ -1648,7 +1664,7 @@ function VehiclesContent() {
                       ? (zeroExcessUpgrade ? '56935495' : (selectedCar?._etoCID || '56935466'))
                       : (effectiveContractID || '57269673');
                     const enrichedCar = { ...selectedCar, ...quoteTotals };
-                    const payload = { car: enrichedCar, extras: selectedExtrasMap, xrsEquipment: xrsEquipmentPayload, xrsInsurances: xrsInsurancesPayload, quoteInsurances: quoteInsurances, pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, contractID: cidForTariff, tariffType: selectedTariffType, zeroExcess: zeroExcessUpgrade, driverCountry, driverCountryName, stationCountry, quoteMileage };
+                    const payload = { car: enrichedCar, extras: selectedExtrasMap, xrsEquipment: xrsEquipmentPayload, xrsInsurances: xrsInsurancesPayload, quoteInsurances: quoteInsurances, pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, contractID: cidForTariff, tariffType: selectedTariffType, zeroExcess: zeroExcessUpgrade, driverCountry, driverCountryName, stationCountry, quoteMileage, payerSplit };
                     sessionStorage.setItem("europcar_booking", JSON.stringify(payload));
                     // Journey tracking — Step 3: Extras selected, going to checkout
                     try {
