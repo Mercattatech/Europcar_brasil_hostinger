@@ -1,6 +1,7 @@
 import { callXRS, DEFAULT_POA_CID } from '@/lib/europcar/xrsClient';
 import { buildReservationPaymentAttrs, buildCreateVoucherXml } from '@/lib/europcar/paymentMapping';
 import { escapeXml } from '@/lib/europcar/xmlEscape';
+import { parsePayerList } from '@/lib/europcar/parsePayerList';
 
 export interface BookXRSParams {
   bookingData: any;
@@ -111,7 +112,7 @@ export async function executeXRSBooking({ bookingData, customerData, paymentData
 <message>
 <serviceRequest serviceCode="bookReservation">
 <serviceParameters>
-  <reservation carCategory="${escapeXml(carCategory)}" rateId="${escapeXml(rateId)}"${paymentAttrs.prepaidAttrs}${contractAttr}${productDataAttr} preferredLanguage="pt_BR" email="${escapeXml(customerData.email.trim())}">
+  <reservation carCategory="${escapeXml(carCategory)}" rateId="${escapeXml(rateId)}"${paymentAttrs.prepaidAttrs}${contractAttr}${productDataAttr} chargesDetail="TRE" preferredLanguage="pt_BR" email="${escapeXml(customerData.email.trim())}">
     <checkout stationID="${escapeXml(pickupStation)}" date="${escapeXml(pickupDate)}" time="${escapeXml(bookingData.pickupTime || '1000')}"/>
     <checkin stationID="${escapeXml(returnStation)}" date="${escapeXml(returnDate)}" time="${escapeXml(bookingData.returnTime || '1000')}"/>
     <equipmentList>${equipmentXml}</equipmentList>${insuranceXml ? `\n        <insuranceList>${insuranceXml}\n        </insuranceList>` : ''}${paymentAttrs.meanOfPaymentXml}${loyaltyXml}
@@ -133,6 +134,16 @@ export async function executeXRSBooking({ bookingData, customerData, paymentData
   
   const bookResNode = xrsResponse?.message?.serviceResponse?.reservation || xrsResponse?.serviceResponse?.reservation;
   resNumber = bookResNode?.$?.resNumber || null;
+
+  // ── Log do payerList retornado pelo bookReservation (confirma split no GW) ──
+  // Com chargesDetail="TRE" na reserva, o GW devolve o split driver/BA confirmado.
+  // Este log é a prova de que o GreenWay registrou os valores corretamente.
+  const bookPayerSplit = parsePayerList(bookResNode);
+  if (bookPayerSplit) {
+    console.log(`[xrsBook] ✅ GW split confirmado: driver=€${bookPayerSplit.driverDueXRS} (BRL: ${bookPayerSplit.driverDueBRL}), BA=BRL ${bookPayerSplit.businessDueBRL}`);
+  } else {
+    console.warn('[xrsBook] ⚠️ GW não retornou payerList no bookReservation — verificar se chargesDetail=TRE foi aceito');
+  }
 
   if (!resNumber) {
     throw new Error("Europcar não retornou número de reserva. Verifique os logs.");
