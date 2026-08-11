@@ -6,6 +6,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import LoginModal from "@/components/auth/LoginModal";
 import { parsePayerList, type PayerSplit } from "@/lib/europcar/parsePayerList";
+import { DEFAULT_POA_CID, SECONDARY_POA_CID } from "@/lib/europcar/xrsClient";
 
 function getVehicleType(car: any): string {
   const code = car.carCategoryCode || "";
@@ -209,7 +210,8 @@ function VehiclesContent() {
     setError("");
     try {
       // Step 1: getCarCategories → get ACRISS codes (use POA CID)
-      const poaCID = '57269673';
+      const poaCID = DEFAULT_POA_CID;
+      const poaCID2 = SECONDARY_POA_CID;
       const etoCID = '56935466'; // ETO Líquido (Com Excesso) — desconto maior
 
       const catRes = await fetch("/api/europcar/getCarCategories", {
@@ -264,7 +266,7 @@ function VehiclesContent() {
         return;
       }
 
-      // Step 2: getMultipleRates — POA + ETO em paralelo
+      // Step 2: getMultipleRates — POA (57269673 + 55138134) + ETO em paralelo
       const ratesBody = (cid: string) => ({
         pickupStation,
         returnStation: returnStation || pickupStation,
@@ -279,12 +281,21 @@ function VehiclesContent() {
       // Skip ETO fetches for Brazilian stations (Brazil = POA only)
       const isBrazilStation = stationCountry === 'BR' || pickupStation.startsWith('BR');
 
-      const [poaRatesRes, etoRatesRes, etoZeroRatesRes] = await Promise.all([
-        fetch("/api/europcar/getMultipleRates", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(ratesBody(effectiveContractID || poaCID)),
-        }),
+      const fetchPoa1 = fetch("/api/europcar/getMultipleRates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(ratesBody(effectiveContractID || poaCID)),
+      });
+
+      const fetchPoa2 = effectiveContractID ? Promise.resolve(null) : fetch("/api/europcar/getMultipleRates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(ratesBody(poaCID2)),
+      }).catch(() => null);
+
+      const [poaRatesRes1, poaRatesRes2, etoRatesRes, etoZeroRatesRes] = await Promise.all([
+        fetchPoa1,
+        fetchPoa2,
         isBrazilStation ? Promise.resolve(null) : fetch("/api/europcar/getMultipleRates", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -297,8 +308,9 @@ function VehiclesContent() {
         }).catch(() => null),
       ]);
 
-      const parseRates = (ratesData: any, specsMap: any) => {
+      const parseRates = (ratesData: any, specsMap: any, defaultCid?: string) => {
         const allRates: any[] = [];
+        if (!ratesData) return allRates;
         const chunks = Array.isArray(ratesData.results) ? ratesData.results : [ratesData];
         for (const chunk of chunks) {
           const rawList =
@@ -356,7 +368,6 @@ function VehiclesContent() {
               }
             }
 
-
             // Extract deductible/excess from included insurances
             let deductibleAmount = "";
             let deductibleCurrency = "";
@@ -377,7 +388,6 @@ function VehiclesContent() {
                 deductibleCurrency = anyWithDeductible.deductibleCurrency || attrs.currency || "BRL";
               }
             }
-
 
             // Extract ageLimit from the reservationRate node
             const ageLimit = r.ageLimit?.$ || r.ageLimit || {};
@@ -404,8 +414,11 @@ function VehiclesContent() {
             // Merge with catDetailsMap (fallback for any field not in reservationRate)
             const specs = { ...specsMap[attrs.carCategoryCode] || {}, ...specsFromRate };
 
+            const rateContractID = attrs.contractID || defaultCid || effectiveContractID || DEFAULT_POA_CID;
+
             allRates.push({ 
               ...attrs, 
+              contractID: rateContractID,
               imageUrl, 
               optionalInsurances, 
               includedInsurances,
@@ -424,8 +437,32 @@ function VehiclesContent() {
         return allRates;
       };
 
-      const poaRatesData = await poaRatesRes.json();
-      const poaRates = parseRates(poaRatesData, catDetailsMap);
+      const poaRatesData1 = await poaRatesRes1.json();
+      const poaRates1 = parseRates(poaRatesData1, catDetailsMap, effectiveContractID || poaCID);
+
+      let poaRates2: any[] = [];
+      if (poaRatesRes2) {
+        try {
+          const poaRatesData2 = await poaRatesRes2.json();
+          poaRates2 = parseRates(poaRatesData2, catDetailsMap, poaCID2);
+        } catch { /* POA CID 2 indisponível para este trecho */ }
+      }
+
+      // Mescla tarifas POA de ambos os CIDs: se a categoria estiver nos dois, seleciona a de menor preço
+      const mergedPoaMap = new Map<string, any>();
+      for (const car of [...poaRates1, ...poaRates2]) {
+        const existing = mergedPoaMap.get(car.carCategoryCode);
+        if (!existing) {
+          mergedPoaMap.set(car.carCategoryCode, car);
+        } else {
+          const p1 = parseFloat(existing.totalRateEstimate || '999999');
+          const p2 = parseFloat(car.totalRateEstimate || '999999');
+          if (p2 < p1) {
+            mergedPoaMap.set(car.carCategoryCode, car);
+          }
+        }
+      }
+      const poaRates = Array.from(mergedPoaMap.values());
 
       // Parse ETO rates (may fail for some stations)
       let etoRates: any[] = [];
@@ -501,7 +538,7 @@ function VehiclesContent() {
 
     const cidForQuote = selectedTariffType === 'ETO'
       ? (selectedCar._etoCID || '56935466')
-      : (effectiveContractID || '57269673');
+      : (selectedCar.contractID || effectiveContractID || DEFAULT_POA_CID);
 
     setLoadingEquipment(true);
 
@@ -1662,7 +1699,7 @@ function VehiclesContent() {
                     });
                     const cidForTariff = selectedTariffType === 'ETO'
                       ? (zeroExcessUpgrade ? '56935495' : (selectedCar?._etoCID || '56935466'))
-                      : (effectiveContractID || '57269673');
+                      : (selectedCar?.contractID || effectiveContractID || DEFAULT_POA_CID);
                     const enrichedCar = { ...selectedCar, ...quoteTotals };
                     const payload = { car: enrichedCar, extras: selectedExtrasMap, xrsEquipment: xrsEquipmentPayload, xrsInsurances: xrsInsurancesPayload, quoteInsurances: quoteInsurances, pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, contractID: cidForTariff, tariffType: selectedTariffType, zeroExcess: zeroExcessUpgrade, driverCountry, driverCountryName, stationCountry, quoteMileage, payerSplit };
                     sessionStorage.setItem("europcar_booking", JSON.stringify(payload));
@@ -1715,7 +1752,7 @@ function VehiclesContent() {
                       });
                       const cidForTariff = selectedTariffType === 'ETO'
                         ? (zeroExcessUpgrade ? '56935495' : (selectedCar?._etoCID || '56935466'))
-                        : (zeroExcessUpgrade ? '56935495' : (effectiveContractID || '57269673'));
+                        : (zeroExcessUpgrade ? '56935495' : (selectedCar?.contractID || effectiveContractID || DEFAULT_POA_CID));
                       const payload = { car: selectedCar, extras: selectedExtrasMap, xrsEquipment: xrsEquipmentPayload2, xrsInsurances: xrsInsurancesPayload2, pickupStation, returnStation, pickupDate, returnDate, pickupTime, returnTime, contractID: cidForTariff, tariffType: selectedTariffType, zeroExcess: zeroExcessUpgrade, driverCountry, driverCountryName, stationCountry, quoteMileage };
                       sessionStorage.setItem("europcar_booking", JSON.stringify(payload));
                       // Journey tracking — Step 3: Extras selected (ETO path)

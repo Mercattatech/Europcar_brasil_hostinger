@@ -3,8 +3,10 @@ import { parseStringPromise } from 'xml2js';
 import prisma from '@/lib/prisma';
 
 // ── CID Constants (Contract IDs) ──────────────────────────────
-// POA = tarifa pública padrão (mesmo preço que sem CID, usado para rastreamento)
+// POA = tarifas públicas padrão
 export const DEFAULT_POA_CID = '57269673';
+export const SECONDARY_POA_CID = '55138134';
+export const POA_CIDS = ['57269673', '55138134'];
 // ETO = tarifas corporativas com desconto
 export const ETO_CID_LIQUIDO = '56935466';       // Líquido (Excesso) — BA 73675595
 export const ETO_CID_INTERNACIONAL = '56935495';  // Internacional (Excesso Zero) — BA 73804373
