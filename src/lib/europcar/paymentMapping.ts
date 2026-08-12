@@ -79,18 +79,32 @@ export function buildReservationPaymentAttrs(ctx: PaymentAttrsContext): PaymentA
   }
 
   // Pago online (PIX confirmado ou Cartão capturado pela Cielo):
-  // Conforme orientação da Europcar (Rafael):
-  //   prepaidMode="NP" + <meanOfPayment typeCode="VCH" voucherID="..."/>
-  //
-  // O merchantOrderId da Cielo serve como voucherID para rastreabilidade.
-  // Não enviamos voucherType nem atributos extras para não rejeitar o XML no XRS.
+  // Conforme orientação da Europcar (Rafael), reservas pré-pagas online no site
+  // devem usar Voucher completo. ETO se CID for ETO, EXO se for CID público (POA).
   if (ctx.captured) {
     const numericVoucherId = (ctx.merchantOrderId || '').replace(/\D/g, '').slice(-10) || Date.now().toString().slice(-10);
-    const meanOfPaymentXml = `\n        <meanOfPayment typeCode="VCH" voucherID="${escapeXml(numericVoucherId)}"/>`;
-    return {
-      prepaidAttrs: ' prepaidMode="NP"',
-      meanOfPaymentXml,
-    };
+    const isETO = ctx.contractID === '56935466' || ctx.contractID === '56935495';
+
+    if (isETO) {
+      const generatedVoucherData: VoucherContext = {
+        type: 'ETO',
+        id: numericVoucherId,
+        businessAccount: CID_TO_BA[ctx.contractID as string]
+      };
+      const meanOfPaymentXml = buildVoucherMeanOfPaymentXml(generatedVoucherData, ctx.contractID, ctx.carCategory, ctx.pickupDate, ctx.returnDate);
+      return { prepaidAttrs: '', meanOfPaymentXml };
+    } else {
+      // Para POA, usamos EXO (Europcar Brasil atuando como agência IATA 02170722)
+      // EXO exige prepaidMode="NP" no bookReservation (meanOfPayment vazio)
+      // e depois dispara createVoucher.
+      const generatedVoucherData: VoucherContext = {
+        type: 'EXO',
+        id: numericVoucherId,
+        iataNumber: '02170722'
+      };
+      const meanOfPaymentXml = buildVoucherMeanOfPaymentXml(generatedVoucherData, ctx.contractID, ctx.carCategory, ctx.pickupDate, ctx.returnDate);
+      return { prepaidAttrs: ' prepaidMode="NP"', meanOfPaymentXml };
+    }
   }
 
   // Pagar na retirada: prepaidMode="NP". Se houver cartão de garantia (guarantee,

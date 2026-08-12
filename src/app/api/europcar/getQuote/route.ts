@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { callXRS } from '@/lib/europcar/xrsClient';
 import { isValidXRSDate, isValidXRSTime } from '@/lib/europcar/validate';
 import { escapeXml } from '@/lib/europcar/xmlEscape';
+import { parsePayerList } from '@/lib/europcar/parsePayerList';
 export const dynamic = 'force-dynamic';
 
 /**
@@ -106,8 +107,22 @@ export async function POST(request: Request) {
     };
 
     const xrsResponse = await callXRS(xmlRequest, config);
-    // Attach the resolved prepaidMode to the response so the frontend can track it
-    return NextResponse.json({ ...xrsResponse, _prepaidMode: resolvedPrepaidMode });
+
+    // Extrai o payerList da resposta do XRS (chargesDetail="TRE")
+    // Retorna o split driver/BA para o frontend usar no cálculo do amountInCents
+    const reservationNode =
+      xrsResponse?.message?.serviceResponse?.reservation ||
+      xrsResponse?.serviceResponse?.reservation ||
+      null;
+    const payerSplit = reservationNode ? parsePayerList(reservationNode) : null;
+    if (payerSplit) {
+      console.log(`[getQuote] ✅ payerSplit extraído: driver=BRL ${payerSplit.driverDueBRL}, BA=BRL ${payerSplit.businessDueBRL}`);
+    } else {
+      console.warn('[getQuote] ⚠️ payerList não retornado pelo XRS — checkout usará fallback por nome de cobrança');
+    }
+
+    // Attach the resolved prepaidMode and payerSplit to the response
+    return NextResponse.json({ ...xrsResponse, _prepaidMode: resolvedPrepaidMode, _payerSplit: payerSplit ?? undefined });
 
   } catch (error: any) {
     return NextResponse.json(

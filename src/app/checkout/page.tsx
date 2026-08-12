@@ -507,14 +507,13 @@ export default function CheckoutPage() {
     || `https://placehold.co/400x200/f5f5f5/008d36?text=${carCode || "CAR"}`;
 
   // ── Valor a cobrar online ────────────────────────────────────────────────
-  // totalBRL = tarifa total do XRS (chargesDetail=TRE, dado real)
-  // airportSurchargeBRL = sobretaxa de aeroporto do chargeList XRS (chrgTy 00024)
-  // Ciélia cobra: totalBRL − airportSurchargeBRL (aeroporto é pago no balcão)
-  //
-  // payerSplit é mantido apenas para auditoria/GW — NÃO define o valor da Cielo
+  // Prioridade 1: driverDueBRL do payerList XRS (chargesDetail=TRE) — valor oficial
+  //   Representa exatamente o que o motorista deve pagar online (sem sobretaxas de balcão).
+  // Prioridade 2: fallback por nome de cobrança — compatibilidade com CIDs sem payerList
+  //   (totalBRL − airportSurchargeBRL, usando string-match em quoteInsurances)
   const payerSplit = booking?.payerSplit ?? null;
 
-  // Sobretaxa de aeroporto — do chargeList XRS (via quoteInsurances)
+  // Sobretaxa de aeroporto — fallback usado quando payerList não está disponível
   const airportSurchargeBRL = (() => {
     const fees = (booking?.quoteInsurances || []).filter((i: any) => {
       const d = (i.descr || '').toLowerCase();
@@ -530,8 +529,11 @@ export default function CheckoutPage() {
     }, 0);
   })();
 
-  // Valor a cobrar online = total XRS − sobretaxa aeroporto (paga no balcão)
-  const baseAmountBRL = Math.max(0, (totalBRL > 0 ? totalBRL : totalRateXRS) - airportSurchargeBRL);
+  // Prioridade 1: payerList oficial do XRS (preciso, enviado pelo GW via chargesDetail=TRE)
+  // Prioridade 2: cálculo por string-match (fallback seguro para CIDs sem payerList)
+  const baseAmountBRL = (payerSplit?.driverDueBRL && payerSplit.driverDueBRL > 0)
+    ? payerSplit.driverDueBRL
+    : Math.max(0, (totalBRL > 0 ? totalBRL : totalRateXRS) - airportSurchargeBRL);
   const amountInCents = Math.round(baseAmountBRL * 100);
 
   // Envia a reserva de fato para o backend. threeDsAuth vem preenchido quando o
