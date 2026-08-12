@@ -516,14 +516,19 @@ export async function POST(request: Request) {
           }
         }
 
-        // Se for EXO Voucher, envia requisição adicional createVoucher após criar reserva como POA
-        // (segunda etapa do fluxo em duas etapas: bookReservation → createVoucher registra o
-        // documento no GreenWay)
-        if (resNumber && paymentData.method === 'VOUCHER' && voucherData?.type === 'EXO') {
+        // Se for EXO Voucher (manual ou gerado on-the-fly para pagamentos online POA),
+        // envia requisição adicional createVoucher após criar reserva.
+        // (segunda etapa do fluxo em duas etapas: bookReservation → createVoucher registra o documento no GreenWay)
+        const isPrepaidOnline = paymentData.method === 'PIX' || (paymentData.method === 'CREDIT' && !!capturedCreditCard?.captured);
+        const isOnlineEXO = isPrepaidOnline && contractID !== '56935466' && contractID !== '56935495';
+        const isManualEXO = paymentData.method === 'VOUCHER' && voucherData?.type === 'EXO';
+
+        if (resNumber && (isManualEXO || isOnlineEXO)) {
           try {
             const voucherAmount = car.totalRateEstimate || car.total || '0';
             const voucherCurrency = car.bookingCurrencyOfTotalRateEstimate || car.currency || 'EUR';
-            const createVoucherXml = buildCreateVoucherXml(resNumber, voucherData, voucherAmount, voucherCurrency);
+            const vData = isManualEXO ? voucherData : { type: 'EXO', iataNumber: '02170722' };
+            const createVoucherXml = buildCreateVoucherXml(resNumber, vData, voucherAmount, voucherCurrency);
 
             await callXRS(createVoucherXml, {
               callerCode: process.env.XRS_CALLER_CODE || 'DEMO',

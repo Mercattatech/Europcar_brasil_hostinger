@@ -222,11 +222,16 @@ export async function executeXRSBooking({ bookingData, customerData, paymentData
     }
   }
 
-  if (resNumber && paymentData.method === 'VOUCHER' && voucherData?.type === 'EXO') {
+  const isPrepaidOnline = paymentData.method === 'PIX' || paymentData.method === 'CREDIT';
+  const isOnlineEXO = isPrepaidOnline && contractID !== '56935466' && contractID !== '56935495';
+  const isManualEXO = paymentData.method === 'VOUCHER' && voucherData?.type === 'EXO';
+
+  if (resNumber && (isManualEXO || isOnlineEXO)) {
     try {
       const voucherAmount = car.totalRateEstimate || car.total || '0';
       const voucherCurrency = car.bookingCurrencyOfTotalRateEstimate || car.currency || 'EUR';
-      const createVoucherXml = buildCreateVoucherXml(resNumber, voucherData, voucherAmount, voucherCurrency);
+      const vData = isManualEXO ? voucherData : { type: 'EXO', iataNumber: '02170722' };
+      const createVoucherXml = buildCreateVoucherXml(resNumber, vData, voucherAmount, voucherCurrency);
 
       await callXRS(createVoucherXml, {
         callerCode: process.env.XRS_CALLER_CODE || 'DEMO',
