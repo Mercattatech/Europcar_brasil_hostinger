@@ -183,6 +183,17 @@ export default function CheckoutPage() {
           fetch('/api/cielo/get3dsToken', { method: 'POST' }),
           fetch('/api/admin/config/cielo'),
         ]);
+
+        // Proteção contra 502/503: .json() quebra se o servidor retornar "Bad Gateway"
+        if (!tokenRes.ok) {
+          console.warn(`[3DS] get3dsToken retornou HTTP ${tokenRes.status} — 3DS indisponível no momento.`);
+          return;
+        }
+        if (!configRes.ok) {
+          console.warn(`[3DS] config/cielo retornou HTTP ${configRes.status} — 3DS indisponível no momento.`);
+          return;
+        }
+
         const tokenData = await tokenRes.json();
         const configData = await configRes.json();
         if (cancelled) return;
@@ -648,6 +659,11 @@ export default function CheckoutPage() {
       // valor correto imediatamente, sem esperar o próximo render do React.
       try {
         const tokenRes = await fetch('/api/cielo/get3dsToken', { method: 'POST' });
+        if (!tokenRes.ok) {
+          alert(`Não foi possível iniciar a autenticação 3DS (HTTP ${tokenRes.status}). Tente novamente em instantes.`);
+          setLoading(false);
+          return;
+        }
         const tokenData = await tokenRes.json();
         if (!tokenData.accessToken) {
           alert("Não foi possível iniciar a autenticação 3DS: " + (tokenData.error || "token indisponível") + ". Tente novamente.");
