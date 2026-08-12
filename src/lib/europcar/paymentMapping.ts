@@ -79,31 +79,27 @@ export function buildReservationPaymentAttrs(ctx: PaymentAttrsContext): PaymentA
   }
 
   // Pago online (PIX confirmado ou Cartão capturado pela Cielo):
-  // Conforme orientação da Europcar (Rafael), reservas pré-pagas online no site
-  // devem usar Voucher completo. ETO se CID for ETO, EXO se for CID público (POA).
   if (ctx.captured) {
-    const numericVoucherId = (ctx.merchantOrderId || '').replace(/\D/g, '').slice(-10) || Date.now().toString().slice(-10);
     const isETO = ctx.contractID === '56935466' || ctx.contractID === '56935495';
 
     if (isETO) {
-      const generatedVoucherData: VoucherContext = {
-        type: 'ETO',
-        id: numericVoucherId,
-        businessAccount: CID_TO_BA[ctx.contractID as string]
-      };
-      const meanOfPaymentXml = buildVoucherMeanOfPaymentXml(generatedVoucherData, ctx.contractID, ctx.carCategory, ctx.pickupDate, ctx.returnDate);
-      return { prepaidAttrs: '', meanOfPaymentXml };
+      // ETO (corporativo): NÃO enviar VCH com ID gerado.
+      // O GreenWay rejeita vouchers ETO cujo voucherID não está pré-cadastrado no sistema
+      // (erro mop.invalidVoucherNumber). A Cielo já cobrou o cartão online.
+      // Solução: enviar nó CC (cartão usado) para CREDIT, ou nenhum meanOfPayment para PIX.
+      const cc = ctx.creditCardGuarantee;
+      if (cc) {
+        // Cartão capturado pela Cielo — informa ao XRS qual cartão foi usado
+        const meanOfPaymentXml = `\n        <meanOfPayment typeCode="CC" cardIssuer="${escapeXml(cc.cardIssuer)}" cardNumber="${escapeXml(cc.number)}" cardHolderName="${escapeXml(cc.holderName)}" validade="${escapeXml(cc.validity)}" cardmask="Y"/>`;
+        return { prepaidAttrs: '', meanOfPaymentXml };
+      } else {
+        // PIX: sem cartão, sem meanOfPayment — o faturamento do BA segue via contrato ETO
+        return { prepaidAttrs: '', meanOfPaymentXml: '' };
+      }
     } else {
-      // Para POA, usamos EXO (Europcar Brasil atuando como agência IATA 02170722)
-      // EXO exige prepaidMode="NP" no bookReservation (meanOfPayment vazio)
-      // e depois dispara createVoucher.
-      const generatedVoucherData: VoucherContext = {
-        type: 'EXO',
-        id: numericVoucherId,
-        iataNumber: '02170722'
-      };
-      const meanOfPaymentXml = buildVoucherMeanOfPaymentXml(generatedVoucherData, ctx.contractID, ctx.carCategory, ctx.pickupDate, ctx.returnDate);
-      return { prepaidAttrs: ' prepaidMode="NP"', meanOfPaymentXml };
+      // POA público: EXO (Europcar Brasil como agência IATA 02170722)
+      // EXO exige prepaidMode="NP" no bookReservation e createVoucher separado depois.
+      return { prepaidAttrs: ' prepaidMode="NP"', meanOfPaymentXml: '' };
     }
   }
 
