@@ -325,6 +325,8 @@ export async function processPaymentWithToken(
 
 export interface VoidResult {
   success: boolean;
+  /** Alias de success — indica que o estorno foi realizado com sucesso */
+  voided: boolean;
   message?: string;
   raw?: any;
 }
@@ -357,11 +359,11 @@ export async function voidCieloPayment(
     const status = response.data?.Status;
     const success = status === 10 || status === 11 || response.status === 200;
     console.log(`[Cielo] Void ${paymentId} → HTTP ${response.status} | Status: ${status}`);
-    return { success, raw: response.data };
+    return { success, voided: success, raw: response.data };
   } catch (error: any) {
     const data = error.response?.data;
     const msg = data?.Message || data?.[0]?.Message || error.message;
     console.error(`[Cielo] Falha ao estornar ${paymentId}:`, msg);
-    return { success: false, message: msg, raw: data };
+    return { success: false, voided: false, message: msg, raw: data };
   }
 }

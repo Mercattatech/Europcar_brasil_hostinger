@@ -22,6 +22,10 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
    let customerEmail = '';
    let customerName = '';
+   // Declarados fora do try para serem visíveis no catch (auto-void Cielo)
+   let cieloConfig: any = null;
+   let isSandboxMode = false;
+   let cieloPaymentId: string | undefined;
    try {
       const { bookingData, customerData, paymentData, voucherData, xrsEquipment, xrsInsurances } = await request.json();
       customerEmail = customerData?.email || '';
@@ -42,7 +46,6 @@ export async function POST(request: Request) {
         : '';
       const merchantOrderId = clientOrderId || ("ORD" + Date.now());
       
-      let cieloConfig: any = null;
       try {
         cieloConfig = await prisma.cieloConfig.findFirst();
       } catch (dbErr: any) {
@@ -77,7 +80,7 @@ export async function POST(request: Request) {
 
       // CRITICAL: força coerção explícita de boolean para isSandbox
       // Evita bugs onde raw SQL retorna tipo inesperado ou migration não rodou
-      const isSandboxMode = cieloConfig?.isSandbox === true;
+      isSandboxMode = cieloConfig?.isSandbox === true;
       
       const CIELO_API_URL = isSandboxMode
           ? "https://apisandbox.cieloecommerce.cielo.com.br/1/sales/"
@@ -104,7 +107,7 @@ export async function POST(request: Request) {
       // agora) e, se algum dia existir um fluxo de garantia sem captura, o nó meanOfPayment CC.
       let capturedCreditCard: { number: string; holderName: string; validity: string; cardIssuer: string; captured: boolean } | undefined;
       // PaymentId da Cielo (CREDIT) — guardado no registro local para permitir estorno (void) em caso de cancelamento.
-      let cieloPaymentId: string | undefined;
+      // (declarado fora do try para ser visível no catch — auto-void em caso de falha XRS)
 
       if (paymentData.method === 'PIX') {
          const pixPayload = {

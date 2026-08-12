@@ -904,6 +904,8 @@ function VehiclesContent() {
                       priceInBookingCurrency:        npAirportEntry.priceBRL * npVatMult,
                       rentalPriceAI:                 0,
                       rentalPriceInBookingCurrencyAI: 0,
+                      excessWithPOM:                 0,
+                      bkExcessWithPOM:               0,
                       prepaid:                       '',
                     });
                   } else {
@@ -917,6 +919,8 @@ function VehiclesContent() {
                       priceInBookingCurrency:        priceBK * vatMultiplier,
                       rentalPriceAI:                 0,
                       rentalPriceInBookingCurrencyAI: 0,
+                      excessWithPOM:                 0,
+                      bkExcessWithPOM:               0,
                       prepaid:                       '',
                     });
                   }
@@ -941,6 +945,8 @@ function VehiclesContent() {
                       priceInBookingCurrency: priceBK,
                       rentalPriceAI: 0,
                       rentalPriceInBookingCurrencyAI: 0,
+                      excessWithPOM: 0,
+                      bkExcessWithPOM: 0,
                       prepaid: '',
                     });
                   }
@@ -960,6 +966,8 @@ function VehiclesContent() {
                   priceInBookingCurrency: priceBK,
                   rentalPriceAI: 0,
                   rentalPriceInBookingCurrencyAI: 0,
+                  excessWithPOM: 0,
+                  bkExcessWithPOM: 0,
                   prepaid: '',
                 });
               });
@@ -986,6 +994,8 @@ function VehiclesContent() {
                   priceInBookingCurrency:        parseFloat(a.priceInBookingCurrency || '0'),
                   rentalPriceAI:                 parseFloat(a.rentalPriceAI || '0'),
                   rentalPriceInBookingCurrencyAI:parseFloat(a.rentalPriceInBookingCurrencyAI || '0'),
+                  excessWithPOM:                 0,
+                  bkExcessWithPOM:               0,
                   prepaid:                       a.prepaid || '',
                 });
               });
