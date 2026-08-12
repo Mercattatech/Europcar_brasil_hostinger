@@ -183,6 +183,17 @@ export default function CheckoutPage() {
           fetch('/api/cielo/get3dsToken', { method: 'POST' }),
           fetch('/api/admin/config/cielo'),
         ]);
+
+        // Proteção contra 502/503: .json() quebra se o servidor retornar "Bad Gateway"
+        if (!tokenRes.ok) {
+          console.warn(`[3DS] get3dsToken retornou HTTP ${tokenRes.status} — 3DS indisponível no momento.`);
+          return;
+        }
+        if (!configRes.ok) {
+          console.warn(`[3DS] config/cielo retornou HTTP ${configRes.status} — 3DS indisponível no momento.`);
+          return;
+        }
+
         const tokenData = await tokenRes.json();
         const configData = await configRes.json();
         if (cancelled) return;
@@ -507,13 +518,17 @@ export default function CheckoutPage() {
     || `https://placehold.co/400x200/f5f5f5/008d36?text=${carCode || "CAR"}`;
 
   // ── Valor a cobrar online ────────────────────────────────────────────────
-  // Prioridade 1: driverDueBRL do payerList XRS (chargesDetail=TRE) — valor oficial
-  //   Representa exatamente o que o motorista deve pagar online (sem sobretaxas de balcão).
-  // Prioridade 2: fallback por nome de cobrança — compatibilidade com CIDs sem payerList
-  //   (totalBRL − airportSurchargeBRL, usando string-match em quoteInsurances)
+  // totalBRL = tarifa total do XRS (chargesDetail=TRE, dado real)
+  // airportSurchargeBRL = sobretaxa de aeroporto (pago no balcão pela Europcar)
+  // Cielo cobra: totalBRL − airportSurchargeBRL
+  //
+  // ⚠️ NÃO usar payerSplit.driverDueBRL para definir o valor da Cielo:
+  // o campo dueToPayInBookingCurrency do XRS pode incluir valores adicionais
+  // (ex: depósito, tarifas futuras) que não correspondem ao valor real a cobrar online.
+  // payerSplit é mantido apenas para auditoria/GW.
   const payerSplit = booking?.payerSplit ?? null;
 
-  // Sobretaxa de aeroporto — fallback usado quando payerList não está disponível
+  // Sobretaxa de aeroporto — detectada por nome no chargeList XRS (quoteInsurances)
   const airportSurchargeBRL = (() => {
     const fees = (booking?.quoteInsurances || []).filter((i: any) => {
       const d = (i.descr || '').toLowerCase();
@@ -529,12 +544,10 @@ export default function CheckoutPage() {
     }, 0);
   })();
 
-  // Prioridade 1: payerList oficial do XRS (preciso, enviado pelo GW via chargesDetail=TRE)
-  // Prioridade 2: cálculo por string-match (fallback seguro para CIDs sem payerList)
-  const baseAmountBRL = (payerSplit?.driverDueBRL && payerSplit.driverDueBRL > 0)
-    ? payerSplit.driverDueBRL
-    : Math.max(0, (totalBRL > 0 ? totalBRL : totalRateXRS) - airportSurchargeBRL);
+  // Valor a cobrar online = total XRS − sobretaxa aeroporto (paga no balcão)
+  const baseAmountBRL = Math.max(0, (totalBRL > 0 ? totalBRL : totalRateXRS) - airportSurchargeBRL);
   const amountInCents = Math.round(baseAmountBRL * 100);
+
 
   // Envia a reserva de fato para o backend. threeDsAuth vem preenchido quando o
   // callback onSuccess do BP.Mpi trouxe CAVV/ECI; undefined nos demais casos
@@ -648,6 +661,11 @@ export default function CheckoutPage() {
       // valor correto imediatamente, sem esperar o próximo render do React.
       try {
         const tokenRes = await fetch('/api/cielo/get3dsToken', { method: 'POST' });
+        if (!tokenRes.ok) {
+          alert(`Não foi possível iniciar a autenticação 3DS (HTTP ${tokenRes.status}). Tente novamente em instantes.`);
+          setLoading(false);
+          return;
+        }
         const tokenData = await tokenRes.json();
         if (!tokenData.accessToken) {
           alert("Não foi possível iniciar a autenticação 3DS: " + (tokenData.error || "token indisponível") + ". Tente novamente.");
