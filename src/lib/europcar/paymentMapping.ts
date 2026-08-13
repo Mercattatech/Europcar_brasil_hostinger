@@ -83,21 +83,21 @@ export function buildReservationPaymentAttrs(ctx: PaymentAttrsContext): PaymentA
     const isETO = ctx.contractID === '56935466' || ctx.contractID === '56935495';
 
     if (isETO) {
-      // ETO (corporativo): NÃO enviar VCH com ID gerado.
-      // O GreenWay rejeita vouchers ETO cujo voucherID não está pré-cadastrado no sistema
-      // (erro mop.invalidVoucherNumber). A Cielo já cobrou o cartão online.
-      // Solução: enviar nó CC (cartão usado) para CREDIT, ou nenhum meanOfPayment para PIX.
-      // prepaidMode="PP" informa ao XRS que o pagamento já foi capturado online.
-      const amountStr = ctx.amountBRL ? ctx.amountBRL.toFixed(2) : '0.00';
-      const prepaidAttrs = ` prepaidMode="PP" prepaidPercentage="100.00" prepaidAmountInBookingCurrency="${amountStr}"`;
+      // ETO (corporativo): fluxo em 2 etapas (igual ao EXO):
+      //   1. bookReservation com prepaidMode="NP" + CC (cartão Cielo) ou sem meanOfPayment (PIX)
+      //   2. createVoucher com ETO + businessAccount (registra split no GreenWay)
+      //
+      // NÃO usar VCH com ID gerado no bookReservation → GW rejeita (mop.invalidVoucherNumber).
+      // NÃO usar prepaidMode="PP" → GW rejeita reserva sem resNumber.
+      // prepaidMode="NP" funciona (testado no commit 4d5977d).
       const cc = ctx.creditCardGuarantee;
       if (cc) {
         // Cartão capturado pela Cielo — informa ao XRS qual cartão foi usado
         const meanOfPaymentXml = `\n        <meanOfPayment typeCode="CC" cardIssuer="${escapeXml(cc.cardIssuer)}" cardNumber="${escapeXml(cc.number)}" cardHolderName="${escapeXml(cc.holderName)}" validade="${escapeXml(cc.validity)}" cardmask="Y"/>`;
-        return { prepaidAttrs, meanOfPaymentXml };
+        return { prepaidAttrs: ' prepaidMode="NP"', meanOfPaymentXml };
       } else {
-        // PIX: sem cartão, sem meanOfPayment — o faturamento do BA segue via contrato ETO
-        return { prepaidAttrs, meanOfPaymentXml: '' };
+        // PIX: sem cartão, sem meanOfPayment
+        return { prepaidAttrs: ' prepaidMode="NP"', meanOfPaymentXml: '' };
       }
     } else {
       // POA público: EXO (Europcar Brasil como agência IATA 02170722)
@@ -115,15 +115,24 @@ export function buildReservationPaymentAttrs(ctx: PaymentAttrsContext): PaymentA
   return { prepaidAttrs: ' prepaidMode="NP"', meanOfPaymentXml };
 }
 
-/** Segunda etapa do voucher EXO — registra o documento no GreenWay após o resNumber existir. */
+/** Segunda etapa: registra o voucher ETO ou EXO no GreenWay após o resNumber existir.
+ *  - ETO: usa businessAccount (BA) para faturamento corporativo
+ *  - EXO: usa IATANumber para faturamento via agência */
 export function buildCreateVoucherXml(resNumber: string, voucherData: VoucherContext, voucherAmount: string, voucherCurrency: string): string {
-  const iataNumber = voucherData.iataNumber || '02170722';
+  const isETO = voucherData.type === 'ETO';
+
+  // ETO: <meanOfPayment typeCode="VCH" voucherType="ETO" businessAccount="73675595" ...>
+  // EXO: <meanOfPayment typeCode="VCH" voucherType="EXO" IATANumber="02170722" ...>
+  const typeSpecificAttrs = isETO
+    ? `businessAccount="${escapeXml(voucherData.businessAccount || '')}"`
+    : `IATANumber="${escapeXml(voucherData.iataNumber || '02170722')}"`;
+
   return `<?xml version="1.0" encoding="UTF-8"?>
 <message>
   <serviceRequest serviceCode="createVoucher">
     <serviceParameters>
       <reservation resNumber="${escapeXml(resNumber)}">
-        <meanOfPayment typeCode="VCH" voucherType="EXO" IATANumber="${escapeXml(iataNumber)}" voucherAmount="${escapeXml(voucherAmount)}" voucherCurrency="${escapeXml(voucherCurrency)}"/>
+        <meanOfPayment typeCode="VCH" voucherType="${escapeXml(voucherData.type)}" ${typeSpecificAttrs} voucherAmount="${escapeXml(voucherAmount)}" voucherCurrency="${escapeXml(voucherCurrency)}"/>
       </reservation>
     </serviceParameters>
   </serviceRequest>

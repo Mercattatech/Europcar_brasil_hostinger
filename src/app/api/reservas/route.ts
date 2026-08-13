@@ -6,7 +6,7 @@ import { callXRS, DEFAULT_POA_CID } from '@/lib/europcar/xrsClient';
 import { sendBookingConfirmation } from '@/lib/email/sendBookingConfirmation';
 import { sendWelcomeWithCredentials } from '@/lib/email/sendWelcomeWithCredentials';
 import { consultarBin, guessBrandByFirstDigit, mapBrandToCardIssuer, zeroAuthCard, voidCieloPayment } from '@/lib/cielo/cieloClient';
-import { buildReservationPaymentAttrs, buildCreateVoucherXml } from '@/lib/europcar/paymentMapping';
+import { buildReservationPaymentAttrs, buildCreateVoucherXml, CID_TO_BA } from '@/lib/europcar/paymentMapping';
 import { getReservationErrorMessage } from '@/lib/cms/reservationErrors';
 import { escapeXml } from '@/lib/europcar/xmlEscape';
 import bcrypt from 'bcryptjs';
@@ -519,18 +519,36 @@ export async function POST(request: Request) {
           }
         }
 
-        // Se for EXO Voucher (manual ou gerado on-the-fly para pagamentos online POA),
-        // envia requisição adicional createVoucher após criar reserva.
-        // (segunda etapa do fluxo em duas etapas: bookReservation → createVoucher registra o documento no GreenWay)
+        // ── createVoucher: registra split ETO ou EXO no GreenWay ──────────────
+        // Fluxo em 2 etapas: bookReservation (prepaidMode=NP) → createVoucher
+        // Rafael: "VCH must have the complete data: ETO, EXO, etc."
+        //
+        // Dispara para:
+        //   - Pagamentos online (CREDIT capturado / PIX) em QUALQUER contrato
+        //   - Voucher manual EXO
         const isPrepaidOnline = paymentData.method === 'PIX' || (paymentData.method === 'CREDIT' && !!capturedCreditCard?.captured);
-        const isOnlineEXO = isPrepaidOnline && contractID !== '56935466' && contractID !== '56935495';
+        const isETO = contractID === '56935466' || contractID === '56935495';
+        const isOnlineETO = isPrepaidOnline && isETO;
+        const isOnlineEXO = isPrepaidOnline && !isETO;
         const isManualEXO = paymentData.method === 'VOUCHER' && voucherData?.type === 'EXO';
 
-        if (resNumber && (isManualEXO || isOnlineEXO)) {
+        if (resNumber && (isOnlineETO || isOnlineEXO || isManualEXO)) {
           try {
             const voucherAmount = car.totalRateEstimate || car.total || '0';
             const voucherCurrency = car.bookingCurrencyOfTotalRateEstimate || car.currency || 'EUR';
-            const vData = isManualEXO ? voucherData : { type: 'EXO', iataNumber: '02170722' };
+
+            let vData: any;
+            if (isOnlineETO) {
+              // ETO: businessAccount do mapeamento CID → BA
+              vData = { type: 'ETO', businessAccount: CID_TO_BA[contractID] || '' };
+            } else if (isManualEXO) {
+              // EXO manual: usa dados do voucher enviado pelo usuário
+              vData = voucherData;
+            } else {
+              // EXO online (POA): Europcar Brasil como agência IATA
+              vData = { type: 'EXO', iataNumber: '02170722' };
+            }
+
             const createVoucherXml = buildCreateVoucherXml(resNumber, vData, voucherAmount, voucherCurrency);
 
             await callXRS(createVoucherXml, {
@@ -539,9 +557,11 @@ export async function POST(request: Request) {
               action: 'createVoucher',
               sourceFile: 'reservas/route.ts'
             });
-            console.log(`[reservas] createVoucher (EXO) enviado com sucesso para a reserva ${resNumber}`);
+            console.log(`[reservas] createVoucher (${vData.type}) enviado com sucesso para a reserva ${resNumber}`);
           } catch (voucherErr: any) {
-            console.error(`[reservas] Erro ao criar voucher EXO para ${resNumber}:`, voucherErr.message);
+            // createVoucher falhar NÃO deve abortar a reserva — o resNumber já existe.
+            // Log para diagnóstico e acompanhamento manual pelo admin.
+            console.error(`[reservas] ⚠️ Erro ao criar voucher para ${resNumber}:`, voucherErr.message);
           }
         }
 
