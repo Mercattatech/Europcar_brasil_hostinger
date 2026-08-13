@@ -84,21 +84,15 @@ export function buildReservationPaymentAttrs(ctx: PaymentAttrsContext): PaymentA
 
     if (isETO) {
       // ETO (corporativo): fluxo em 2 etapas (igual ao EXO):
-      //   1. bookReservation com prepaidMode="NP" + CC (cartão Cielo) ou sem meanOfPayment (PIX)
+      //   1. bookReservation com prepaidMode="NP" SEM meanOfPayment
       //   2. createVoucher com ETO + businessAccount (registra split no GreenWay)
       //
-      // NÃO usar VCH com ID gerado no bookReservation → GW rejeita (mop.invalidVoucherNumber).
+      // NÃO enviar VCH com ID gerado → GW rejeita (mop.invalidVoucherNumber).
+      // NÃO enviar CC com cardmask=Y → XRS tenta tokenizar o PAN mascarado
+      //   e falha com xrs.cctokenisationerror.
       // NÃO usar prepaidMode="PP" → GW rejeita reserva sem resNumber.
-      // prepaidMode="NP" funciona (testado no commit 4d5977d).
-      const cc = ctx.creditCardGuarantee;
-      if (cc) {
-        // Cartão capturado pela Cielo — informa ao XRS qual cartão foi usado
-        const meanOfPaymentXml = `\n        <meanOfPayment typeCode="CC" cardIssuer="${escapeXml(cc.cardIssuer)}" cardNumber="${escapeXml(cc.number)}" cardHolderName="${escapeXml(cc.holderName)}" validade="${escapeXml(cc.validity)}" cardmask="Y"/>`;
-        return { prepaidAttrs: ' prepaidMode="NP"', meanOfPaymentXml };
-      } else {
-        // PIX: sem cartão, sem meanOfPayment
-        return { prepaidAttrs: ' prepaidMode="NP"', meanOfPaymentXml: '' };
-      }
+      // prepaidMode="NP" sem meanOfPayment funciona (testado no commit 4d5977d).
+      return { prepaidAttrs: ' prepaidMode="NP"', meanOfPaymentXml: '' };
     } else {
       // POA público: EXO (Europcar Brasil como agência IATA 02170722)
       // EXO exige prepaidMode="NP" no bookReservation e createVoucher separado depois.
