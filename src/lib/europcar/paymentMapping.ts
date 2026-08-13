@@ -87,14 +87,17 @@ export function buildReservationPaymentAttrs(ctx: PaymentAttrsContext): PaymentA
       // O GreenWay rejeita vouchers ETO cujo voucherID não está pré-cadastrado no sistema
       // (erro mop.invalidVoucherNumber). A Cielo já cobrou o cartão online.
       // Solução: enviar nó CC (cartão usado) para CREDIT, ou nenhum meanOfPayment para PIX.
+      // prepaidMode="PP" informa ao XRS que o pagamento já foi capturado online.
+      const amountStr = ctx.amountBRL ? ctx.amountBRL.toFixed(2) : '0.00';
+      const prepaidAttrs = ` prepaidMode="PP" prepaidPercentage="100.00" prepaidAmountInBookingCurrency="${amountStr}"`;
       const cc = ctx.creditCardGuarantee;
       if (cc) {
         // Cartão capturado pela Cielo — informa ao XRS qual cartão foi usado
         const meanOfPaymentXml = `\n        <meanOfPayment typeCode="CC" cardIssuer="${escapeXml(cc.cardIssuer)}" cardNumber="${escapeXml(cc.number)}" cardHolderName="${escapeXml(cc.holderName)}" validade="${escapeXml(cc.validity)}" cardmask="Y"/>`;
-        return { prepaidAttrs: '', meanOfPaymentXml };
+        return { prepaidAttrs, meanOfPaymentXml };
       } else {
         // PIX: sem cartão, sem meanOfPayment — o faturamento do BA segue via contrato ETO
-        return { prepaidAttrs: '', meanOfPaymentXml: '' };
+        return { prepaidAttrs, meanOfPaymentXml: '' };
       }
     } else {
       // POA público: EXO (Europcar Brasil como agência IATA 02170722)
