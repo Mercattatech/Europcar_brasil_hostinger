@@ -1059,7 +1059,7 @@ function VehiclesContent() {
         // ── Deduplicar equipamentos com mesmo nome mas códigos diferentes ──
         // O XRS pode retornar CST e CSI (ambos "Assento criança 1-3 anos") ou
         // ADD e ADR (ambos "Condutor adicional") com preços diferentes.
-        // Mantém apenas o item com o menor preço (totalBRL do getQuote).
+        // Mantém apenas o item com o maior preço (totalBRL do getQuote).
         const seenNames = new Map<string, any>();
         for (const eq of enrichedEquipment) {
           const normName = (eq.name || '').trim().toLowerCase();
@@ -1069,10 +1069,10 @@ function VehiclesContent() {
           if (!existing) {
             seenNames.set(normName, eq);
           } else {
-            // Comparar preços do getQuote — manter o mais barato
-            const existPrice = prices[existing.code]?.totalBRL || prices[existing.code]?.priceBRL || Infinity;
-            const newPrice   = prices[eq.code]?.totalBRL       || prices[eq.code]?.priceBRL       || Infinity;
-            if (newPrice < existPrice) {
+            // Comparar preços do getQuote — manter o mais caro
+            const existPrice = prices[existing.code]?.totalBRL || prices[existing.code]?.priceBRL || 0;
+            const newPrice   = prices[eq.code]?.totalBRL       || prices[eq.code]?.priceBRL       || 0;
+            if (newPrice > existPrice) {
               seenNames.set(normName, eq);
               console.log(`[Step3] Dedup: ${eq.code} (R$${newPrice}) substitui ${existing.code} (R$${existPrice}) para "${eq.name}"`);
             } else {
