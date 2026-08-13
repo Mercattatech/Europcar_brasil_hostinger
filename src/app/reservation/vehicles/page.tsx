@@ -690,11 +690,13 @@ function VehiclesContent() {
 
               const itemPrice    = parseFloat(a.price                              || '0');
               const itemPriceBRL = parseFloat(a.priceInBookingCurrency             || '0');
-              const itemTotalBRL = parseFloat(
-                a.rentalPriceInBookingCurrencyAI ||
-                a.rentalMaxInBookingCurrencyAI   ||
-                a.priceInBookingCurrency         || '0'
-              );
+              // Para totalBRL usamos o MAIOR entre rentalPriceInBookingCurrencyAI
+              // e rentalMaxInBookingCurrencyAI. Alguns equipamentos (ex: CST em MILC01)
+              // retornam o preço unitário/diário em rentalPriceInBookingCurrencyAI
+              // enquanto rentalMaxInBookingCurrencyAI tem o total correto do período.
+              const rentalAI  = parseFloat(a.rentalPriceInBookingCurrencyAI || '0');
+              const rentalMax = parseFloat(a.rentalMaxInBookingCurrencyAI   || '0');
+              const itemTotalBRL = Math.max(rentalAI, rentalMax) || parseFloat(a.priceInBookingCurrency || '0');
 
               // statusCode from getQuote also applies — re-check
               const sc = (a.statusCode || 'F').toString().trim().toUpperCase();
