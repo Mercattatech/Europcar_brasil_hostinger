@@ -1,5 +1,5 @@
 import { callXRS, DEFAULT_POA_CID } from '@/lib/europcar/xrsClient';
-import { buildReservationPaymentAttrs, buildCreateVoucherXml } from '@/lib/europcar/paymentMapping';
+import { buildReservationPaymentAttrs, buildCreateVoucherXml, CID_TO_BA } from '@/lib/europcar/paymentMapping';
 import { escapeXml } from '@/lib/europcar/xmlEscape';
 import { parsePayerList } from '@/lib/europcar/parsePayerList';
 
@@ -222,15 +222,30 @@ export async function executeXRSBooking({ bookingData, customerData, paymentData
     }
   }
 
+  // ── createVoucher: registra split ETO ou EXO no GreenWay ──────────────
+  // Fluxo em 2 etapas: bookReservation (prepaidMode=NP) → createVoucher
+  // Mesma lógica de reservas/route.ts (fluxo síncrono CREDIT) — aqui cobre
+  // o fluxo assíncrono PIX (confirmado via pix-status/cron/sync-pix).
   const isPrepaidOnline = paymentData.method === 'PIX' || paymentData.method === 'CREDIT';
-  const isOnlineEXO = isPrepaidOnline && contractID !== '56935466' && contractID !== '56935495';
+  const isETO = contractID === '56935466' || contractID === '56935495';
+  const isOnlineETO = isPrepaidOnline && isETO;
+  const isOnlineEXO = isPrepaidOnline && !isETO;
   const isManualEXO = paymentData.method === 'VOUCHER' && voucherData?.type === 'EXO';
 
-  if (resNumber && (isManualEXO || isOnlineEXO)) {
+  if (resNumber && (isOnlineETO || isOnlineEXO || isManualEXO)) {
     try {
       const voucherAmount = car.totalRateEstimate || car.total || '0';
       const voucherCurrency = car.bookingCurrencyOfTotalRateEstimate || car.currency || 'EUR';
-      const vData = isManualEXO ? voucherData : { type: 'EXO', iataNumber: '02170722' };
+
+      let vData: any;
+      if (isOnlineETO) {
+        vData = { type: 'ETO', businessAccount: CID_TO_BA[contractID] || '' };
+      } else if (isManualEXO) {
+        vData = voucherData;
+      } else {
+        vData = { type: 'EXO', iataNumber: '02170722' };
+      }
+
       const createVoucherXml = buildCreateVoucherXml(resNumber, vData, voucherAmount, voucherCurrency);
 
       await callXRS(createVoucherXml, {
@@ -239,9 +254,9 @@ export async function executeXRSBooking({ bookingData, customerData, paymentData
         action: 'createVoucher',
         sourceFile: 'bookXRS.ts'
       });
-      console.log(`[xrsBook] createVoucher (EXO) enviado com sucesso para a reserva ${resNumber}`);
+      console.log(`[xrsBook] createVoucher (${vData.type}) enviado com sucesso para a reserva ${resNumber}`);
     } catch (voucherErr: any) {
-      console.error(`[xrsBook] Erro ao criar voucher EXO para ${resNumber}:`, voucherErr.message);
+      console.error(`[xrsBook] Erro ao criar voucher para ${resNumber}:`, voucherErr.message);
     }
   }
 
