@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { checkAdmin } from '@/lib/checkAdmin';
 
 // Rota temporária para diagnóstico do payerList no XRS
 // Acesse: GET /api/debug/xrs-payer-logs
 export async function GET() {
+  if (!(await checkAdmin())) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const logs = await (prisma as any).logXRS.findMany({
       where: {
