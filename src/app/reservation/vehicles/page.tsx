@@ -1050,11 +1050,37 @@ function VehiclesContent() {
         // Items from the API + enriched with getQuote prices.
         // Items that have no price from either source are still shown if
         // they came from getEquipmentList (statusCode F or R).
-        const finalEquipment = stationEquipment.map((eq: any) => ({
+        const enrichedEquipment = stationEquipment.map((eq: any) => ({
           ...eq,
           // Override onRequest if getQuote also flags it
           onRequest: eq.onRequest || (prices[eq.code]?.onRequest ?? false),
         }));
+
+        // ── Deduplicar equipamentos com mesmo nome mas códigos diferentes ──
+        // O XRS pode retornar CST e CSI (ambos "Assento criança 1-3 anos") ou
+        // ADD e ADR (ambos "Condutor adicional") com preços diferentes.
+        // Mantém apenas o item com o menor preço (totalBRL do getQuote).
+        const seenNames = new Map<string, any>();
+        for (const eq of enrichedEquipment) {
+          const normName = (eq.name || '').trim().toLowerCase();
+          if (!normName) { seenNames.set(eq.code, eq); continue; }
+
+          const existing = seenNames.get(normName);
+          if (!existing) {
+            seenNames.set(normName, eq);
+          } else {
+            // Comparar preços do getQuote — manter o mais barato
+            const existPrice = prices[existing.code]?.totalBRL || prices[existing.code]?.priceBRL || Infinity;
+            const newPrice   = prices[eq.code]?.totalBRL       || prices[eq.code]?.priceBRL       || Infinity;
+            if (newPrice < existPrice) {
+              seenNames.set(normName, eq);
+              console.log(`[Step3] Dedup: ${eq.code} (R$${newPrice}) substitui ${existing.code} (R$${existPrice}) para "${eq.name}"`);
+            } else {
+              console.log(`[Step3] Dedup: ${existing.code} (R$${existPrice}) mantido, ${eq.code} (R$${newPrice}) removido para "${eq.name}"`);
+            }
+          }
+        }
+        const finalEquipment = Array.from(seenNames.values());
 
         setXrsEquipment(finalEquipment);
         setStep3FetchedCarCategory(carCategory);
