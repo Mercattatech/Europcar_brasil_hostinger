@@ -251,7 +251,24 @@ export default function CheckoutPage() {
               setThreeDsProcessing(false);
               console.error('[3DS] Erro sistêmico na autenticação:', e);
               if (wasUserInitiated) {
-                alert('Não foi possível validar o cartão com o banco (erro no sistema de segurança 3DS). Tente novamente em instantes.\n\n' + (e?.ReturnMessage || ''));
+                // O script MPI pode ficar em estado de erro permanente após timeout
+                // do Device Fingerprint. Solução: recarregar o script para forçar
+                // nova sessão de fingerprinting com o token fresco.
+                const oldScript = document.getElementById(scriptId);
+                if (oldScript) {
+                  oldScript.remove();
+                  setThreeDsReady(false);
+                  // Pequeno delay para o DOM limpar, depois recarrega
+                  setTimeout(() => {
+                    const newScript = document.createElement('script');
+                    newScript.id = scriptId;
+                    newScript.src = oldScript.getAttribute('src') || '';
+                    newScript.async = true;
+                    document.head.appendChild(newScript);
+                    console.log('[3DS] Script MPI recarregado após erro sistêmico.');
+                  }, 500);
+                }
+                alert('Houve um erro no sistema de segurança 3DS. O sistema está sendo reiniciado — clique em "Finalizar" novamente em alguns segundos.');
                 setLoading(false);
               }
             },
