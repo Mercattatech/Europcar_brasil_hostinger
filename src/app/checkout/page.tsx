@@ -251,11 +251,8 @@ export default function CheckoutPage() {
               setThreeDsProcessing(false);
               console.error('[3DS] Erro sistêmico na autenticação:', e);
               if (wasUserInitiated) {
-                // Erro 305 / timeout do Device Fingerprint / falha de rede no MPI:
-                // Prossegue sem Liability Shift (mesmo comportamento de onFailure).
-                // A transação será processada sem 3DS — Cielo aceita normalmente.
-                console.warn('[3DS] Prosseguindo sem 3DS após erro sistêmico.');
-                submitReservationRef.current(undefined);
+                alert('Não foi possível validar o cartão com o banco (erro no sistema de segurança 3DS). Tente novamente em instantes.\n\n' + (e?.ReturnMessage || ''));
+                setLoading(false);
               }
             },
             onUnsupportedBrand: function (e: any) {
