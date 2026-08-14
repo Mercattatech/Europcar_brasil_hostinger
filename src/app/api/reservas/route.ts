@@ -549,7 +549,7 @@ export async function POST(request: Request) {
               vData = { type: 'EXO', iataNumber: '02170722' };
             }
 
-            const createVoucherXml = buildCreateVoucherXml(resNumber, vData, voucherAmount, voucherCurrency);
+            const createVoucherXml = buildCreateVoucherXml(resNumber, vData, voucherAmount, voucherCurrency, carCategory, pickupDate, returnDate);
 
             await callXRS(createVoucherXml, {
               callerCode: process.env.XRS_CALLER_CODE || 'DEMO',

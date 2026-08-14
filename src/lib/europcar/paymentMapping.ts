@@ -111,8 +111,23 @@ export function buildReservationPaymentAttrs(ctx: PaymentAttrsContext): PaymentA
 
 /** Segunda etapa: registra o voucher ETO ou EXO no GreenWay após o resNumber existir.
  *  - ETO: usa businessAccount (BA) para faturamento corporativo
- *  - EXO: usa IATANumber para faturamento via agência */
-export function buildCreateVoucherXml(resNumber: string, voucherData: VoucherContext, voucherAmount: string, voucherCurrency: string): string {
+ *  - EXO: usa IATANumber para faturamento via agência
+ *
+ *  voucherCarCategory e voucherRentalDuration são obrigatórios pelo XRS — sem eles
+ *  o createVoucher falha silenciosamente (erro só logado, não aborta a reserva),
+ *  deixando a reserva sem split registrado no GW. Confirmado comparando com
+ *  buildVoucherMeanOfPaymentXml (fluxo manual, já testado em homologação) e com
+ *  a resposta real do GW em scratch/relatorio_homologacao.json, que sempre inclui
+ *  esses dois atributos no meanOfPayment retornado. */
+export function buildCreateVoucherXml(
+  resNumber: string,
+  voucherData: VoucherContext,
+  voucherAmount: string,
+  voucherCurrency: string,
+  carCategory?: string,
+  pickupDate?: string,
+  returnDate?: string,
+): string {
   const isETO = voucherData.type === 'ETO';
 
   // ETO: <meanOfPayment typeCode="VCH" voucherType="ETO" businessAccount="73675595" ...>
@@ -120,13 +135,14 @@ export function buildCreateVoucherXml(resNumber: string, voucherData: VoucherCon
   const typeSpecificAttrs = isETO
     ? `businessAccount="${escapeXml(voucherData.businessAccount || '')}"`
     : `IATANumber="${escapeXml(voucherData.iataNumber || '02170722')}"`;
+  const duration = voucherDurationDays(pickupDate, returnDate);
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <message>
   <serviceRequest serviceCode="createVoucher">
     <serviceParameters>
       <reservation resNumber="${escapeXml(resNumber)}">
-        <meanOfPayment typeCode="VCH" voucherType="${escapeXml(voucherData.type)}" ${typeSpecificAttrs} voucherAmount="${escapeXml(voucherAmount)}" voucherCurrency="${escapeXml(voucherCurrency)}"/>
+        <meanOfPayment typeCode="VCH" voucherType="${escapeXml(voucherData.type)}" ${typeSpecificAttrs} voucherAmount="${escapeXml(voucherAmount)}" voucherCurrency="${escapeXml(voucherCurrency)}" voucherCarCategory="${escapeXml(carCategory || '')}" voucherRentalDuration="${escapeXml(duration)}"/>
       </reservation>
     </serviceParameters>
   </serviceRequest>
