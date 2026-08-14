@@ -3,7 +3,10 @@ import { getStations } from '@/lib/europcar/xrsClient';
 import styles from './stations.module.css';
 
 // Server component (Next.js 13+)
-export const dynamic = 'force-static'; // optional
+// force-dynamic (não static): evita chamar a API real da Europcar durante o
+// build — em servidores com pouca RAM isso soma memória/rede desnecessárias
+// bem na fase mais pesada do build ("Creating an optimized production build").
+export const dynamic = 'force-dynamic';
 
 async function fetchBrazilStations() {
   try {
