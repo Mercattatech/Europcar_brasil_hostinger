@@ -528,20 +528,17 @@ export async function POST(request: Request) {
         //   - Voucher manual EXO
         const isPrepaidOnline = paymentData.method === 'PIX' || (paymentData.method === 'CREDIT' && !!capturedCreditCard?.captured);
         const isETO = contractID === '56935466' || contractID === '56935495';
-        const isOnlineETO = isPrepaidOnline && isETO;
+        // ETO: meanOfPayment vai direto no bookReservationRQ — createVoucher NÃO é suportado (Antonio/Europcar).
         const isOnlineEXO = isPrepaidOnline && !isETO;
         const isManualEXO = paymentData.method === 'VOUCHER' && voucherData?.type === 'EXO';
 
-        if (resNumber && (isOnlineETO || isOnlineEXO || isManualEXO)) {
+        if (resNumber && (isOnlineEXO || isManualEXO)) {
           try {
             const voucherAmount = car.totalRateEstimate || car.total || '0';
             const voucherCurrency = car.bookingCurrencyOfTotalRateEstimate || car.currency || 'EUR';
 
             let vData: any;
-            if (isOnlineETO) {
-              // ETO: businessAccount do mapeamento CID → BA
-              vData = { type: 'ETO', businessAccount: CID_TO_BA[contractID] || '' };
-            } else if (isManualEXO) {
+            if (isManualEXO) {
               // EXO manual: usa dados do voucher enviado pelo usuário
               vData = voucherData;
             } else {

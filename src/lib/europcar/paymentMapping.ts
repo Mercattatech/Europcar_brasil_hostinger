@@ -55,7 +55,8 @@ function buildVoucherMeanOfPaymentXml(voucherData: VoucherContext, contractID?: 
   if (!voucherData || voucherData.type === 'EXO') return '';
   const ba = (contractID && CID_TO_BA[contractID]) || voucherData.businessAccount || '';
   const duration = voucherDurationDays(pickupDate, returnDate);
-  const numericVoucherID = (voucherData.id && /^\d+$/.test(voucherData.id))
+  // Antonio/Europcar: voucherID must be numeric, max 8 digits
+  const numericVoucherID = (voucherData.id && /^\d{1,8}$/.test(voucherData.id))
     ? voucherData.id
     : Date.now().toString().slice(-8);
 
@@ -83,16 +84,16 @@ export function buildReservationPaymentAttrs(ctx: PaymentAttrsContext): PaymentA
     const isETO = ctx.contractID === '56935466' || ctx.contractID === '56935495';
 
     if (isETO) {
-      // ETO (corporativo): fluxo em 2 etapas (igual ao EXO):
-      //   1. bookReservation com prepaidMode="NP" SEM meanOfPayment
-      //   2. createVoucher com ETO + businessAccount (registra split no GreenWay)
-      //
-      // NÃO enviar VCH com ID gerado → GW rejeita (mop.invalidVoucherNumber).
-      // NÃO enviar CC com cardmask=Y → XRS tenta tokenizar o PAN mascarado
-      //   e falha com xrs.cctokenisationerror.
-      // NÃO usar prepaidMode="PP" → GW rejeita reserva sem resNumber.
-      // prepaidMode="NP" sem meanOfPayment funciona (testado no commit 4d5977d).
-      return { prepaidAttrs: ' prepaidMode="NP"', meanOfPaymentXml: '' };
+      // ETO (corporativo): meanOfPayment VCH vai DIRETO no bookReservationRQ.
+      // Confirmado por Antonio/Europcar: createVoucher NÃO é suportado para ETO.
+      // O erro mop.invalidVoucherNumber era causado por voucherID com mais de 8 dígitos.
+      // voucherID: numérico, máximo 8 dígitos.
+      const ba = CID_TO_BA[ctx.contractID!] || '';
+      const duration = voucherDurationDays(ctx.pickupDate, ctx.returnDate);
+      const voucherID = (ctx.merchantOrderId || '').replace(/\D/g, '').slice(0, 8)
+                        || Date.now().toString().slice(-8);
+      const meanOfPaymentXml = `\n        <meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="${escapeXml(voucherID)}" businessAccount="${escapeXml(ba)}" voucherCarCategory="${escapeXml(ctx.carCategory || '')}" voucherRentalDuration="${escapeXml(duration)}"/>`;
+      return { prepaidAttrs: '', meanOfPaymentXml };
     } else {
       // POA público: EXO (Europcar Brasil como agência IATA 02170722)
       // EXO exige prepaidMode="NP" no bookReservation e createVoucher separado depois.

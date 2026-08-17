@@ -46,7 +46,8 @@ export async function POST(request: Request) {
       const d2 = new Date(parseInt(returnDate.slice(0,4)), parseInt(returnDate.slice(4,6))-1, parseInt(returnDate.slice(6,8)));
       const duration = Math.max(1, Math.round((d2.getTime() - d1.getTime()) / 86400000));
 
-      const numericVoucherID = (voucherData?.id && /^\d+$/.test(voucherData.id)) ? voucherData.id : '1234';
+      // Antonio/Europcar: voucherID must be numeric, max 8 digits
+      const numericVoucherID = (voucherData?.id && /^\d{1,8}$/.test(voucherData.id)) ? voucherData.id : Date.now().toString().slice(-8);
       meanOfPaymentXml = `
         <meanOfPayment typeCode="VCH" voucherType="ETO" voucherID="${escapeXml(numericVoucherID)}"
                        businessAccount="${escapeXml(ba)}" voucherCarCategory="${escapeXml(carCategory)}"
