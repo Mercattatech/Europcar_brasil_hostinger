@@ -208,7 +208,17 @@ export async function GET(request: Request) {
     const name = (s.stationName ?? s.name ?? '').toLowerCase();
     const city = (s.cityName ?? s.city ?? '').toLowerCase();
     const country = (COUNTRY_NAMES[s.countryCode] ?? '').toLowerCase();
-    return searchTerms.some(term => code.includes(term) || name.includes(term) || city.includes(term) || country.includes(term));
+    // Use word-boundary matching for station name to avoid partial matches
+    // e.g., "rome" should NOT match "Fromentine" or "Castromediano"
+    const escRx = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return searchTerms.some(term => {
+      if (code.includes(term) || city.includes(term)) return true;
+      // Word-boundary: term must appear as a whole word (or at the start of a word)
+      const rx = new RegExp('(?:^|\\b)' + escRx(term), 'i');
+      if (rx.test(name)) return true;
+      if (country.includes(term)) return true;
+      return false;
+    });
   });
 
   // Sort: exact city match first, then station name match, then others
@@ -224,8 +234,9 @@ export async function GET(request: Request) {
     if (aCityExact !== bCityExact) return aCityExact - bCityExact;
 
     // Then station name match
-    const aNameMatch = searchTerms.some(term => nameA.includes(term)) ? 0 : 1;
-    const bNameMatch = searchTerms.some(term => nameB.includes(term)) ? 0 : 1;
+    const escSort = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const aNameMatch = searchTerms.some(term => new RegExp('(?:^|\\b)' + escSort(term), 'i').test(nameA)) ? 0 : 1;
+    const bNameMatch = searchTerms.some(term => new RegExp('(?:^|\\b)' + escSort(term), 'i').test(nameB)) ? 0 : 1;
     if (aNameMatch !== bNameMatch) return aNameMatch - bNameMatch;
 
     return nameA.localeCompare(nameB);

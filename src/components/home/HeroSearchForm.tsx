@@ -345,26 +345,6 @@ export default function HeroSearchForm() {
 
   return (
     <div className="bg-white rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.2)] overflow-visible p-4 sm:p-6 md:p-8 relative mt-0">
-      <h2 className="text-gray-900 font-bold mb-4 text-base md:text-lg">
-        Qual tipo de veículo?
-      </h2>
-
-      {/* Veículo Type Tabs */}
-      <div className="flex gap-0 border border-gray-300 rounded inline-flex mb-6 md:mb-8">
-        <button
-          type="button"
-          className="bg-[#008d36] text-white font-bold px-4 md:px-6 py-2 text-xs md:text-sm rounded-l shadow-sm flex items-center gap-1 md:gap-2"
-        >
-          🚗 Carro
-        </button>
-        <button
-          type="button"
-          className="bg-white text-gray-700 font-bold px-4 md:px-6 py-2 text-xs md:text-sm rounded-r hover:bg-gray-50 flex items-center gap-1 md:gap-2"
-        >
-          🚐 Furgões e caminhões
-        </button>
-      </div>
-
       <form onSubmit={handleSearch}>
         {/* Main Grid Filters */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
