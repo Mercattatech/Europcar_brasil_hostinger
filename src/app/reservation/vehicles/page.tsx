@@ -648,13 +648,17 @@ function VehiclesContent() {
     const pricesFromRates: Record<string, { price: number; priceBRL: number; totalBRL: number; currency: string; exchangeRate: number; onRequest: boolean }> = {};
     for (const eq of ratesEquipment) {
       if (eq.type !== 'O') continue;
-      // Use rentalPriceInBookingCurrencyAI as the per-day price in BRL
-      // and rentalMaxInBookingCurrencyAI as the total for the rental period
-      const totalBRL = eq.rentalMaxInBookingCurrencyAI > 0
-        ? eq.rentalMaxInBookingCurrencyAI
-        : eq.rentalPriceInBookingCurrencyAI > 0
-          ? eq.rentalPriceInBookingCurrencyAI
-          : eq.priceInBookingCurrency;
+      // rentalPriceInBookingCurrencyAI = total price for the rental period (with tax) in BRL
+      // rentalMaxInBookingCurrencyAI   = maximum CAP (ceiling) for the period in BRL
+      // rentalMax >= 99999 is a sentinel value meaning "no cap" — must NOT be used as price.
+      // Strategy: use rentalPriceInBookingCurrencyAI as the actual total. If a real cap
+      // exists (rentalMax < 99999), apply it as a ceiling.
+      const rentalTotal = eq.rentalPriceInBookingCurrencyAI || 0;
+      const hasRealCap  = eq.rentalMax > 0 && eq.rentalMax < 99999;
+      const rentalCap   = hasRealCap ? eq.rentalMaxInBookingCurrencyAI : Infinity;
+      const totalBRL    = rentalTotal > 0
+        ? Math.min(rentalTotal, rentalCap)
+        : eq.priceInBookingCurrency;
       pricesFromRates[eq.code] = {
         price:        eq.price,
         priceBRL:     eq.priceInBookingCurrency,
