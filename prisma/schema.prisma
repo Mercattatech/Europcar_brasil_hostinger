@@ -1,0 +1,312 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model ContentBlock {
+  id         String   @id @default(uuid())
+  key        String   @unique
+  value_ptBR String   @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model MediaAsset {
+  id        String   @id @default(uuid())
+  name      String
+  url       String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model XRSConfig {
+  id         String   @id @default(uuid())
+  callerCode String
+  password   String
+  updatedAt  DateTime @updatedAt
+}
+
+model CieloConfig {
+  id                String   @id @default(uuid())
+  merchantId        String
+  merchantKey       String
+  isSandbox         Boolean  @default(true)
+  clientId3ds       String?  // Credencial exclusiva Braspag 3DS (ClientId)
+  clientSecret3ds   String?  // Credencial exclusiva Braspag 3DS (ClientSecret)
+  establishmentCode String?  // Número de afiliação Cielo (Erro 605)
+  merchantName      String?  // Nome fantasia exibido no 3DS (Erro 606), ex: 'Europcar Brasil'
+  mcc               String?  // Merchant Category Code (Erro 607): 7512 = Car Rental Agencies
+  updatedAt         DateTime @updatedAt
+}
+
+model LocalReservation {
+  id                String   @id @default(uuid())
+  resNumber         String?  @unique
+  merchantOrderId   String   @unique
+  customerData      Json
+  amountInCents     Int?
+  status            String
+  operationalStatus String?  @default("R") // R, S, CF, CC, CP, CO, TD, NS
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model LogXRS {
+  id          String   @id @default(uuid())
+  action      String   // e.g. "getMultipleRates", "bookReservation"
+  sourceFile  String   // e.g. "getMultipleRates/route.ts"
+  endpoint    String   // XRS URL called
+  xmlRequest  String   // full XML sent
+  xmlResponse String   // full XML received
+  httpStatus  Int?     // HTTP status code
+  durationMs  Int?     // response time in ms
+  hasError    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model LogCielo {
+  id        String   @id @default(uuid())
+  endpoint  String
+  payload   String
+  response  String
+  createdAt DateTime @default(now())
+}
+
+model CityStationOverride {
+  id           String @id @default(uuid())
+  stationCode  String @unique
+  friendlyName String
+}
+
+// NextAuth Models
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          String    @default("USER") // USER or ADMIN
+  status        String    @default("ACTIVE") // ACTIVE or BLOCKED
+  phone         String?
+  city          String?
+  cpf           String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime? @default(now()) @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// System Customizations (Promotions & Extras)
+model Extra {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  pricePerDay Float
+  type        String   // "PROTECTION" or "ADDON"
+  active      Boolean  @default(true)
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Promotion {
+  id            String    @id @default(cuid())
+  title         String
+  subtitle      String?
+  description   String?
+  discountValue Float?    // e.g 20 for 20%
+  imageUrl      String?
+  contractID    String?   // Europcar XRS contract code e.g. "45944876"
+  startDate     DateTime?
+  endDate       DateTime?
+  isActive      Boolean   @default(true)
+  status        String    @default("ACTIVE") // ACTIVE, ARCHIVED
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// Maintenance Mode Configuration
+model MaintenanceConfig {
+  id          String    @id @default(cuid())
+  redirectUrl String    // URL de redirecionamento durante manutenção
+  isActive    Boolean   @default(false)
+  returnDate  DateTime? // Data para retorno automático
+  reason      String?   // Motivo da manutenção (opcional)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// Loyalty / Fidelity Programs
+model LoyaltyProgram {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Car Image Overrides
+model CarImageOverride {
+  carCode   String   @id
+  imageUrl  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Car Category Friendly Name Overrides
+model CarCategoryOverride {
+  carCode      String   @id
+  friendlyName String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// Terms & Conditions Documents (PDF / DOC uploads)
+model TermsDocument {
+  id        String   @id @default(cuid())
+  type      String   @unique // RESERVA, PAIS, BRASIL_ONLINE
+  fileName  String
+  mimeType  String   @default("application/pdf")
+  fileData  String   // base64-encoded file content
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// AI Agent Settings
+model AIAgentConfig {
+  id              String   @id @default(cuid())
+  isActive        Boolean  @default(true)
+  masterPrompt    String?  @db.Text
+  positivePrompt  String?  @db.Text
+  negativePrompt  String?  @db.Text
+  updatedAt       DateTime @updatedAt
+}
+
+// Customer Journey Tracking
+model CustomerJourney {
+  id                String   @id @default(cuid())
+  sessionId         String   // Unique browser session ID
+  userId            String?  // Logged-in user ID (if any)
+
+  // Step 1: Search
+  pickupStation     String?
+  pickupStationName String?
+  returnStation     String?
+  returnStationName String?
+  pickupDate        String?
+  returnDate        String?
+  pickupTime        String?
+  returnTime        String?
+  country           String?
+  contractID        String?
+
+  // Step 2: Vehicle Selection
+  selectedCar       String?
+  selectedCarName   String?
+  carPrice          Float?
+
+  // Step 3: Extras
+  selectedExtras    Json?
+
+  // Step 4: Checkout
+  paymentMethod     String?
+
+  // Step 5: Result
+  resNumber         String?
+
+  // Metadata
+  currentStep       Int      @default(1)
+  status            String   @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED, ABANDONED
+  abandonedAt       String?
+
+  // Device info
+  userAgent         String?  @db.Text
+  ipAddress         String?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([sessionId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([currentStep])
+}
+
+// AI Knowledge Base Documents
+model AIKnowledgeDoc {
+  id            String   @id @default(cuid())
+  fileName      String
+  fileType      String   // "pdf", "txt", "image"
+  extractedText String   @db.Text
+  active        Boolean  @default(true)
+  sizeBytes     Int?     @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([active])
+}
+
+// AI Conversation Logs (for learning)
+model AIConversationLog {
+  id            String   @id @default(cuid())
+  sessionId     String
+  messages      String   @db.Text  // JSON string of all messages
+  approved      Boolean  @default(false)  // admin marked as good example
+  sessionStart  DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([approved])
+  @@index([sessionStart])
+}

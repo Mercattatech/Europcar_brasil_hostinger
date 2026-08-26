@@ -1,0 +1,68 @@
+import { NextResponse } from 'next/server';
+import { checkAdmin as assertAdmin } from '@/lib/checkAdmin';
+import { sendWhatsappTrigger, WaTrigger } from '@/lib/whatsapp/whatsappService';
+import { GmLeadClient } from '@/lib/whatsapp/gmLeadClient';
+import prisma from '@/lib/prisma';
+
+/**
+ * POST /api/admin/whatsapp/send
+ *
+ * Disparo manual de WhatsApp via painel.
+ * Body:
+ *   { action: 'test', number: string, message: string }
+ *     → Envia texto simples para um número específico (teste de conexão)
+ *
+ *   { action: 'trigger', trigger: WaTrigger, clientPhone?: string, vars?: object }
+ *     → Dispara o gatilho configurado (ex: RESERVA_SUCESSO) para todos os números
+ */
+export async function POST(request: Request) {
+  if (!(await assertAdmin())) {
+    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+  }
+
+  try {
+    const body = await request.json();
+    const { action } = body;
+
+    // ── Teste de conexão simples ─────────────────────────────────
+    if (action === 'test') {
+      const { number, message } = body as { number: string; message?: string };
+      if (!number) return NextResponse.json({ error: 'number é obrigatório' }, { status: 400 });
+
+      const tokenBlock = await prisma.contentBlock.findUnique({ where: { key: 'WA_TOKEN' } });
+      const token = tokenBlock?.value_ptBR;
+      if (!token) return NextResponse.json({ error: 'WA_TOKEN não configurado' }, { status: 400 });
+
+      const gm = new GmLeadClient({ token });
+      const result = await gm.testConnection(number);
+      if (!result.ok) throw new Error(result.message);
+
+      return NextResponse.json({ ok: true, message: result.message });
+    }
+
+    // ── Disparo por gatilho ────────────────────────────────────
+    if (action === 'trigger') {
+      const { trigger, clientPhone, vars } = body as {
+        trigger: WaTrigger;
+        clientPhone?: string;
+        vars?: Record<string, string>;
+      };
+
+      if (!trigger) return NextResponse.json({ error: 'trigger é obrigatório' }, { status: 400 });
+
+      // Para o painel de teste: aguarda o resultado para retornar erros reais
+      // (em produção, o dispatch é fire-and-forget para não bloquear o cliente)
+      try {
+        await sendWhatsappTrigger(trigger, vars || {}, clientPhone);
+        return NextResponse.json({ ok: true, message: `Disparo "${trigger}" concluído. Verifique os números cadastrados.` });
+      } catch (err: any) {
+        return NextResponse.json({ ok: false, error: err.message || 'Erro no disparo' }, { status: 500 });
+      }
+    }
+
+    return NextResponse.json({ error: 'action inválida. Use: test | trigger' }, { status: 400 });
+
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || 'Erro interno' }, { status: 500 });
+  }
+}

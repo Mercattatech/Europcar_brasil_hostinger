@@ -1,0 +1,45 @@
+# Dependências e ferramentas de build
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Next.js cache e build local
+.next
+out
+dist
+build
+
+# Variáveis de ambiente locais — NUNCA incluir na imagem
+.env
+.env.local
+.env.*.local
+
+# Git
+.git
+.gitignore
+
+# Arquivos de desenvolvimento / IDE
+.DS_Store
+*.pem
+.vscode
+.idea
+
+# Vercel
+.vercel
+
+# Arquivos de teste / scripts pontuais
+prisma_*.ts
+prisma_*.js
+scratch/
+
+# AI / IDE configs
+.claude/
+.agents/
+
+# Zips e artifacts
+*.zip
+Europcar_KingHost_Standalone.zip
+
+# Docs e configs locais
+README.md
