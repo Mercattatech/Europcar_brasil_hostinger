@@ -1107,7 +1107,9 @@ export default function CheckoutPage() {
 
                 {/* Tariff type indicator */}
 
-
+                {/* PIX e Cartão de Crédito — somente quando for ETO (Pagar Agora) */}
+                {tariffType === 'ETO' && (
+                  <>
                 <label className={`block border-2 rounded-lg p-5 cursor-pointer flex items-center gap-4 transition-colors ${paymentMethod === "PIX" ? "border-[#008d36] bg-green-50" : "border-gray-200 hover:border-gray-300"}`}>
                   <input type="radio" checked={paymentMethod === "PIX"} onChange={() => setPaymentMethod("PIX")} className="w-5 h-5 accent-[#008d36]" />
                   <div>
@@ -1212,6 +1214,8 @@ export default function CheckoutPage() {
                     </div>
                   )}
                 </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -1391,13 +1395,13 @@ export default function CheckoutPage() {
                       <span>Quilometragem {car?.mileageType === 'Livre' ? 'Ilimitada' : 'Limitada'}</span>
                       <span className="text-gray-400">Incluída</span>
                     </div>
-                    {/* Itens inclusos da API — excluindo sobretaxa de aeroporto (exibida separadamente) */}
+                    {/* Itens inclusos da API — excluindo sobretaxa de aeroporto (exibida separadamente) quando NÃO é BALCAO */}
                     {booking?.quoteInsurances?.filter((i: any) => {
                       const d = (i.descr || '').toLowerCase();
                       const isAirport = d.includes('aeroporto') || d.includes('airport') ||
                         d.includes('ferroviária') || d.includes('railway') ||
                         d === 'sobretaxa de aeroporto/estação ferroviária';
-                      return !isAirport && (i.type === 'M' || i.type === 'I' || i.includedInTotal === 'Y');
+                      return (paymentMethod === 'BALCAO' || !isAirport) && (i.type === 'M' || i.type === 'I' || i.includedInTotal === 'Y');
                     }).map((ins: any, idx: number) => (
                       <div key={idx} className="flex justify-between text-[10px] text-gray-500">
                         <span>{ins.descr || ins.code}</span>
@@ -1406,8 +1410,8 @@ export default function CheckoutPage() {
                     ))}
                   </div>
                 </div>
-                {/* Sobretaxa de aeroporto/estação ferroviária — box destacado com valor */}
-                {(() => {
+                {/* Sobretaxa de aeroporto/estação ferroviária — box destacado com valor (escondido quando BALCAO) */}
+                {paymentMethod !== 'BALCAO' && (() => {
                   const airportFees = booking?.quoteInsurances?.filter((i: any) => {
                     const d = (i.descr || '').toLowerCase();
                     return d.includes('aeroporto') || d.includes('airport') ||
@@ -1525,18 +1529,22 @@ export default function CheckoutPage() {
                 )}
 
                 <div className="flex justify-between items-end">
-                  <span className="text-xs font-bold text-gray-500 uppercase">Total a pagar agora</span>
+                  <span className="text-xs font-bold text-gray-500 uppercase">{paymentMethod === 'BALCAO' ? 'Total a pagar no balcão' : 'Total a pagar agora'}</span>
                   <div className="text-right">
                     <span className="text-2xl font-black text-gray-900">
                       {(() => {
-                        const baseAmountBRL = Math.max(0, (totalBRL > 0 ? totalBRL : totalRateXRS) - airportSurchargeBRL);
+                        // Quando BALCAO: total cheio (sem subtrair sobretaxa — tudo é pago no balcão)
+                        // Quando online (PIX/CREDIT): total menos sobretaxa aeroporto
+                        const displayAmount = paymentMethod === 'BALCAO'
+                          ? (totalBRL > 0 ? totalBRL : totalRateXRS)
+                          : Math.max(0, (totalBRL > 0 ? totalBRL : totalRateXRS) - airportSurchargeBRL);
                         const cur = totalBRL > 0 ? bookingCurrency : currency;
-                        return `${cur} ${baseAmountBRL.toFixed(2).replace(".", ",")}`;
+                        return `${cur} ${displayAmount.toFixed(2).replace(".", ",")}`;
                       })()}
                     </span>
                   </div>
                 </div>
-                {airportSurchargeBRL > 0 && (
+                {airportSurchargeBRL > 0 && paymentMethod !== 'BALCAO' && (
                   <div className="flex justify-between items-center text-xs text-orange-600 mt-1">
                     <span>✈ Sobretaxa de aeroporto (pago no balcão)</span>
                     <span className="font-bold">{totalBRL > 0 ? bookingCurrency : currency} {airportSurchargeBRL.toFixed(2).replace('.', ',')}</span>
