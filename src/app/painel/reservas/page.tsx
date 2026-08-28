@@ -64,6 +64,16 @@ export default function PainelReservas() {
    const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
    const [cancelModal, setCancelModal] = useState<{ id: string; resNumber: string } | null>(null);
 
+   // Modify modal (admin)
+   const [modifyModal, setModifyModal] = useState<any | null>(null);
+   const [adminModifyData, setAdminModifyData] = useState<{
+      pickupDate: string; pickupTime: string; pickupStationID: string;
+      returnDate: string; returnTime: string; returnStationID: string;
+      carCategory: string;
+   }>({ pickupDate: '', pickupTime: '1000', pickupStationID: '', returnDate: '', returnTime: '1000', returnStationID: '', carCategory: '' });
+   const [adminModifying, setAdminModifying] = useState(false);
+   const [adminModifyMsg, setAdminModifyMsg] = useState('');
+
    const showToast = (message: string, type: "success" | "error" = "success") => {
       setToast({ message, type });
       setTimeout(() => setToast(null), 3000);
@@ -184,6 +194,61 @@ export default function PainelReservas() {
       }
    };
 
+   // ── Admin Modify ──
+   const openModifyModal = (res: any) => {
+      const parsed = typeof res.customerData === 'string' ? JSON.parse(res.customerData) : (res.customerData || {});
+      setModifyModal({ ...res, parsed });
+      setAdminModifyData({
+         pickupDate: parsed?.booking?.pickupDate ? `${parsed.booking.pickupDate.slice(0,4)}-${parsed.booking.pickupDate.slice(4,6)}-${parsed.booking.pickupDate.slice(6,8)}` : '',
+         pickupTime: parsed?.booking?.pickupTime || '1000',
+         pickupStationID: parsed?.booking?.pickupStation || '',
+         returnDate: parsed?.booking?.returnDate ? `${parsed.booking.returnDate.slice(0,4)}-${parsed.booking.returnDate.slice(4,6)}-${parsed.booking.returnDate.slice(6,8)}` : '',
+         returnTime: parsed?.booking?.returnTime || '1000',
+         returnStationID: parsed?.booking?.returnStation || parsed?.booking?.pickupStation || '',
+         carCategory: parsed?.booking?.car?.carCategoryCode || '',
+      });
+      setAdminModifyMsg('');
+   };
+
+   const handleAdminModify = async () => {
+      if (!modifyModal?.resNumber) return;
+      setAdminModifying(true);
+      setAdminModifyMsg('');
+      try {
+         const parsed = modifyModal.parsed || {};
+         const payload: any = {
+            resNumber: modifyModal.resNumber,
+            firstName: parsed?.nome || parsed?.firstName || 'Admin',
+            lastName: parsed?.sobrenome || parsed?.lastName || 'Europcar',
+         };
+         // Only send fields that differ from original
+         if (adminModifyData.pickupDate) payload.pickupDate = adminModifyData.pickupDate.replace(/-/g, '');
+         if (adminModifyData.pickupTime) payload.pickupTime = adminModifyData.pickupTime;
+         if (adminModifyData.pickupStationID) payload.pickupStationID = adminModifyData.pickupStationID;
+         if (adminModifyData.returnDate) payload.returnDate = adminModifyData.returnDate.replace(/-/g, '');
+         if (adminModifyData.returnTime) payload.returnTime = adminModifyData.returnTime;
+         if (adminModifyData.returnStationID) payload.returnStationID = adminModifyData.returnStationID;
+         if (adminModifyData.carCategory) payload.carCategory = adminModifyData.carCategory;
+
+         const res = await fetch('/api/europcar/modifyReservation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-admin-modify': 'true' },
+            body: JSON.stringify(payload)
+         });
+         const data = await res.json();
+         if (data.success) {
+            setAdminModifyMsg('✅ Reserva modificada com sucesso no XRS e banco local!');
+            setTimeout(() => { setModifyModal(null); setAdminModifyMsg(''); fetchReservations(); }, 2000);
+         } else {
+            setAdminModifyMsg(`❌ Erro: ${data.error || data.returnCode || 'Falha ao modificar'}`);
+         }
+      } catch (e: any) {
+         setAdminModifyMsg(`❌ ${e.message}`);
+      } finally {
+         setAdminModifying(false);
+      }
+   };
+
    const counts: Record<string, number> = { ALL: reservations.length };
    reservations.forEach(r => { counts[r.status] = (counts[r.status] || 0) + 1; });
    const opCounts: Record<string, number> = { ALL: reservations.length, ACTIVE: 0, DONE: 0 };
@@ -226,6 +291,86 @@ export default function PainelReservas() {
                </div>
             </div>
          )}
+
+         {/* ── Admin Modify Modal ── */}
+         {modifyModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setModifyModal(null)}>
+               <div className="bg-gray-900 border border-blue-800/40 rounded-2xl p-6 max-w-lg w-full mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center gap-3 mb-5">
+                     <div className="w-10 h-10 rounded-full bg-blue-900/40 flex items-center justify-center shrink-0">
+                        <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                     </div>
+                     <div>
+                        <h3 className="text-lg font-black text-white">Modificar Reserva</h3>
+                        <p className="text-xs text-gray-500">Reserva: <span className="text-white font-mono">{modifyModal.resNumber}</span> — {modifyModal.parsed?.nome} {modifyModal.parsed?.sobrenome}</p>
+                     </div>
+                  </div>
+
+                  <div className="space-y-4">
+                     {/* Retirada */}
+                     <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Retirada</p>
+                     <div className="grid grid-cols-3 gap-2">
+                        <div>
+                           <label className="block text-[10px] font-medium text-gray-400 mb-1">Data</label>
+                           <input type="date" value={adminModifyData.pickupDate} onChange={e => setAdminModifyData(p => ({ ...p, pickupDate: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-2 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors" />
+                        </div>
+                        <div>
+                           <label className="block text-[10px] font-medium text-gray-400 mb-1">Horário</label>
+                           <select value={adminModifyData.pickupTime} onChange={e => setAdminModifyData(p => ({ ...p, pickupTime: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-2 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors">
+                              {['0800','0900','1000','1100','1200','1300','1400','1500','1600','1700','1800'].map(t => <option key={t} value={t}>{t.slice(0,2)}:{t.slice(2)}</option>)}
+                           </select>
+                        </div>
+                        <div>
+                           <label className="block text-[10px] font-medium text-gray-400 mb-1">Estação</label>
+                           <input type="text" value={adminModifyData.pickupStationID} onChange={e => setAdminModifyData(p => ({ ...p, pickupStationID: e.target.value.toUpperCase() }))} placeholder="LIST01" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-2 text-white text-xs font-mono focus:outline-none focus:border-blue-500 transition-colors" />
+                        </div>
+                     </div>
+
+                     {/* Devolução */}
+                     <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mt-2">Devolução</p>
+                     <div className="grid grid-cols-3 gap-2">
+                        <div>
+                           <label className="block text-[10px] font-medium text-gray-400 mb-1">Data</label>
+                           <input type="date" value={adminModifyData.returnDate} onChange={e => setAdminModifyData(p => ({ ...p, returnDate: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-2 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors" />
+                        </div>
+                        <div>
+                           <label className="block text-[10px] font-medium text-gray-400 mb-1">Horário</label>
+                           <select value={adminModifyData.returnTime} onChange={e => setAdminModifyData(p => ({ ...p, returnTime: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-2 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors">
+                              {['0800','0900','1000','1100','1200','1300','1400','1500','1600','1700','1800'].map(t => <option key={t} value={t}>{t.slice(0,2)}:{t.slice(2)}</option>)}
+                           </select>
+                        </div>
+                        <div>
+                           <label className="block text-[10px] font-medium text-gray-400 mb-1">Estação</label>
+                           <input type="text" value={adminModifyData.returnStationID} onChange={e => setAdminModifyData(p => ({ ...p, returnStationID: e.target.value.toUpperCase() }))} placeholder="LIST01" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-2 text-white text-xs font-mono focus:outline-none focus:border-blue-500 transition-colors" />
+                        </div>
+                     </div>
+
+                     {/* Categoria do carro */}
+                     <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mt-2">Veículo</p>
+                     <div>
+                        <label className="block text-[10px] font-medium text-gray-400 mb-1">Categoria (ex: EDMR, CDMR, SDMR)</label>
+                        <input type="text" value={adminModifyData.carCategory} onChange={e => setAdminModifyData(p => ({ ...p, carCategory: e.target.value.toUpperCase() }))} placeholder="EDMR" className="w-40 bg-gray-800 border border-gray-700 rounded-lg px-2 py-2 text-white text-xs font-mono uppercase focus:outline-none focus:border-blue-500 transition-colors" />
+                     </div>
+                  </div>
+
+                  {adminModifyMsg && (
+                     <p className={`mt-4 text-sm text-center font-medium ${adminModifyMsg.startsWith('✅') ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {adminModifyMsg}
+                     </p>
+                  )}
+
+                  <div className="flex gap-3 mt-6">
+                     <button onClick={() => setModifyModal(null)} className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2.5 rounded-xl text-sm transition-colors">Cancelar</button>
+                     <button onClick={handleAdminModify} disabled={adminModifying} className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
+                        {adminModifying ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> Salvando...</> : 'Salvar Alteração no XRS'}
+                     </button>
+                  </div>
+               </div>
+            </div>
+         )}
+
          {toast && (
             <div className={`fixed top-4 right-4 z-50 px-5 py-3 rounded-lg shadow-2xl font-bold text-sm animate-pulse ${toast.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"}`}>
                {toast.message}
@@ -400,6 +545,11 @@ export default function PainelReservas() {
                                     <button onClick={() => setExpandedRow(isExpanded ? null : res.id)} className="p-1.5 rounded-lg bg-gray-800 hover:bg-blue-900/50 text-gray-400 hover:text-blue-400 transition-colors" title="Detalhes do Cliente">
                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                     </button>
+                                    {res.resNumber && (
+                                       <button onClick={() => openModifyModal(res)} className="p-1.5 rounded-lg bg-gray-800 hover:bg-blue-900/50 text-gray-400 hover:text-blue-400 transition-colors" title="Modificar reserva no XRS">
+                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                       </button>
+                                    )}
                                     <button onClick={() => setCancelModal({ id: res.id, resNumber: res.resNumber || res.id })} className="p-1.5 rounded-lg bg-gray-800 hover:bg-red-900/50 text-gray-400 hover:text-red-400 transition-colors" title="Cancelar reserva">
                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                     </button>

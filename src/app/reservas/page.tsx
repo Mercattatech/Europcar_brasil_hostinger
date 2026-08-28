@@ -92,6 +92,8 @@ export default function MeuPerfil() {
   const [modifyTarget, setModifyTarget]   = useState<Reserva | null>(null);
   const [modifyTime, setModifyTime]       = useState('1000');
   const [modifyDate, setModifyDate]       = useState('');
+  const [modifyReturnDate, setModifyReturnDate] = useState('');
+  const [modifyReturnTime, setModifyReturnTime] = useState('1000');
   const [modifying, setModifying]         = useState(false);
   const [modifyMsg, setModifyMsg]         = useState('');
 
@@ -211,22 +213,26 @@ export default function MeuPerfil() {
     setModifying(true);
     setModifyMsg('');
     try {
+      const payload: any = {
+        resNumber: modifyTarget.resNumber,
+        pickupDate: modifyDate ? modifyDate.replace(/-/g, '') : modifyTarget.pickupDate,
+        pickupTime: modifyTime,
+        firstName: session?.user?.name?.split(' ')[0] || 'Passageiro',
+        lastName:  session?.user?.name?.split(' ').slice(1).join(' ') || 'Europcar',
+      };
+      // Only send return fields if changed
+      if (modifyReturnDate) payload.returnDate = modifyReturnDate.replace(/-/g, '');
+      if (modifyReturnTime && modifyReturnTime !== '1000') payload.returnTime = modifyReturnTime;
+
       const res = await fetch('/api/europcar/modifyReservation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          resNumber: modifyTarget.resNumber,
-          pickupStationID: undefined, // will use reservation's own station
-          pickupDate: modifyDate ? modifyDate.replace(/-/g, '') : modifyTarget.pickupDate,
-          pickupTime: modifyTime,
-          firstName: session?.user?.name?.split(' ')[0] || 'Passageiro',
-          lastName:  session?.user?.name?.split(' ').slice(1).join(' ') || 'Europcar',
-        })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (data.success) {
         setModifyMsg('✅ Reserva modificada com sucesso!');
-        setTimeout(() => { setModifyTarget(null); setModifyMsg(''); loadReservas(); }, 2000);
+        setTimeout(() => { setModifyTarget(null); setModifyMsg(''); setModifyReturnDate(''); setModifyReturnTime('1000'); loadReservas(); }, 2000);
       } else {
         setModifyMsg(`❌ Erro: ${data.error || data.returnCode || 'Falha ao modificar'}`);
       }
@@ -441,28 +447,57 @@ export default function MeuPerfil() {
             </div>
 
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">Nova data de retirada</label>
-                <input
-                  type="date"
-                  value={modifyDate || (modifyTarget.pickupDate
-                    ? `${modifyTarget.pickupDate.slice(0,4)}-${modifyTarget.pickupDate.slice(4,6)}-${modifyTarget.pickupDate.slice(6,8)}`
-                    : '')}
-                  onChange={e => setModifyDate(e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
-                />
+              <p className="text-[10px] font-bold text-gray-500 uppercase">Retirada</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Data</label>
+                  <input
+                    type="date"
+                    value={modifyDate || (modifyTarget.pickupDate
+                      ? `${modifyTarget.pickupDate.slice(0,4)}-${modifyTarget.pickupDate.slice(4,6)}-${modifyTarget.pickupDate.slice(6,8)}`
+                      : '')}
+                    onChange={e => setModifyDate(e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Horário</label>
+                  <select
+                    value={modifyTime}
+                    onChange={e => setModifyTime(e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                  >
+                    {['0800','0900','1000','1100','1200','1300','1400','1500','1600','1700','1800'].map(t =>
+                      <option key={t} value={t}>{t.slice(0,2)}:{t.slice(2)}</option>
+                    )}
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">Novo horário de retirada</label>
-                <select
-                  value={modifyTime}
-                  onChange={e => setModifyTime(e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
-                >
-                  {['0800','0900','1000','1100','1200','1300','1400','1500','1600','1700','1800'].map(t =>
-                    <option key={t} value={t}>{t.slice(0,2)}:{t.slice(2)}</option>
-                  )}
-                </select>
+              <p className="text-[10px] font-bold text-gray-500 uppercase mt-2">Devolução</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Data</label>
+                  <input
+                    type="date"
+                    value={modifyReturnDate || (modifyTarget.returnDate
+                      ? `${modifyTarget.returnDate.slice(0,4)}-${modifyTarget.returnDate.slice(4,6)}-${modifyTarget.returnDate.slice(6,8)}`
+                      : '')}
+                    onChange={e => setModifyReturnDate(e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Horário</label>
+                  <select
+                    value={modifyReturnTime}
+                    onChange={e => setModifyReturnTime(e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                  >
+                    {['0800','0900','1000','1100','1200','1300','1400','1500','1600','1700','1800'].map(t =>
+                      <option key={t} value={t}>{t.slice(0,2)}:{t.slice(2)}</option>
+                    )}
+                  </select>
+                </div>
               </div>
             </div>
 
