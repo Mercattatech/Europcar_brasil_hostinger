@@ -105,19 +105,19 @@ export async function executeXRSBooking({ bookingData, customerData, paymentData
   const { loyaltyProgramId, loyaltyId, flightNumber } = customerData;
   let loyaltyXml = '';
   if (loyaltyProgramId && loyaltyId) {
-    loyaltyXml = `\n        <loyaltyProgram programID="${escapeXml(loyaltyProgramId)}" programId="${escapeXml(loyaltyProgramId)}" loyaltyID="${escapeXml(loyaltyId)}" loyaltyId="${escapeXml(loyaltyId)}"/>`;
+    loyaltyXml = `\n        <loyaltyProgram memberID="${escapeXml(loyaltyId)}" loyaltyID="${escapeXml(loyaltyProgramId)}"/>`;
   }
 
   const flightAttr = flightNumber
-    ? ` flightNumber="${escapeXml(flightNumber.trim())}" flightNo="${escapeXml(flightNumber.trim())}"`
+    ? ` flightNumber="${escapeXml(flightNumber.trim())}"`
     : '';
 
   const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
 <message>
 <serviceRequest serviceCode="bookReservation">
 <serviceParameters>
-  <reservation carCategory="${escapeXml(carCategory)}" rateId="${escapeXml(rateId)}"${paymentAttrs.prepaidAttrs}${contractAttr}${productDataAttr} chargesDetail="TRE" preferredLanguage="pt_BR" email="${escapeXml(customerData.email.trim())}">
-    <checkout stationID="${escapeXml(pickupStation)}" date="${escapeXml(pickupDate)}" time="${escapeXml(bookingData.pickupTime || '1000')}"${flightAttr}/>
+  <reservation carCategory="${escapeXml(carCategory)}" rateId="${escapeXml(rateId)}"${paymentAttrs.prepaidAttrs}${contractAttr}${productDataAttr} chargesDetail="TRE" preferredLanguage="pt_BR" email="${escapeXml(customerData.email.trim())}"${flightAttr}>
+    <checkout stationID="${escapeXml(pickupStation)}" date="${escapeXml(pickupDate)}" time="${escapeXml(bookingData.pickupTime || '1000')}"/>
     <checkin stationID="${escapeXml(returnStation)}" date="${escapeXml(returnDate)}" time="${escapeXml(bookingData.returnTime || '1000')}"/>
     <equipmentList>${equipmentXml}</equipmentList>${insuranceXml ? `\n        <insuranceList>${insuranceXml}\n        </insuranceList>` : ''}${paymentAttrs.meanOfPaymentXml}${loyaltyXml}
   </reservation>

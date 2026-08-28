@@ -59,11 +59,11 @@ export async function POST(request: Request) {
 
     let loyaltyXml = '';
     if (driverData?.loyaltyProgramId && driverData?.loyaltyId) {
-      loyaltyXml = `\n        <loyaltyProgram programID="${escapeXml(driverData.loyaltyProgramId)}" programId="${escapeXml(driverData.loyaltyProgramId)}" loyaltyID="${escapeXml(driverData.loyaltyId)}" loyaltyId="${escapeXml(driverData.loyaltyId)}"/>`;
+      loyaltyXml = `\n        <loyaltyProgram memberID="${escapeXml(driverData.loyaltyId)}" loyaltyID="${escapeXml(driverData.loyaltyProgramId)}"/>`;
     }
 
     const flightAttr = driverData?.flightNumber
-      ? ` flightNumber="${escapeXml(driverData.flightNumber.trim())}" flightNo="${escapeXml(driverData.flightNumber.trim())}"`
+      ? ` flightNumber="${escapeXml(driverData.flightNumber.trim())}"`
       : '';
 
     const prepaidModeAttr = (voucherData && voucherData.type === 'ETO') ? '' : ' prepaidMode="NP"';
@@ -107,8 +107,8 @@ export async function POST(request: Request) {
 <message>
   <serviceRequest serviceCode="bookReservation">
     <serviceParameters>
-      <reservation carCategory="${escapeXml(carCategory)}" rateId="${escapeXml(rateId)}" chargesDetail="TRE"${prepaidModeAttr}${contractAttr} email="${escapeXml(driverData?.email || '')}">
-        <checkout stationID="${escapeXml(pickupStation)}" date="${escapeXml(pickupDate)}" time="${escapeXml(pickupTime || '1000')}"${flightAttr}/>
+      <reservation carCategory="${escapeXml(carCategory)}" rateId="${escapeXml(rateId)}" chargesDetail="TRE"${prepaidModeAttr}${contractAttr} email="${escapeXml(driverData?.email || '')}"${flightAttr}>
+        <checkout stationID="${escapeXml(pickupStation)}" date="${escapeXml(pickupDate)}" time="${escapeXml(pickupTime || '1000')}"/>
         <checkin stationID="${escapeXml(returnStation || pickupStation)}" date="${escapeXml(returnDate)}" time="${escapeXml(returnTime || '1000')}"/>
         <equipmentList>${equipmentXml}</equipmentList>${insuranceXml ? `\n        <insuranceList>${insuranceXml}\n        </insuranceList>` : ''}${meanOfPaymentXml}${loyaltyXml}
       </reservation>
