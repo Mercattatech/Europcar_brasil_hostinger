@@ -173,6 +173,30 @@ export default function PainelReservas() {
       }
    };
 
+   // Reenvia a reserva ao GreenWay (XRS Europcar) manualmente.
+   // Útil quando o pagamento foi aprovado mas o bookReservation falhou.
+   const handleReenviarXRS = async (reservationId: string) => {
+      if (!confirm("Reenviar esta reserva ao GreenWay (Europcar)? Isso criará uma nova reserva no sistema deles.")) return;
+      try {
+         showToast("⏳ Reenviando ao GreenWay...");
+         const res = await fetch('/api/admin/reservas/reenviar-xrs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reservationId }),
+         });
+         const data = await res.json();
+         if (data.success) {
+            showToast(`✅ Enviado ao GreenWay! Reserva: ${data.resNumber}${data.isOnRequest ? ' (On Request)' : ''}`, "success");
+            fetchReservations();
+         } else {
+            showToast(`❌ ${data.error || 'Falha ao reenviar ao GreenWay'}`, "error");
+         }
+      } catch (e) {
+         showToast("Erro de conexão ao reenviar", "error");
+      }
+   };
+
+
    const handleDelete = async (id: string) => {
       try {
          const res = await fetch(`/api/admin/reservations/${id}`, { method: "DELETE" });
@@ -527,10 +551,34 @@ export default function PainelReservas() {
                                        <button onClick={() => setChangingStatus(res.id)} className={`text-[10px] font-bold uppercase px-2.5 py-1.5 rounded border ${STATUS_COLORS[res.status] || "bg-gray-700 text-gray-300 border-gray-600"} hover:opacity-80 transition-opacity cursor-pointer`}>
                                           {STATUS_LABELS[res.status] || res.status}
                                        </button>
+                                       {/* Método de pagamento real — lido do customerData persistido */}
+                                       {(() => {
+                                          const pm = parsed?.paymentMethod;
+                                          const cf = parsed?.cardLastFour;
+                                          const pid = parsed?.cieloPaymentId;
+                                          if (pm === 'CREDIT' && cf) {
+                                             return <span className="text-[9px] text-gray-400 flex items-center gap-1">💳 Cartão {cf}</span>;
+                                          } else if (pm === 'PIX' || res.status === 'PENDING_PIX') {
+                                             return <span className="text-[9px] text-sky-400 flex items-center gap-1">🔑 PIX{pid ? ` · ${pid.slice(0,8)}…` : ''}</span>;
+                                          } else if (pm === 'BALCAO' || res.status === 'CONFIRMED_NON_PREPAID') {
+                                             return <span className="text-[9px] text-blue-400 flex items-center gap-1">🏪 Pagar no Balcão</span>;
+                                          } else if (pm === 'VOUCHER') {
+                                             return <span className="text-[9px] text-purple-400 flex items-center gap-1">🎟️ Voucher</span>;
+                                          }
+                                          return null;
+                                       })()}
+                                       {/* Botão Sincronizar — PIX pendente na Cielo */}
                                        {res.status === 'PENDING_PIX' && (
                                           <button onClick={() => handleCheckPix(res.merchantOrderId)} title="Sincronizar PIX com Cielo" className="text-[9px] bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded w-full flex justify-center items-center gap-1 shadow-sm transition-colors">
                                              <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                                              Sincronizar
+                                          </button>
+                                       )}
+                                       {/* Botão Reenviar XRS — reserva sem resNumber válido no GreenWay */}
+                                       {(!res.resNumber || res.resNumber === res.merchantOrderId || res.resNumber.length <= 5) && res.status !== 'CANCELLED' && (
+                                          <button onClick={() => handleReenviarXRS(res.id)} title="Reenviar esta reserva ao GreenWay (Europcar XRS)" className="text-[9px] bg-orange-600 hover:bg-orange-500 text-white px-2 py-1 rounded w-full flex justify-center items-center gap-1 shadow-sm transition-colors">
+                                             <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                             Reenviar XRS
                                           </button>
                                        )}
                                     </div>

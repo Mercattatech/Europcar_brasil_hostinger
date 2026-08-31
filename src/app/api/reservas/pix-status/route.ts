@@ -61,11 +61,23 @@ export async function GET(request: Request) {
                      console.error("PIX-STATUS: Error executing XRS Booking", e.message);
                  }
 
+                 // Atualiza o JSON de customerData para persistir o método de pagamento real
+                 // Isso permite que o painel admin exiba "PIX" em vez de apenas o status genérico
+                 let updatedCustomerData = parsedData;
+                 try {
+                   updatedCustomerData = {
+                     ...parsedData,
+                     paymentMethod: 'PIX',       // método de pagamento confirmado
+                     cieloPaymentId: paymentId,  // PaymentId Cielo para rastreabilidade
+                   };
+                 } catch (_) { /* mantém parsedData original se algo falhar */ }
+
                  await prisma.localReservation.update({
                      where: { id: reservaLocal.id },
                      data: {
                          resNumber,
-                         status: 'CONFIRMED_PREPAID'
+                         status: 'CONFIRMED_PREPAID',
+                         customerData: JSON.stringify(updatedCustomerData),
                      }
                  });
                  

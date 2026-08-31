@@ -587,6 +587,10 @@ export async function POST(request: Request) {
                 ...safeCustomerData,      // sem creditCard, cvv, cardNumber
                 booking: bookingData,
                 paymentId: pixData?.paymentId || cieloPaymentId,
+                // Metadados de pagamento — usados pelo painel admin para exibição
+                // NÃO afeta lógica de cobrança (estrutura de pagamento inalterada)
+                paymentMethod: paymentData.method,  // 'PIX' | 'CREDIT' | 'BALCAO' | 'VOUCHER'
+                cieloPaymentId: pixData?.paymentId || cieloPaymentId || null,
                 systemLogOrigem: logOrigem,
                 ...(cardLastFour && { cardLastFour }), // apenas **** **** **** 1234
                 // Split de pagamento XRS (payerList) — auditoria do que foi cobrado online
