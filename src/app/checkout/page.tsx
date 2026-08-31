@@ -800,9 +800,14 @@ export default function CheckoutPage() {
     // Compute total for summary
     const extrasSumBRL = extrasDetails.reduce((s: number, e: any) => s + e.pricePerDay * e.qty, 0) * days;
     const equipSumBRL = (booking?.xrsEquipment || []).reduce((s: number, eq: any) => {
-      const p = parseFloat(eq.priceBRL || 0);
-      return s + p * (eq.qty || 1) * days;
+      // totalBRL = rentalPriceInBookingCurrencyAI (total real do período do XRS)
+      // priceBRL = priceInBookingCurrency (preço diário — fallback se totalBRL não existir)
+      const eqTotalBRL = parseFloat(eq.totalBRL || 0);
+      const eqDailyBRL = parseFloat(eq.priceBRL || 0);
+      const p = eqTotalBRL > 0 ? eqTotalBRL : eqDailyBRL * days;
+      return s + p * (eq.qty || 1);
     }, 0);
+
     const baseBRL = totalBRL > 0 ? totalBRL : totalRateXRS;
     // Proteções e acessórios são pagos na loja de destino — o valor cobrado
     // agora (amountInCents) é totalBRL menos a sobretaxa de aeroporto.
@@ -954,9 +959,17 @@ export default function CheckoutPage() {
                       const eqName = eq.name || eq.code;
                       const eqIcon = eq.icon || '📦';
                       const eqPriceBRL = parseFloat(eq.priceBRL || 0);
+                      const eqTotalBRL = parseFloat(eq.totalBRL || 0);
                       const eqPriceEUR = parseFloat(eq.price || 0);
                       const eqCurrency = eq.currency || 'EUR';
-                      const eqTotal = eqPriceBRL > 0 ? eqPriceBRL * eq.qty * days : eqPriceEUR * eq.qty * days;
+                      // Prefer totalBRL (rentalPriceInBookingCurrencyAI = real period total)
+                      // over priceBRL*days (daily rate * days may not match XRS total due to caps/taxes)
+                      const eqTotal = eqTotalBRL > 0
+                        ? eqTotalBRL * eq.qty
+                        : eqPriceBRL > 0
+                          ? eqPriceBRL * eq.qty * days
+                          : eqPriceEUR * eq.qty * days;
+
                       return (
                         <div key={eq.code} className="flex justify-between items-center">
                           <span className="text-gray-500">{eqIcon} {eqName} ×{eq.qty}</span>
@@ -1519,7 +1532,13 @@ export default function CheckoutPage() {
                   <span className="font-bold text-gray-900 text-base">
                     R$ {(() => {
                       const extrasVal = extrasDetails.reduce((s: number, e: any) => s + e.pricePerDay * e.qty, 0) * days;
-                      const equipVal = (booking?.xrsEquipment || []).reduce((s: number, eq: any) => s + parseFloat(eq.priceBRL || 0) * (eq.qty || 1) * days, 0);
+                      const equipVal = (booking?.xrsEquipment || []).reduce((s: number, eq: any) => {
+                        const eqTotalBRL2 = parseFloat(eq.totalBRL || 0);
+                        const eqDailyBRL2 = parseFloat(eq.priceBRL || 0);
+                        const p2 = eqTotalBRL2 > 0 ? eqTotalBRL2 : eqDailyBRL2 * days;
+                        return s + p2 * (eq.qty || 1);
+                      }, 0);
+
                       return (extrasVal + equipVal).toFixed(2).replace('.', ',');
                     })()}
                   </span>
@@ -1559,8 +1578,11 @@ export default function CheckoutPage() {
                 {booking?.xrsEquipment?.length > 0 && (
                   <div className={`space-y-0 ${extrasDetails.length > 0 ? 'mt-0' : ''}`}>
                     {booking.xrsEquipment.map((eq: any, idx: number) => {
-                      const eqPriceBRL = parseFloat(eq.priceBRL || 0);
-                      const eqTotal = eqPriceBRL * (eq.qty || 1) * days;
+                      const eqTotalBRL = parseFloat(eq.totalBRL || 0);
+                      const eqDailyBRL = parseFloat(eq.priceBRL || 0);
+                      // totalBRL = real period total from XRS (rentalPriceInBookingCurrencyAI)
+                      const eqTotal = (eqTotalBRL > 0 ? eqTotalBRL : eqDailyBRL * days) * (eq.qty || 1);
+
                       return (
                         <div key={eq.code} className={`py-3 ${(idx > 0 || extrasDetails.length > 0) ? 'border-t border-gray-100' : ''}`}>
                           <div className="flex justify-between items-start">
@@ -1599,7 +1621,13 @@ export default function CheckoutPage() {
                         ? (totalBRL > 0 ? totalBRL : totalRateXRS)
                         : Math.max(0, (totalBRL > 0 ? totalBRL : totalRateXRS) - airportSurchargeBRL);
                       const extrasVal = extrasDetails.reduce((s: number, e: any) => s + e.pricePerDay * e.qty, 0) * days;
-                      const equipVal = (booking?.xrsEquipment || []).reduce((s: number, eq: any) => s + parseFloat(eq.priceBRL || 0) * (eq.qty || 1) * days, 0);
+                      const equipVal = (booking?.xrsEquipment || []).reduce((s: number, eq: any) => {
+                        const eqT = parseFloat(eq.totalBRL || 0);
+                        const eqD = parseFloat(eq.priceBRL || 0);
+                        const p = eqT > 0 ? eqT : eqD * days;
+                        return s + p * (eq.qty || 1);
+                      }, 0);
+
                       const grandTotal = displayVehicle + extrasVal + equipVal;
                       const cur = totalBRL > 0 ? bookingCurrency : currency;
                       return `R$ ${grandTotal.toFixed(2).replace('.', ',')}`;
@@ -1624,7 +1652,12 @@ export default function CheckoutPage() {
               {/* Proteções/acessórios pagos na loja */}
               {(extrasDetails.length > 0 || booking?.xrsEquipment?.length > 0) && (() => {
                 const extrasVal = extrasDetails.reduce((s: number, e: any) => s + e.pricePerDay * e.qty, 0) * days;
-                const equipVal = (booking?.xrsEquipment || []).reduce((s: number, eq: any) => s + parseFloat(eq.priceBRL || 0) * (eq.qty || 1) * days, 0);
+                const equipVal = (booking?.xrsEquipment || []).reduce((s: number, eq: any) => {
+                  const eqT = parseFloat(eq.totalBRL || 0);
+                  const eqD = parseFloat(eq.priceBRL || 0);
+                  return s + (eqT > 0 ? eqT : eqD * days) * (eq.qty || 1);
+                }, 0);
+
                 const total = extrasVal + equipVal;
                 if (total <= 0) return null;
                 return (

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useState, useMemo, useEffect, useCallback, Suspense } from "react";
@@ -1783,7 +1783,7 @@ function VehiclesContent() {
                     const xrsEquipmentPayload = Object.entries(selectedEquipmentMap).filter(([, qty]) => qty > 0).map(([code, qty]) => {
                       const ep = equipmentPrices[code];
                       const meta = xrsEquipment.find((e: any) => e.code === code);
-                      return { code, qty, name: meta?.name || code, icon: meta?.icon || '📦', price: ep?.price || 0, priceBRL: ep?.priceBRL || 0, currency: ep?.currency || 'EUR' };
+                      return { code, qty, name: meta?.name || code, icon: meta?.icon || '📦', price: ep?.price || 0, priceBRL: ep?.priceBRL || 0, totalBRL: ep?.totalBRL || 0, currency: ep?.currency || 'EUR' };
                     });
                     const xrsInsurancesPayload = selectedInsuranceCodes.map(code => {
                       const qi = quoteInsurances.find((i: any) => i.code === code);
@@ -1836,7 +1836,7 @@ function VehiclesContent() {
                       const xrsEquipmentPayload2 = Object.entries(selectedEquipmentMap).filter(([, qty]) => qty > 0).map(([code, qty]) => {
                         const ep2 = equipmentPrices[code];
                         const meta2 = xrsEquipment.find((e: any) => e.code === code);
-                        return { code, qty, name: meta2?.name || code, icon: meta2?.icon || '📦', price: ep2?.price || 0, priceBRL: ep2?.priceBRL || 0, currency: ep2?.currency || 'EUR' };
+                        return { code, qty, name: meta2?.name || code, icon: meta2?.icon || '📦', price: ep2?.price || 0, priceBRL: ep2?.priceBRL || 0, totalBRL: ep2?.totalBRL || 0, currency: ep2?.currency || 'EUR' };
                       });
                       const xrsInsurancesPayload2 = selectedInsuranceCodes2.map(code => {
                         const qi = quoteInsurances.find((i: any) => i.code === code);
