@@ -357,7 +357,8 @@ export async function POST(request: Request) {
         // bookingData.extras (Step 2 quick-add) and xrsEquipment (Step 3 detail selector)
         // can contain overlapping codes. We keep the highest qty per code.
         const equipmentMap = new Map<string, number>();
-        const insuranceCodes = ['TPL','LDW','CDW','THW','SCDW','SPCDW','STHW','SPTHW','MEDIUM','PREMIUM','PREMPRE','PREMUP','RSA','APP','PAI','PEP','SLDW','WWI','SPAI'];
+        // INTERIOR e PREMPLUS são seguros (não equipamentos) — confirmado pela Europcar (Antonio)
+        const insuranceCodes = ['TPL','LDW','CDW','THW','SCDW','SPCDW','STHW','SPTHW','MEDIUM','PREMIUM','PREMPRE','PREMUP','RSA','APP','PAI','PEP','SLDW','WWI','SPAI','INTERIOR','PREMPLUS'];
 
         // Source 1: bookingData.extras (non-insurance codes only)
         const extras = bookingData.extras || {};

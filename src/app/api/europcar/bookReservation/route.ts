@@ -72,7 +72,8 @@ export async function POST(request: Request) {
     let equipmentXml = '';
     const extras = body.extras || {};
     const extraKeys = Object.keys(extras).filter(k => extras[k] > 0);
-    const insuranceCodes = ['TPL','LDW','CDW','THW','SCDW','SPCDW','STHW','SPTHW','MEDIUM','PREMIUM','PREMPRE','PREMUP','RSA','APP','PAI','PEP','SLDW','WWI','SPAI'];
+    // INTERIOR e PREMPLUS são seguros (não equipamentos) — confirmado pela Europcar (Antonio)
+    const insuranceCodes = ['TPL','LDW','CDW','THW','SCDW','SPCDW','STHW','SPTHW','MEDIUM','PREMIUM','PREMPRE','PREMUP','RSA','APP','PAI','PEP','SLDW','WWI','SPAI','INTERIOR','PREMPLUS'];
     const equipmentKeys = extraKeys.filter(k => !insuranceCodes.includes(k));
     if (equipmentKeys.length > 0) {
       equipmentXml = equipmentKeys.map(k => `\n          <equipment code="${escapeXml(k)}" qty="${escapeXml(extras[k])}"/>`).join('');

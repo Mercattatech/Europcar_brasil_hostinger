@@ -3,9 +3,10 @@ import { prisma } from '@/lib/prisma';
 export const dynamic = 'force-dynamic';
 
 // Hardcoded defaults — used to seed if DB is empty
-const DEFAULTS = [
+// Each entry can be a string (code auto-generated) or { name, code } with an explicit XRS loyaltyID.
+const DEFAULTS: Array<string | { name: string; code: string }> = [
   'AIR CARAIBES – PREFERENCE',
-  'AIR EUROPA SUMA',
+  { name: 'AIR EUROPA SUMA', code: 'UXP' }, // loyaltyID correto fornecido pela Europcar (Antonio)
   'AIR INDIA MAHARAJA CLUB',
   'AIRBERLIN TOPBONUS',
   'ALL – ACCOR LIVE LIMITLESS',
@@ -59,11 +60,11 @@ export async function GET() {
     // Seed defaults if empty
     if (programs.length === 0) {
       await prisma.loyaltyProgram.createMany({
-        data: DEFAULTS.map(name => ({
-          name,
-          code: nameToCode(name.toUpperCase()),
-          active: true,
-        })),
+        data: DEFAULTS.map(entry => {
+          const name = typeof entry === 'string' ? entry : entry.name;
+          const code = typeof entry === 'string' ? nameToCode(name.toUpperCase()) : entry.code;
+          return { name, code, active: true };
+        }),
         skipDuplicates: true,
       });
       programs = await prisma.loyaltyProgram.findMany({
@@ -77,12 +78,11 @@ export async function GET() {
     // Fallback: return hardcoded list if DB fails
     console.error('[loyalty-programs] DB error, returning defaults:', error.message);
     return NextResponse.json(
-      DEFAULTS.map((name, i) => ({
-        id: `default-${i}`,
-        name,
-        code: nameToCode(name.toUpperCase()),
-        active: true,
-      }))
+      DEFAULTS.map((entry, i) => {
+        const name = typeof entry === 'string' ? entry : entry.name;
+        const code = typeof entry === 'string' ? nameToCode(name.toUpperCase()) : entry.code;
+        return { id: `default-${i}`, name, code, active: true };
+      })
     );
   }
 }
