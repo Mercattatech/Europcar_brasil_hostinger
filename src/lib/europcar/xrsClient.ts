@@ -13,6 +13,44 @@ export const ETO_CID_INTERNACIONAL = '56935495';  // Internacional (Excesso Zero
 // EXO = voucher de agência
 export const EXO_CID = '57269673';                // Mesmo CID da POA, IATA: 02170722
 
+export interface DynamicXRSContractConfig {
+  poaCid: string;
+  etoZeroExcessCid: string;
+  etoZeroExcessBa: string;
+  etoExcessCid: string;
+  etoExcessBa: string;
+  exoCid: string;
+  exoIata: string;
+}
+
+export async function getDynamicXRSContractConfig(): Promise<DynamicXRSContractConfig> {
+  const defaults: DynamicXRSContractConfig = {
+    poaCid: DEFAULT_POA_CID,
+    etoZeroExcessCid: ETO_CID_INTERNACIONAL,
+    etoZeroExcessBa: '73804373',
+    etoExcessCid: ETO_CID_LIQUIDO,
+    etoExcessBa: '73675595',
+    exoCid: EXO_CID,
+    exoIata: '02170722',
+  };
+
+  try {
+    const dbConfig = await prisma.xRSConfig.findFirst();
+    if (!dbConfig) return defaults;
+    return {
+      poaCid: dbConfig.poaCid || defaults.poaCid,
+      etoZeroExcessCid: dbConfig.etoZeroExcessCid || defaults.etoZeroExcessCid,
+      etoZeroExcessBa: dbConfig.etoZeroExcessBa || defaults.etoZeroExcessBa,
+      etoExcessCid: dbConfig.etoExcessCid || defaults.etoExcessCid,
+      etoExcessBa: dbConfig.etoExcessBa || defaults.etoExcessBa,
+      exoCid: dbConfig.exoCid || defaults.exoCid,
+      exoIata: dbConfig.exoIata || defaults.exoIata,
+    };
+  } catch {
+    return defaults;
+  }
+}
+
 export interface XRSConfig {
   callerCode: string;
   password: string;

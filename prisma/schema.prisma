@@ -25,10 +25,17 @@ model MediaAsset {
 }
 
 model XRSConfig {
-  id         String   @id @default(uuid())
-  callerCode String
-  password   String
-  updatedAt  DateTime @updatedAt
+  id               String   @id @default(uuid())
+  callerCode       String
+  password         String
+  poaCid           String?  @default("57269673")
+  etoZeroExcessCid String?  @default("56935495")
+  etoZeroExcessBa  String?  @default("73804373")
+  etoExcessCid     String?  @default("56935466")
+  etoExcessBa      String?  @default("73675595")
+  exoCid           String?  @default("57269673")
+  exoIata          String?  @default("02170722")
+  updatedAt        DateTime @updatedAt
 }
 
 model CieloConfig {
